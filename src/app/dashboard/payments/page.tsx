@@ -1,0 +1,33 @@
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import { redirect } from "next/navigation"
+import { PaymentsClient } from "./payments-client"
+
+export default async function PaymentsPage() {
+  const session = await auth()
+  if (!session?.user) redirect("/login")
+  const user = session.user as any
+  if (user.role === "TEACHER") redirect("/dashboard")
+
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
+  const [payments, students] = await Promise.all([
+    prisma.payment.findMany({
+      where: { tenantId: user.tenantId },
+      include: {
+        student: { select: { id: true, firstName: true, lastName: true, group: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+    prisma.student.findMany({
+      where: { tenantId: user.tenantId, status: "ACTIVE" },
+      select: { id: true, firstName: true, lastName: true, monthlyFee: true },
+      orderBy: { lastName: "asc" },
+    }),
+  ])
+
+  return <PaymentsClient payments={payments as any} students={students as any} currentMonth={month} currentYear={year} />
+}

@@ -1,0 +1,112 @@
+"use client"
+import { useState } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { GraduationCap, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [form, setForm] = useState({ email: "", password: "", tenantSlug: "" })
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+
+    const result = await signIn("credentials", {
+      ...form,
+      redirect: false,
+    })
+
+    if (result?.error) {
+      setError("Identifiants incorrects ou institut introuvable.")
+      setLoading(false)
+    } else {
+      router.push("/dashboard")
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 to-gray-100 p-4">
+      <div className="w-full max-w-md space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 shadow-lg">
+            <GraduationCap className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">MadrassaApp</h1>
+          <p className="mt-1 text-sm text-gray-500">Gestion d'instituts islamiques</p>
+        </div>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle>Connexion</CardTitle>
+            <CardDescription>Entrez vos identifiants pour accéder à votre espace</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="tenantSlug">Identifiant de l'institut</Label>
+                <Input
+                  id="tenantSlug"
+                  placeholder="ex: institut-assahaba"
+                  value={form.tenantSlug}
+                  onChange={(e) => setForm((f) => ({ ...f, tenantSlug: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="directeur@example.com"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Se connecter
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-xs text-gray-400">
+          Vous n'avez pas encore de compte ?{" "}
+          <a href="/register" className="text-emerald-600 hover:underline">
+            Créer un institut
+          </a>
+        </p>
+      </div>
+    </div>
+  )
+}
