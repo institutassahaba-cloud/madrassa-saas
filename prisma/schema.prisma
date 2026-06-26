@@ -25,15 +25,23 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users         User[]
-  students      Student[]
-  groups        Group[]
-  payments      Payment[]
-  assessments   Assessment[]
-  attendances   Attendance[]
-  salaries      TeacherSalary[]
-  notifications Notification[]
-  settings      TenantSettings?
+  users                User[]
+  students             Student[]
+  groups               Group[]
+  payments             Payment[]
+  assessments          Assessment[]
+  attendances          Attendance[]
+  salaries             TeacherSalary[]
+  notifications        Notification[]
+  settings             TenantSettings?
+  lessonSessions       LessonSession[]
+  lessons              Lesson[]
+  timeSlots            TimeSlot[]
+  paymentMatches       PaymentMatch[]
+  secretaryCommissions SecretaryCommission[]
+  teacherContracts     TeacherContract[]
+  books                Book[]
+  examFiles            ExamFile[]
 }
 
 model TenantSettings {
@@ -67,15 +75,25 @@ model User {
   role          String    @default("SECRETARY")
   isActive      Boolean   @default(true)
   phone         String?
+  timezone      String    @default("Europe/Paris")
+  mustChangePassword Boolean @default(false)
+  individualRate Float?
+  binomeRate     Float?
+  groupRate      Float?
+  paymentInfo    String?
+  lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  teacherGroups Group[]         @relation("TeacherGroups")
-  attendances   Attendance[]    @relation("TeacherAttendances")
-  assessments   Assessment[]    @relation("TeacherAssessments")
-  salaries      TeacherSalary[]
+  accounts        Account[]
+  sessions        Session[]
+  teacherGroups   Group[]         @relation("TeacherGroups")
+  attendances     Attendance[]    @relation("TeacherAttendances")
+  assessments     Assessment[]    @relation("TeacherAssessments")
+  salaries        TeacherSalary[]
+  teacherSessions LessonSession[] @relation("TeacherSessions")
+  timeSlots       TimeSlot[]
+  contracts       TeacherContract[]
 
   @@unique([tenantId, email])
 }
@@ -123,7 +141,9 @@ model Student {
   tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   firstName      String
   lastName       String
-  gender         String
+  displayName    String? // nom brut tel qu'écrit dans les Sheets (mononyme possible)
+  legacyId       String? // ancien ID Google (EL###) pour traçabilité migration
+  gender         String? // optionnel : les données Google n'ont pas de genre
   dateOfBirth    DateTime?
   phone          String?
   email          String?
@@ -133,8 +153,16 @@ model Student {
   groupId        String?
   group          Group?    @relation(fields: [groupId], references: [id])
   level          String?
+  subject        String?
   monthlyFee     Float     @default(0)
-  status         String    @default("ACTIVE")
+  // ── Facturation (col M des Sheets) ──
+  payerName      String? // nom du payeur attendu (parent/virement)
+  paymentType    String? // "PAYPAL" | "WISE"
+  hourlyRate     Float? // tarif horaire
+  lessonsPerWeek Int? // nombre de cours par semaine
+  duration       String? // durée d'un cours ("30 min", "1h")
+  status         String    @default("ACTIVE") // ACTIVE | PAUSED | STOPPED
+  recontactDate  DateTime?
   notes          String?
   parentName     String?
   parentPhone    String?
@@ -142,9 +170,91 @@ model Student {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  payments    Payment[]
-  attendances Attendance[]
-  grades      Grade[]
+  payments       Payment[]
+  attendances    Attendance[]
+  grades         Grade[]
+  lessonSessions LessonSession[]
+  paymentMatches PaymentMatch[]
+
+  @@index([tenantId, legacyId])
+}
+
+// ─── SCHEDULE ────────────────────────────────────────────────────────────────
+
+model TimeSlot {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  groupId   String?
+  group     Group?   @relation(fields: [groupId], references: [id])
+  dayOfWeek Int // 0=Dim 1=Lun 2=Mar 3=Mer 4=Jeu 5=Ven 6=Sam
+  startTime String // "09:00"
+  endTime   String // "09:30"
+  label     String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exceptions SlotException[]
+}
+
+model SlotException {
+  id        String   @id @default(cuid())
+  slotId    String
+  slot      TimeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  date      DateTime // la date précise annulée (YYYY-MM-DD)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([slotId, date])
+}
+
+// ─── LESSON SESSIONS ─────────────────────────────────────────────────────────
+
+model LessonSession {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  studentId          String
+  student            Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId          String
+  teacher            User      @relation("TeacherSessions", fields: [teacherId], references: [id])
+  subject            String
+  number             Int
+  frequency          Int?
+  duration           String?
+  isComplete         Boolean   @default(false)
+  // ── Cycle « fin de session » → demande de paiement ──
+  endedAt            DateTime? // case « Fin de session » cochée / dernier cours fait
+  paymentRequestedAt DateTime? // email de demande envoyé
+  reminderAt         DateTime? // relance envoyée
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  lessons  Lesson[]
+  payments Payment[]
+
+  @@unique([studentId, subject, number])
+}
+
+model Lesson {
+  id        String        @id @default(cuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   LessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  number    Int
+  date      DateTime?
+  status          String        @default("PENDING")
+  content         String?
+  duration        Int?          // durée réelle en minutes (null = durée prévue)
+  makeupMinutes   Int?          // minutes à rattraper sur un autre cours
+  makeupOnLessonId String?      // id du cours sur lequel rattraper
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
 
 // ─── GROUPS ──────────────────────────────────────────────────────────────────
@@ -167,29 +277,43 @@ model Group {
   students    Student[]
   attendances Attendance[]
   assessments Assessment[]
+  timeSlots   TimeSlot[]
 }
 
 // ─── PAYMENTS ────────────────────────────────────────────────────────────────
 
 model Payment {
-  id            String    @id @default(cuid())
-  tenantId      String
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  studentId     String
-  student       Student   @relation(fields: [studentId], references: [id])
-  amount        Float
-  dueDate       DateTime
-  paidDate      DateTime?
-  status        String    @default("PENDING")
-  method        String?
-  reference     String?
-  month         Int
-  year          Int
-  notes         String?
-  invoiceNumber String?
-  source        String    @default("MANUAL")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String         @id @default(cuid())
+  tenantId          String
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  studentId         String
+  student           Student        @relation(fields: [studentId], references: [id])
+  amount            Float
+  dueDate           DateTime
+  paidDate          DateTime?
+  // Cycle de vie : EXPECTED → EMAIL_SENT → REMINDED → MATCHED → CONFIRMED → REJECTED (+ PENDING/PAID legacy)
+  status            String         @default("PENDING")
+  method            String?
+  reference         String?
+  month             Int
+  year              Int
+  notes             String?
+  invoiceNumber     String?
+  source            String         @default("MANUAL") // MANUAL | PAYPAL | WISE
+  // ── Lien session + machine à états de matching ──
+  lessonSessionId   String?
+  lessonSession     LessonSession? @relation(fields: [lessonSessionId], references: [id])
+  sessionNumber     Int?
+  expectedAmount    Float?
+  receivedAmount    Float?
+  expectedPayerName String?
+  detectedPayerName String?
+  emailSentAt       DateTime?
+  confirmedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  allocations PaymentAllocation[]
 }
 
 // ─── ATTENDANCE ──────────────────────────────────────────────────────────────
@@ -249,38 +373,151 @@ model Grade {
 // ─── SALARIES ────────────────────────────────────────────────────────────────
 
 model TeacherSalary {
-  id          String    @id @default(cuid())
-  tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  teacherId   String
-  teacher     User      @relation(fields: [teacherId], references: [id])
-  month       Int
-  year        Int
-  hourlyRate  Float?
-  fixedSalary Float?
-  hoursWorked Float?
-  totalAmount Float
-  status      String    @default("PENDING")
-  paidDate    DateTime?
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacherId    String
+  teacher      User      @relation(fields: [teacherId], references: [id])
+  month        Int
+  year         Int
+  hourlyRate   Float?
+  fixedSalary  Float?
+  hoursWorked  Float?
+  lessonsCount Int? // nb de cours réellement donnés sur la période
+  periodStart  DateTime? // borne mensuelle (marqueur couleur dans les Sheets)
+  periodEnd    DateTime?
+  totalAmount  Float
+  status       String    @default("PENDING")
+  paidDate     DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([teacherId, month, year])
+}
+
+// ─── PAYMENT MATCHING (parsing email PayPal/Wise) ────────────────────────────
+// Un email de paiement détecté = un événement consommé UNE SEULE FOIS.
+model PaymentMatch {
+  id                String    @id @default(cuid())
+  tenantId          String
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  source            String // PAYPAL | WISE
+  gmailMessageId    String // verrou : un email ne peut être consommé qu'une fois
+  receivedAmount    Float
+  detectedPayerName String?
+  paymentDate       DateTime?
+  // Élève « pressenti » (facultatif, indicatif)
+  studentId         String?
+  student           Student?  @relation(fields: [studentId], references: [id])
+  // TO_VERIFY | CONFIRMED | REJECTED | AUTO_CONFIRMED
+  status            String    @default("TO_VERIFY")
+  score             Float?
+  reason            String? // pourquoi non auto-validé (montant ≠, nom faible, ambigu, groupé…)
+  rawSubject        String?
+  confirmedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  allocations PaymentAllocation[]
+
+  @@unique([tenantId, gmailMessageId])
+  @@index([tenantId, status])
+}
+
+// Allocation N-N : un email (PaymentMatch) peut couvrir plusieurs Payment
+// (fratrie, 2 sessions). Total alloué ≤ montant reçu.
+model PaymentAllocation {
+  id             String       @id @default(cuid())
+  paymentMatchId String
+  paymentMatch   PaymentMatch @relation(fields: [paymentMatchId], references: [id], onDelete: Cascade)
+  paymentId      String
+  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amount         Float // part allouée à ce Payment
+  createdAt      DateTime     @default(now())
+
+  @@unique([paymentMatchId, paymentId])
+}
+
+// ─── COMMISSION SECRÉTAIRE (10 % des paiements encaissés) ────────────────────
+// Visible directeur uniquement.
+model SecretaryCommission {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  secretaryId    String
+  month          Int
+  year           Int
+  collectedTotal Float // total encaissé sur la période
+  rate           Float     @default(0.10)
+  amount         Float // = collectedTotal * rate
+  status         String    @default("PENDING")
+  paidDate       DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([secretaryId, month, year])
+}
+
+// ─── LIVRES DE L'INSTITUT ────────────────────────────────────────────────────
+model Book {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  fileUrl     String? // PDF (Drive ou stockage)
+  coverUrl    String?
+  level       String?
+  subject     String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── CONTRATS ────────────────────────────────────────────────────────────────
+
+model TeacherContract {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     User     @relation(fields: [teacherId], references: [id])
+  title       String
+  driveFileId String
+  driveUrl    String
+  uploadedAt  DateTime @default(now())
+}
+
+// ─── CONTRÔLES (fichiers uploadés, classés par niveau) ───────────────────────
+model ExamFile {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title     String
+  level     String
+  fileName  String
+  fileUrl   String
+  fileSize  Int?
+  uploadedBy String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, level])
 }
 
 // ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   type      String
   title     String
   body      String
   recipient String?
   channel   String
-  status    String   @default("PENDING")
+  status    String    @default("PENDING")
   sentAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }

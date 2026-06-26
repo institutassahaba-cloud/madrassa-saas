@@ -1,0 +1,38 @@
+[
+ {
+  "day": 0,
+  "start": "10:00",
+  "end": "10:30",
+  "name": "Carole"
+ },
+ {
+  "day": 6,
+  "start": "11:00",
+  "end": "11:30",
+  "name": "Maeva"
+ },
+ {
+  "day": 6,
+  "start": "15:30",
+  "end": "16:00",
+  "name": "Dadou et Oumou"
+ },
+ {
+  "day": 3,
+  "start": "17:30",
+  "end": "18:00",
+  "name": "Mayssa"
+ },
+ {
+  "day": 2,
+  "start": "18:00",
+  "end": "18:30",
+  "name": "Inès"
+ },
+ {
+  "day": 5,
+  "start": "18:00",
+  "end": "18:30",
+  "name": "Inès"
+ }
+]

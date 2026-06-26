@@ -6,8 +6,8 @@ import { SalariesClient } from "./salaries-client"
 export default async function SalariesPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")
-  const user = session.user as any
-  if (user.role !== "DIRECTOR") redirect("/dashboard")
+  const user = session.user
+  if (!["DIRECTOR", "SECRETARY"].includes(user.role)) redirect("/dashboard")
 
   const now = new Date()
   const [teachers, salaries] = await Promise.all([
@@ -24,5 +24,6 @@ export default async function SalariesPage() {
     }),
   ])
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return <SalariesClient teachers={teachers} salaries={salaries as any} currentMonth={now.getMonth() + 1} currentYear={now.getFullYear()} />
 }

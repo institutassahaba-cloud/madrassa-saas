@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -41,11 +41,13 @@ export function PaymentsClient({
   students,
   currentMonth,
   currentYear,
+  isDirector,
 }: {
   payments: Payment[]
   students: Student[]
   currentMonth: number
   currentYear: number
+  isDirector: boolean
 }) {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
@@ -112,6 +114,9 @@ export function PaymentsClient({
           </CardContent>
         </Card>
       </div>
+
+      {/* Calcul paie secrétaire (directeur) */}
+      {isDirector && <SecretaryPayBlock />}
 
       {/* Filters */}
       <Card>
@@ -211,5 +216,69 @@ export function PaymentsClient({
         currentYear={currentYear}
       />
     </div>
+  )
+}
+
+function SecretaryPayBlock() {
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<{ secretaryName: string; collectedTotal: number; amount: number; periodStart: string; periodEnd: string } | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+
+  async function calculate() {
+    setLoading(true)
+    setConfirmed(false)
+    const res = await fetch("/api/salaries/secretary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
+    const data = await res.json()
+    if (Array.isArray(data) && data.length > 0) setResult(data[0])
+    setLoading(false)
+  }
+
+  async function confirm() {
+    setLoading(true)
+    await fetch("/api/salaries/secretary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: true }) })
+    setConfirmed(true)
+    setLoading(false)
+  }
+
+  return (
+    <Card className="border-violet-200 bg-violet-50">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-violet-600" />
+            <span className="font-semibold text-violet-900">Calculer la paie de la secrétaire</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={calculate} disabled={loading} className="border-violet-300 text-violet-700 hover:bg-violet-100">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Calculator className="h-4 w-4 mr-1" />}
+            Calculer (10%)
+          </Button>
+        </div>
+
+        {result && (
+          <div className="rounded-lg border border-violet-200 bg-white p-4 space-y-2">
+            <p className="font-medium text-gray-900">{result.secretaryName}</p>
+            <p className="text-xs text-gray-400">
+              Période : {new Date(result.periodStart).toLocaleDateString("fr-FR")} → {new Date(result.periodEnd).toLocaleDateString("fr-FR")}
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Total encaissé</span>
+              <span className="font-medium">{formatCurrency(result.collectedTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Commission 10%</span>
+              <span className="text-lg font-bold text-violet-700">{formatCurrency(result.amount)}</span>
+            </div>
+            {!confirmed ? (
+              <Button size="sm" onClick={confirm} disabled={loading} className="bg-violet-600 hover:bg-violet-700 text-white mt-2">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmer et enregistrer
+              </Button>
+            ) : (
+              <p className="text-sm text-emerald-600 font-medium mt-2">✓ Fiche de paie enregistrée</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

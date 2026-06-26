@@ -2,12 +2,12 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  LayoutDashboard, Users, UserCheck, BookOpen, CreditCard,
+  LayoutDashboard, Users, BookOpen, CreditCard,
   Calendar, BarChart3, Settings, GraduationCap, Banknote,
-  Bell, ChevronRight, School,
+  Bell, ChevronRight, UserCircle, FileText, UserCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Role } from "@prisma/client"
+type Role = "DIRECTOR" | "SECRETARY" | "TEACHER"
 
 interface NavItem {
   label: string
@@ -19,27 +19,29 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
-  { label: "Élèves", href: "/dashboard/students", icon: Users, roles: ["DIRECTOR", "SECRETARY"] },
-  { label: "Professeurs", href: "/dashboard/teachers", icon: GraduationCap, roles: ["DIRECTOR"] },
-  { label: "Groupes", href: "/dashboard/groups", icon: School, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
-  { label: "Présences", href: "/dashboard/attendance", icon: UserCheck, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
+  { label: "Fiches élèves", href: "/dashboard/students", icon: Users, roles: ["DIRECTOR", "SECRETARY"] },
+  { label: "Professeurs", href: "/dashboard/teachers", icon: GraduationCap, roles: ["DIRECTOR", "SECRETARY"] },
+  { label: "Mes élèves", href: "/dashboard/cahier", icon: BookOpen, roles: ["TEACHER"] },
+  { label: "Mes documents", href: "/dashboard/mes-documents", icon: FileText, roles: ["TEACHER"] },
   { label: "Contrôles", href: "/dashboard/assessments", icon: BookOpen, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
   { label: "Paiements", href: "/dashboard/payments", icon: CreditCard, roles: ["DIRECTOR", "SECRETARY"] },
-  { label: "Salaires", href: "/dashboard/salaries", icon: Banknote, roles: ["DIRECTOR"] },
+  { label: "Récap des paies", href: "/dashboard/recap-paiements", icon: Banknote, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Planning", href: "/dashboard/schedule", icon: Calendar, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
-  { label: "Statistiques", href: "/dashboard/stats", icon: BarChart3, roles: ["DIRECTOR"] },
+  { label: "Connexions", href: "/dashboard/connexions", icon: UserCheck, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell, roles: ["DIRECTOR", "SECRETARY"] },
+  { label: "Documents", href: "/dashboard/documents", icon: FileText, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Paramètres", href: "/dashboard/settings", icon: Settings, roles: ["DIRECTOR"] },
+  { label: "Changer mon mot de passe", href: "/dashboard/mon-compte", icon: UserCircle, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
 ]
 
 interface SidebarProps {
-  role: Role
+  role: string
   tenantName: string
 }
 
 export function Sidebar({ role, tenantName }: SidebarProps) {
   const pathname = usePathname()
-  const filtered = navItems.filter((item) => item.roles.includes(role))
+  const filtered = navItems.filter((item) => item.roles.includes(role as Role))
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-gray-100 bg-white">

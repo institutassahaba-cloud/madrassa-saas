@@ -10,34 +10,37 @@ import {
 import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { PaymentStatusChart } from "@/components/dashboard/payment-status-chart"
 import { RecentPayments } from "@/components/dashboard/recent-payments"
+import { TeacherHome } from "./teacher-home"
 
 async function getStats(tenantId: string) {
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
+  // Cycle de facturation : du 25 du mois précédent au 25 du mois courant
+  const startOfBillingMonth = new Date(year, month - 1, 25, 0, 0, 0)
+  if (now < startOfBillingMonth) {
+    startOfBillingMonth.setMonth(startOfBillingMonth.getMonth() - 1)
+  }
+
   const [
     totalStudents,
     activeStudents,
     latePayments,
     monthRevenue,
-    pendingSalaries,
     totalTeachers,
     totalAttendances,
     presentAttendances,
     recentPayments,
     paymentsByStatus,
+    activeBySubject,
   ] = await Promise.all([
     prisma.student.count({ where: { tenantId } }),
     prisma.student.count({ where: { tenantId, status: "ACTIVE" } }),
     prisma.payment.count({ where: { tenantId, status: "LATE" } }),
     prisma.payment.aggregate({
-      where: { tenantId, status: "PAID", month, year },
+      where: { tenantId, status: "PAID", paidDate: { gte: startOfBillingMonth } },
       _sum: { amount: true },
-    }),
-    prisma.teacherSalary.aggregate({
-      where: { tenantId, status: "PENDING", month, year },
-      _sum: { totalAmount: true },
     }),
     prisma.user.count({ where: { tenantId, role: "TEACHER", isActive: true } }),
     prisma.attendance.count({ where: { tenantId } }),
@@ -53,6 +56,11 @@ async function getStats(tenantId: string) {
       where: { tenantId, month, year },
       _count: true,
     }),
+    prisma.student.groupBy({
+      by: ["subject"],
+      where: { tenantId, status: "ACTIVE", subject: { not: null } },
+      _count: true,
+    }),
   ])
 
   return {
@@ -60,11 +68,13 @@ async function getStats(tenantId: string) {
     activeStudents,
     latePayments,
     monthRevenue: Number(monthRevenue._sum.amount ?? 0),
-    pendingSalaries: Number(pendingSalaries._sum.totalAmount ?? 0),
     totalTeachers,
     attendanceRate: totalAttendances > 0 ? Math.round((presentAttendances / totalAttendances) * 100) : 0,
     recentPayments,
     paymentsByStatus,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    activeBySubject: (activeBySubject as any[]).map((g: any) => ({ subject: g.subject, count: g._count })),
+    billingStart: startOfBillingMonth,
     month,
     year,
   }
@@ -73,16 +83,41 @@ async function getStats(tenantId: string) {
 export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")
-  const tenantId = (session.user as any).tenantId
-  const role = (session.user as any).role
+  const tenantId = (session.user).tenantId
+  const role = (session.user).role
+
+  // Un professeur n'a jamais accès aux chiffres (revenus, paiements…) :
+  // il voit son propre accueil (cours du jour, raccourcis).
+  if (role === "TEACHER") {
+    return (
+      <TeacherHome
+        tenantId={tenantId}
+        teacherId={(session.user).id}
+        teacherName={(session.user).name ?? "Professeur"}
+      />
+    )
+  }
 
   const stats = await getStats(tenantId)
 
+  // Élèves en pause avec date de recontact passée ou aujourd'hui
+  const recontactStudents = await prisma.student.findMany({
+    where: {
+      tenantId,
+      status: "PAUSED",
+      recontactDate: { not: null, lte: new Date() },
+    },
+    select: { id: true, firstName: true, lastName: true, phone: true, parentPhone: true, recontactDate: true },
+    orderBy: { recontactDate: "asc" },
+  })
+
+  const billingLabel = `Revenus depuis le 25/${String(stats.billingStart.getMonth() + 1).padStart(2, "0")}`
+
   const kpis = [
     {
-      label: "Total élèves",
-      value: stats.totalStudents,
-      sub: `${stats.activeStudents} actifs`,
+      label: "Élèves actifs",
+      value: stats.activeStudents,
+      sub: `${stats.totalStudents} inscrits au total`,
       icon: Users,
       color: "text-blue-600",
       bg: "bg-blue-50",
@@ -96,7 +131,7 @@ export default async function DashboardPage() {
       bg: "bg-red-50",
     },
     {
-      label: `Revenus ${getMonthName(stats.month)}`,
+      label: billingLabel,
       value: formatCurrency(stats.monthRevenue),
       sub: "paiements reçus",
       icon: TrendingUp,
@@ -115,14 +150,6 @@ export default async function DashboardPage() {
 
   if (role === "DIRECTOR") {
     kpis.push(
-      {
-        label: "Salaires à payer",
-        value: formatCurrency(stats.pendingSalaries),
-        sub: `${getMonthName(stats.month)} ${stats.year}`,
-        icon: Banknote,
-        color: "text-amber-600",
-        bg: "bg-amber-50",
-      },
       {
         label: "Professeurs actifs",
         value: stats.totalTeachers,
@@ -156,6 +183,23 @@ export default async function DashboardPage() {
         ))}
       </div>
 
+      {/* Élèves par matière */}
+      {stats.activeBySubject.length > 0 && (
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm font-medium text-gray-500 mb-3">Élèves actifs par matière</p>
+            <div className="flex flex-wrap gap-3">
+              {stats.activeBySubject.map((s: { subject: string; count: number }) => (
+                <div key={s.subject} className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                  <span className="text-sm text-gray-700">{s.subject}</span>
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{s.count}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -165,7 +209,52 @@ export default async function DashboardPage() {
       </div>
 
       {/* Recent Payments */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <RecentPayments payments={stats.recentPayments as any} />
+
+      {/* Recontact reminders */}
+      {recontactStudents.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="h-5 w-5" />
+              Élèves à recontacter ({recontactStudents.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {recontactStudents.map((s) => (
+                <div key={s.id} className="flex items-center justify-between rounded-lg border border-amber-100 bg-amber-50 px-4 py-2.5">
+                  <div>
+                    <p className="font-medium text-gray-900">{s.firstName} {s.lastName}</p>
+                    <p className="text-xs text-amber-600">
+                      Recontact prévu le {new Date(s.recontactDate!).toLocaleDateString("fr-FR")}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {(s.phone || s.parentPhone) && (
+                      <a
+                        href={`https://wa.me/${(s.phone || s.parentPhone)?.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
+                      >
+                        WhatsApp
+                      </a>
+                    )}
+                    <a
+                      href={`/dashboard/students`}
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      Voir fiche
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

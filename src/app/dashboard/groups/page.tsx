@@ -6,7 +6,7 @@ import { GroupsClient } from "./groups-client"
 export default async function GroupsPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")
-  const user = session.user as any
+  const user = session.user
 
   const [groups, teachers] = await Promise.all([
     prisma.group.findMany({
@@ -27,5 +27,6 @@ export default async function GroupsPage() {
     }),
   ])
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return <GroupsClient groups={groups as any} teachers={teachers} role={user.role} />
 }

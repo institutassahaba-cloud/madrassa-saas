@@ -41,3 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+google-drive-credentials.json
+
+# base locale (données réelles, ne pas pousser)
+prisma/dev.db
+prisma/dev.db-journal

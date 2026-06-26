@@ -23,8 +23,10 @@ export function formatCurrency(amount: number | string, currency = "EUR") {
 }
 
 export function getInitials(name: string) {
-  return name
-    .split(" ")
+  return (name || "")
+    .replace(/[^\p{L}\s]/gu, " ") // retire emojis/ponctuation (évite les demi-surrogates → mismatch d'hydratation)
+    .split(/\s+/)
+    .filter(Boolean)
     .map((n) => n[0])
     .join("")
     .toUpperCase()

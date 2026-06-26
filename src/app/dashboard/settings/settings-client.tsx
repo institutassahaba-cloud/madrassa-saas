@@ -17,6 +17,7 @@ const ROLE_LABELS: Record<string, string> = {
   TEACHER: "Professeur",
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ROLE_VARIANTS: Record<string, any> = {
   DIRECTOR: "default",
   SECRETARY: "info",
@@ -37,6 +38,7 @@ const USER_EMPTY = { name: "", email: "", password: "", role: "TEACHER", phone: 
 
 export function SettingsClient({ users, tenant, currentUserId }: {
   users: User[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tenant: any
   currentUserId: string
 }) {
@@ -44,6 +46,8 @@ export function SettingsClient({ users, tenant, currentUserId }: {
   const [userDialog, setUserDialog] = useState(false)
   const [userForm, setUserForm] = useState(USER_EMPTY)
   const [loading, setLoading] = useState(false)
+  const [integrationLoading, setIntegrationLoading] = useState(false)
+  const [integrationMsg, setIntegrationMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null)
   const [tenantForm, setTenantForm] = useState({
     name: tenant?.name ?? "",
     email: tenant?.email ?? "",
@@ -51,6 +55,31 @@ export function SettingsClient({ users, tenant, currentUserId }: {
     address: tenant?.address ?? "",
     city: tenant?.city ?? "",
   })
+  const [integrations, setIntegrations] = useState({
+    wiseMerchantToken: tenant?.settings?.wiseMerchantToken ?? "",
+    paypalClientId: tenant?.settings?.paypalClientId ?? "",
+    paypalClientSecret: tenant?.settings?.paypalClientSecret ?? "",
+    whatsappApiKey: tenant?.settings?.whatsappApiKey ?? "",
+  })
+
+  async function saveIntegration(field: string, value: string) {
+    if (!value.trim()) return
+    setIntegrationLoading(true)
+    setIntegrationMsg(null)
+    try {
+      const res = await fetch("/api/tenant/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value.trim() }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setIntegrationMsg({ type: "ok", text: "Connecté avec succès" })
+    } catch {
+      setIntegrationMsg({ type: "err", text: "Erreur lors de la connexion" })
+    } finally {
+      setIntegrationLoading(false)
+    }
+  }
 
   function setUF(key: string, value: string) {
     setUserForm((f) => ({ ...f, [key]: value }))
@@ -101,7 +130,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold text-gray-900">Paramètres</h2>
-        <p className="text-sm text-gray-500">Gestion de l'institut et des utilisateurs</p>
+        <p className="text-sm text-gray-500">Gestion de l&apos;institut et des utilisateurs</p>
       </div>
 
       {/* Tabs */}
@@ -113,6 +142,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick={() => setTab(key as any)}
             className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               tab === key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -185,12 +215,12 @@ export function SettingsClient({ users, tenant, currentUserId }: {
       {/* Institute tab */}
       {tab === "institute" && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Informations de l'institut</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Informations de l&apos;institut</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={saveTenant} className="space-y-4 max-w-lg">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5 col-span-2">
-                  <Label>Nom de l'institut</Label>
+                  <Label>Nom de l&apos;institut</Label>
                   <Input value={tenantForm.name} onChange={(e) => setTenantForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
                 <div className="space-y-1.5">
@@ -222,24 +252,79 @@ export function SettingsClient({ users, tenant, currentUserId }: {
       {/* Integrations tab */}
       {tab === "integrations" && (
         <div className="space-y-4 max-w-lg">
-          {[
-            { title: "Wise", desc: "Détection automatique des virements", field: "wiseMerchantToken", placeholder: "Token API Wise" },
-            { title: "PayPal", desc: "Synchronisation des paiements PayPal", field: "paypalClientId", placeholder: "Client ID PayPal" },
-            { title: "WhatsApp", desc: "Envoi de rappels WhatsApp", field: "whatsappApiKey", placeholder: "Clé API WhatsApp" },
-          ].map(({ title, desc, field, placeholder }) => (
-            <Card key={field}>
-              <CardHeader>
-                <CardTitle className="text-base">{title}</CardTitle>
-                <p className="text-xs text-gray-500">{desc}</p>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <Input type="password" placeholder={placeholder} />
-                  <Button variant="outline">Connecter</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {integrationMsg && (
+            <div className={`text-sm px-3 py-2 rounded ${integrationMsg.type === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+              {integrationMsg.text}
+            </div>
+          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Wise</CardTitle>
+              <p className="text-xs text-gray-500">Détection automatique des virements</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Token API Wise"
+                  value={integrations.wiseMerchantToken}
+                  onChange={(e) => setIntegrations((s) => ({ ...s, wiseMerchantToken: e.target.value }))}
+                />
+                <Button variant="outline" disabled={integrationLoading} onClick={() => saveIntegration("wiseMerchantToken", integrations.wiseMerchantToken)}>
+                  {integrations.wiseMerchantToken && tenant?.settings?.wiseMerchantToken ? "Modifier" : "Connecter"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">PayPal</CardTitle>
+              <p className="text-xs text-gray-500">Synchronisation des paiements PayPal</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Client ID PayPal"
+                  value={integrations.paypalClientId}
+                  onChange={(e) => setIntegrations((s) => ({ ...s, paypalClientId: e.target.value }))}
+                />
+                <Button variant="outline" disabled={integrationLoading} onClick={() => saveIntegration("paypalClientId", integrations.paypalClientId)}>
+                  {integrations.paypalClientId && tenant?.settings?.paypalClientId ? "Modifier" : "Connecter"}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Client Secret PayPal"
+                  value={integrations.paypalClientSecret}
+                  onChange={(e) => setIntegrations((s) => ({ ...s, paypalClientSecret: e.target.value }))}
+                />
+                <Button variant="outline" disabled={integrationLoading} onClick={() => saveIntegration("paypalClientSecret", integrations.paypalClientSecret)}>
+                  {integrations.paypalClientSecret && tenant?.settings?.paypalClientSecret ? "Modifier" : "Connecter"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">WhatsApp</CardTitle>
+              <p className="text-xs text-gray-500">Envoi de rappels WhatsApp</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Clé API WhatsApp"
+                  value={integrations.whatsappApiKey}
+                  onChange={(e) => setIntegrations((s) => ({ ...s, whatsappApiKey: e.target.value }))}
+                />
+                <Button variant="outline" disabled={integrationLoading} onClick={() => saveIntegration("whatsappApiKey", integrations.whatsappApiKey)}>
+                  {integrations.whatsappApiKey && tenant?.settings?.whatsappApiKey ? "Modifier" : "Connecter"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

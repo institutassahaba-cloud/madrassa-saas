@@ -1,0 +1,4423 @@
+{
+  "profCode": "PR007",
+  "enrollments": [
+    {
+      "el": "EL102",
+      "subject": "Fait le 13/08",
+      "tab": "Mayssa",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2023-08-19",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": "2023-08-29",
+              "status": "PRESENT",
+              "content": "نهاية الجمع غير العاقل"
+            },
+            {
+              "number": 3,
+              "date": "2023-09-09",
+              "status": "PRESENT",
+              "content": "في المستشفى"
+            },
+            {
+              "number": 4,
+              "date": "2023-09-13",
+              "status": "PRESENT",
+              "content": "الضمائر المتصلة"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2023-09-27",
+              "status": "PRESENT",
+              "content": "الضَّمائر المتصلة"
+            },
+            {
+              "number": 2,
+              "date": "2023-10-04",
+              "status": "PRESENT",
+              "content": "الضمائِر المتَّصلة"
+            },
+            {
+              "number": 3,
+              "date": "2023-10-11",
+              "status": "PRESENT",
+              "content": "الضمائر المتَّصلة"
+            },
+            {
+              "number": 4,
+              "date": "2023-10-18",
+              "status": "PRESENT",
+              "content": "تدريبات الضمائر المتصلة"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2023-10-25",
+              "status": "PRESENT",
+              "content": "إعراب"
+            },
+            {
+              "number": 2,
+              "date": "2023-11-01",
+              "status": "PRESENT",
+              "content": "بائع السمك"
+            },
+            {
+              "number": 3,
+              "date": "2023-11-15",
+              "status": "PRESENT",
+              "content": "بائع السمك"
+            },
+            {
+              "number": 4,
+              "date": "2023-11-23",
+              "status": "PRESENT",
+              "content": "المثنَّى"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2023-11-29",
+              "status": "PRESENT",
+              "content": "المثنَّى"
+            },
+            {
+              "number": 2,
+              "date": "2023-12-06",
+              "status": "PRESENT",
+              "content": "المثنِّى"
+            },
+            {
+              "number": 3,
+              "date": "2023-12-13",
+              "status": "PRESENT",
+              "content": "المثنِّى"
+            },
+            {
+              "number": 4,
+              "date": "2023-12-27",
+              "status": "PRESENT",
+              "content": "المثنى"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-01-10",
+              "status": "PRESENT",
+              "content": "لمُثَنَّى"
+            },
+            {
+              "number": 2,
+              "date": "2024-01-17",
+              "status": "PRESENT",
+              "content": "تصريف الأفعال"
+            },
+            {
+              "number": 3,
+              "date": "2024-01-24",
+              "status": "PRESENT",
+              "content": "تصريف الأفعال"
+            },
+            {
+              "number": 4,
+              "date": "2024-02-07",
+              "status": "PRESENT",
+              "content": "conjugaison"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-02-14",
+              "status": "PRESENT",
+              "content": "العمرة"
+            },
+            {
+              "number": 2,
+              "date": "2024-02-21",
+              "status": "PRESENT",
+              "content": "العمرة"
+            },
+            {
+              "number": 3,
+              "date": "2024-02-28",
+              "status": "PRESENT",
+              "content": "تمام المستوى الثَّانِي بفضل الله"
+            },
+            {
+              "number": 4,
+              "date": "2024-03-06",
+              "status": "PRESENT",
+              "content": "révision"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-03-20",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": "2024-04-17",
+              "status": "PRESENT",
+              "content": "révision"
+            },
+            {
+              "number": 3,
+              "date": "2024-04-24",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2024-05-01",
+              "status": "PRESENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-05-08",
+              "status": "PRESENT",
+              "content": "révision"
+            },
+            {
+              "number": 2,
+              "date": "2024-05-15",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": "2024-05-22",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2024-05-29",
+              "status": "PRESENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-06-05",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": "2024-07-03",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": "2024-07-10",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2024-09-25",
+              "status": "PRESENT",
+              "content": "إصلاح الإختبار"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-10-02",
+              "status": "PRESENT",
+              "content": "إصلاح الإختبار"
+            },
+            {
+              "number": 2,
+              "date": "2024-10-09",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": "2024-10-16",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2024-10-23",
+              "status": "PRESENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-11-06",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": "2024-11-13",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": "2024-11-20",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2024-11-27",
+              "status": "PRESENT",
+              "content": "إعادة الاختبار"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-12-04",
+              "status": "PRESENT",
+              "content": "إعادة درس الضمائِر المتَّصلة"
+            },
+            {
+              "number": 2,
+              "date": "2024-12-18",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": "2024-12-25",
+              "status": "PRESENT",
+              "content": "الدرس الاول - الهجرة"
+            },
+            {
+              "number": 4,
+              "date": "2025-01-09",
+              "status": "PRESENT",
+              "content": "مراجعة - الصفحة 6"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2024-01-15",
+              "status": "PRESENT",
+              "content": "الدرس الاول - مراجعة - الصفحة 8"
+            },
+            {
+              "number": 2,
+              "date": "2025-01-22",
+              "status": "PRESENT",
+              "content": "الدرس الاول - الصفحة 9"
+            },
+            {
+              "number": 3,
+              "date": "2025-01-29",
+              "status": "PRESENT",
+              "content": "مراجعة - تمارين"
+            },
+            {
+              "number": 4,
+              "date": "2025-02-05",
+              "status": "PRESENT",
+              "content": "حصة مراجعة _ قراءة _ تعبير كتابي"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-02-12",
+              "status": "PRESENT",
+              "content": "مراجعة ادوات الاستفهام - الاجابة عن الاسئلة صفحة 10"
+            },
+            {
+              "number": 2,
+              "date": "2025-02-19",
+              "status": "PRESENT",
+              "content": "الاجابة عن الاسئلة صفحة 11"
+            },
+            {
+              "number": 3,
+              "date": "2025-02-26",
+              "status": "PRESENT",
+              "content": "الدرس الاول - صفحة 11"
+            },
+            {
+              "number": 4,
+              "date": "2025-03-05",
+              "status": "PRESENT",
+              "content": "الدرس الثاني - ص 12"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-03-12",
+              "status": "PRESENT",
+              "content": "الدرس الثاني تقديم النص و التعريف بالكاتب"
+            },
+            {
+              "number": 2,
+              "date": "2025-03-19",
+              "status": "PRESENT",
+              "content": "حصة قراءة"
+            },
+            {
+              "number": 3,
+              "date": "2025-04-09",
+              "status": "PRESENT",
+              "content": "املاء - شرح توضيحي للابيات الاربعة الاولى"
+            },
+            {
+              "number": 4,
+              "date": "2025-04-16",
+              "status": "PRESENT",
+              "content": "شرح بقية النص و تفسير بعض الكلمات"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-04-23",
+              "status": "PRESENT",
+              "content": "الدرس الثاني ص 14- 15- 16"
+            },
+            {
+              "number": 2,
+              "date": "2025-04-30",
+              "status": "PRESENT",
+              "content": "انتاج كتابي"
+            },
+            {
+              "number": 3,
+              "date": "2025-05-07",
+              "status": "PRESENT",
+              "content": "حصة قراءة"
+            },
+            {
+              "number": 4,
+              "date": "2025-05-14",
+              "status": "PRESENT",
+              "content": "انتاج كتابي"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-05-22",
+              "status": "PRESENT",
+              "content": "انتاج كتابي - انشاء جمل"
+            },
+            {
+              "number": 2,
+              "date": "2025-05-31",
+              "status": "PRESENT",
+              "content": "التمرين الاول و الثاني - ص 17 و 18"
+            },
+            {
+              "number": 3,
+              "date": "2025-06-11",
+              "status": "PRESENT",
+              "content": "التمرين الثالث و الرابع - ص 18 و 19"
+            },
+            {
+              "number": 4,
+              "date": "2025-06-18",
+              "status": "PRESENT",
+              "content": "حروف العطف"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-06-25",
+              "status": "PRESENT",
+              "content": "شرح كيفية انشاء فقرة - حصة قراءة"
+            },
+            {
+              "number": 2,
+              "date": "2025-06-02",
+              "status": "PRESENT",
+              "content": "الدرس الثالث - انواع الخبر - ص 24"
+            },
+            {
+              "number": 3,
+              "date": "2025-07-09",
+              "status": "PRESENT",
+              "content": "اصلاح فقرة الرفق بالحيوانات - اصلاح تمارين حروف العطف"
+            },
+            {
+              "number": 4,
+              "date": "2025-09-03",
+              "status": "PRESENT",
+              "content": "حصة قراءة"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-09-10",
+              "status": "PRESENT",
+              "content": "مراجعة - ص 23"
+            },
+            {
+              "number": 2,
+              "date": "2025-09-17",
+              "status": "PRESENT",
+              "content": "مراجعة الضمائر المتصلة 8 - انواع الخبر ص 24"
+            },
+            {
+              "number": 3,
+              "date": "2025-09-24",
+              "status": "PRESENT",
+              "content": "مراجعة الضمائر المتصلة  - انواع الخبر ص 24"
+            },
+            {
+              "number": 4,
+              "date": "2025-10-06",
+              "status": "PRESENT",
+              "content": "مراجعة الضمائر المتصلة  - انواع الخبر ص 24"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-10-08",
+              "status": "PRESENT",
+              "content": "اعراب"
+            },
+            {
+              "number": 2,
+              "date": "2025-10-15",
+              "status": "PRESENT",
+              "content": "اعراب _ ص 25 'محمد خرج من البيت"
+            },
+            {
+              "number": 3,
+              "date": "2025-10-22",
+              "status": "PRESENT",
+              "content": "اعراب - ص 26 مَها تمشي في الحديقة"
+            },
+            {
+              "number": 4,
+              "date": "2025-10-29",
+              "status": "PRESENT",
+              "content": "اعراب - ص 26 عائشة تتلو القرآن."
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-11-05",
+              "status": "PRESENT",
+              "content": "حصة قراءة"
+            },
+            {
+              "number": 2,
+              "date": "2025-11-12",
+              "status": "PRESENT",
+              "content": "اعراب - ص 26 الطَّيَّارُ يَتَّجِهُ إِلَى مَدْرَجِ المَطَارِ."
+            },
+            {
+              "number": 3,
+              "date": "2025-11-19",
+              "status": "PRESENT",
+              "content": "إعراب - ص 29, فاطمة أمها طبيبة"
+            },
+            {
+              "number": 4,
+              "date": "2025-11-26",
+              "status": "PRESENT",
+              "content": "مراجعة درس تصريف الافعال\nإعراب - ص 29, الْوَلَدُ يَجْرِي حَوْلَ الْمَلْعَبِ."
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-03",
+              "status": "PRESENT",
+              "content": "اصلاح تمرين ص 26 _ أمُّ مُحَمَّدٍ تَذْهَبُ إِلى السُّوقِ صَباحًا."
+            },
+            {
+              "number": 2,
+              "date": "2025-12-11",
+              "status": "PRESENT",
+              "content": "اصلاح تمرين ص 27 _ المسلِماتُ بُيُوتُهُنَّ نَظِيفَةٌ."
+            },
+            {
+              "number": 3,
+              "date": "2025-12-17",
+              "status": "PRESENT",
+              "content": "قراءة و مراجعة مع اعراب: * الله خلق السماوات."
+            },
+            {
+              "number": 4,
+              "date": "2025-12-24",
+              "status": "PRESENT",
+              "content": "اصلاح تمرين ص 28"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-31",
+              "status": "PRESENT",
+              "content": "اتمام الدرس الثالث - ص 28"
+            },
+            {
+              "number": 2,
+              "date": "2025-01-07",
+              "status": "PRESENT",
+              "content": "اصلاح التمارين"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-15",
+              "status": "PRESENT",
+              "content": "اصلاح التمارين"
+            },
+            {
+              "number": 4,
+              "date": "2025-01-21",
+              "status": "PRESENT",
+              "content": "إصلاح التمارين +قراءة"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-01-28",
+              "status": "PRESENT",
+              "content": "تمارين"
+            },
+            {
+              "number": 2,
+              "date": "2026-02-04",
+              "status": "PRESENT",
+              "content": "اتمام درس انواع الخبر"
+            },
+            {
+              "number": 3,
+              "date": "2026-02-11",
+              "status": "PRESENT",
+              "content": "الدرس الرابع - قراءة النص كاملا وفهمه"
+            },
+            {
+              "number": 4,
+              "date": "2026-02-18",
+              "status": "PRESENT",
+              "content": "أ ُﺣﺐﱡ اﻟﻄﱠﻌَﺎمَ اﻟﺼﱢﻴﻨ ِﻲ ﱠ . ص 24 - فراءة الكلمات مع الجمل واصلاح الامثلة"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-02-25",
+              "status": "PRESENT",
+              "content": "قراءة جميع الكلمات الجديدة - ص 35"
+            },
+            {
+              "number": 2,
+              "date": "2026-03-07",
+              "status": "PRESENT",
+              "content": "قراءة النص - انجاز التمرين ص 36"
+            },
+            {
+              "number": 3,
+              "date": "2026-03-11",
+              "status": "PRESENT",
+              "content": "قراءة النص- اتمام التمارين ص 36"
+            },
+            {
+              "number": 4,
+              "date": "2026-03-25",
+              "status": "PRESENT",
+              "content": "درس ادوات الربط _ حصة قراءة"
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-04-01",
+              "status": "PRESENT",
+              "content": "اصلاح تمرين - ص 37"
+            },
+            {
+              "number": 2,
+              "date": "2026-01-08",
+              "status": "PRESENT",
+              "content": "انتاج كتابي"
+            },
+            {
+              "number": 3,
+              "date": "2026-04-16",
+              "status": "PRESENT",
+              "content": "قراءة النص - انجاز التمارين ص 38: ما المكانُ الذي تَرْغَبُ في زيارتهِ في مكّة؟"
+            },
+            {
+              "number": 4,
+              "date": "2026-04-22",
+              "status": "PRESENT",
+              "content": "قراءة النص، انجاز التمارين , ص:39 - قراءة"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-05-02",
+              "status": "PRESENT",
+              "content": "حصة شرح نص مع الإجابة عن الأسئلة."
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PRESENT",
+              "content": "الإجابة عن الأسئلة. أتممنا الصفحة الثانية"
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PRESENT",
+              "content": "اتمام شرح النص"
+            },
+            {
+              "number": 4,
+              "date": "2036-05-23",
+              "status": "PRESENT",
+              "content": "الدرس الخامس : فاطمة في المطبخ ، ص:41: قراءة و فهم النص."
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-06-06",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PRESENT",
+              "content": "قراءة الكلمات الجديدة والافعال - ص 45"
+            },
+            {
+              "number": 3,
+              "date": "2026-06-20",
+              "status": "PRESENT",
+              "content": "الإجابة عن الأسئلة، ص: 46"
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "el": "EL101",
+      "subject": "Fait le 3/7",
+      "tab": "Inès Ait Amer Meziane",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-09-02",
+              "status": "PRESENT",
+              "content": "مقدمة - كتابة حرفا الالف و الباء"
+            },
+            {
+              "number": 2,
+              "date": "2025-09-05",
+              "status": "PRESENT",
+              "content": "كتابة حروف ت ث ج ح"
+            },
+            {
+              "number": 3,
+              "date": "2025-09-09",
+              "status": "PRESENT",
+              "content": "املاء - مراجعة - تعلم كتابة خ د ذ"
+            },
+            {
+              "number": 4,
+              "date": "2025-09-12",
+              "status": "PRESENT",
+              "content": "املاء - كتابة ر ز س ش"
+            },
+            {
+              "number": 5,
+              "date": "2025-09-16",
+              "status": "PRESENT",
+              "content": "كتابة ص ض ط ظ ع غ"
+            },
+            {
+              "number": 6,
+              "date": "2025-09-19",
+              "status": "PRESENT",
+              "content": "كتابة ف ق ك ل م"
+            },
+            {
+              "number": 7,
+              "date": "2025-09-22",
+              "status": "PRESENT",
+              "content": "اتمام بقية الحروف"
+            },
+            {
+              "number": 8,
+              "date": "2025-09-26",
+              "status": "PRESENT",
+              "content": "املاء - الدرس الثاني الحركات ص 16"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-09-29",
+              "status": "PRESENT",
+              "content": "ص 17 - حرف ق"
+            },
+            {
+              "number": 2,
+              "date": "2025-10-03",
+              "status": "PRESENT",
+              "content": "اتمام درس الحركات - ص 18"
+            },
+            {
+              "number": 3,
+              "date": "2025-10-07",
+              "status": "PRESENT",
+              "content": "المدود - ص 23 كي"
+            },
+            {
+              "number": 4,
+              "date": "2025-10-10",
+              "status": "PRESENT",
+              "content": "المدود - ص 23 ها - كتابة بعض الكلمات امي ابي اخي"
+            },
+            {
+              "number": 5,
+              "date": "2025-10-14",
+              "status": "PRESENT",
+              "content": "ص 24 كا"
+            },
+            {
+              "number": 6,
+              "date": "2025-10-31",
+              "status": "PRESENT",
+              "content": "ص 24 ظا"
+            },
+            {
+              "number": 7,
+              "date": "2025-11-04",
+              "status": "PRESENT",
+              "content": "اتمام درس المدود - ص 24"
+            },
+            {
+              "number": 8,
+              "date": "2025-11-07",
+              "status": "PRESENT",
+              "content": "التنوين - ص 29"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-11-11",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - ص 31"
+            },
+            {
+              "number": 2,
+              "date": "2025-11-14",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - ص 32"
+            },
+            {
+              "number": 3,
+              "date": "2025-11-18",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - ص 33 حرف التاء"
+            },
+            {
+              "number": 4,
+              "date": "2025-11-21",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الثاء - ص 34"
+            },
+            {
+              "number": 5,
+              "date": "2025-11-25",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الجيم - ص 35"
+            },
+            {
+              "number": 6,
+              "date": "2025-11-28",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الحاء - ص 36"
+            },
+            {
+              "number": 7,
+              "date": "2025-12-02",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 8,
+              "date": "2025-12-05",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الخاء - ص 37"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-09",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الدال - ص 38"
+            },
+            {
+              "number": 2,
+              "date": "2025-12-12",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الذال - ص 39"
+            },
+            {
+              "number": 3,
+              "date": "2025-12-16",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الراء - ص 40"
+            },
+            {
+              "number": 4,
+              "date": "2025-12-19",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 5,
+              "date": "2025-12-23",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الزاي- ص 41"
+            },
+            {
+              "number": 6,
+              "date": "2025-12-26",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرفا السين و الشين _ ص 43"
+            },
+            {
+              "number": 7,
+              "date": "2026-01-01",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الصاد - ص 44"
+            },
+            {
+              "number": 8,
+              "date": "2026-01-02",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الضاد - ص 45"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-01-06",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الطاء (طائرة) , كراسي الهمزة"
+            },
+            {
+              "number": 2,
+              "date": "2026-01-09",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرفا الطاء و الظاء _ ص 47"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-13",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 4,
+              "date": "2026-01-18",
+              "status": "PRESENT",
+              "content": "تمرين _ ص 49"
+            },
+            {
+              "number": 5,
+              "date": "2026-01-20",
+              "status": "PRESENT",
+              "content": "تمرين _ ص 50"
+            },
+            {
+              "number": 6,
+              "date": "2026-01-23",
+              "status": "PRESENT",
+              "content": "إملاء"
+            },
+            {
+              "number": 7,
+              "date": "2026-01-27",
+              "status": "PRESENT",
+              "content": "تمرين 51 - ذباب."
+            },
+            {
+              "number": 8,
+              "date": "2026-01-30",
+              "status": "PRESENT",
+              "content": "اتمام جميع التمارين - ص51"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-02-20",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف العين ص 52، مراجعة واملاء"
+            },
+            {
+              "number": 2,
+              "date": "2026-02-24",
+              "status": "PRESENT",
+              "content": "حصة تعويض - حرف الغين واملاء"
+            },
+            {
+              "number": 3,
+              "date": "2026-02-24",
+              "status": "PRESENT",
+              "content": "حرفا الفاء و القاف - ص 55 بقرة"
+            },
+            {
+              "number": 4,
+              "date": "2026-02-27",
+              "status": "PRESENT",
+              "content": "حرف الكاف - ص 56"
+            },
+            {
+              "number": 5,
+              "date": "2026-03-03",
+              "status": "PRESENT",
+              "content": "حرفا اللام و الميم - ص 58"
+            },
+            {
+              "number": 6,
+              "date": "2026-03-06",
+              "status": "PRESENT",
+              "content": "حرف النون و حرف الهاء: نهر - ص60"
+            },
+            {
+              "number": 7,
+              "date": "2026-03-10",
+              "status": "PRESENT",
+              "content": "حرف الواو - ص 61"
+            },
+            {
+              "number": 8,
+              "date": "2026-03-13",
+              "status": "PRESENT",
+              "content": "حرف الياء _ انجاز التمارين ص -64"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-01-17",
+              "status": "PRESENT",
+              "content": "انجاز التمارين - ص 65"
+            },
+            {
+              "number": 2,
+              "date": "2026-03-24",
+              "status": "PRESENT",
+              "content": "التدريب الرابع - ص 66"
+            },
+            {
+              "number": 3,
+              "date": "2026-03-27",
+              "status": "PRESENT",
+              "content": "مراجعة _ تمرين ص66 بلاد"
+            },
+            {
+              "number": 4,
+              "date": "2026-03-31",
+              "status": "PRESENT",
+              "content": "مراجعة، اتمام جميع تمارين درس الحروف المتصلة - ص 66"
+            },
+            {
+              "number": 5,
+              "date": "2026-04-03",
+              "status": "PRESENT",
+              "content": "درس السكون، ص 68"
+            },
+            {
+              "number": 6,
+              "date": "2026-04-07",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 7,
+              "date": "2026-04-10",
+              "status": "PRESENT",
+              "content": "انجاز تمرين ,  مُعْجَمٌ ص 70"
+            },
+            {
+              "number": 8,
+              "date": "2026-04-14",
+              "status": "PRESENT",
+              "content": "مراجعة , مذياعا - ص 70"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-04-17",
+              "status": "PRESENT",
+              "content": "انجاز التمارين - درس الشّدّة ، ص:72، مُدَرِّسِينَ"
+            },
+            {
+              "number": 2,
+              "date": "2026-04-21",
+              "status": "PRESENT",
+              "content": "قراءة جميع الكلمات - ص 72"
+            },
+            {
+              "number": 3,
+              "date": "2026-04-24",
+              "status": "PRESENT",
+              "content": "انجاز التمارين ص: 72+73, تَخَلَّتْ"
+            },
+            {
+              "number": 4,
+              "date": "2026-06-28",
+              "status": "PRESENT",
+              "content": "اَلدَّرْسُ الثَّامِنُ: مُرَاجَعَةٌ عَامَّةٌ وَفَوَائِدُ - ص 75"
+            },
+            {
+              "number": 5,
+              "date": "2026-05-01",
+              "status": "ABSENT",
+              "content": "تم تعويضها بتاريخ 05.05.2026 - حصة املاء"
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PRESENT",
+              "content": "حصة إملاء + كتابة تحية الإسلام : السلام عليكم و رحمة الله و بركاته."
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PRESENT",
+              "content": "الحالات التي لا تكتب فيها الألف بعد التنوين، ص: 76"
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PRESENT",
+              "content": "كيفية النطق بالتاء المربوطة ، ص:77 + إملاء"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PRESENT",
+              "content": "انجاز التمارين _ ص: 80"
+            },
+            {
+              "number": 2,
+              "date": "2026-06-05",
+              "status": "PRESENT",
+              "content": "انجاز التمارين ص:81,82: كِتَابًا"
+            },
+            {
+              "number": 3,
+              "date": "2026-06-09",
+              "status": "PRESENT",
+              "content": "املاء - مخارج الحروف / الحروف الجوفية ص 85"
+            },
+            {
+              "number": 4,
+              "date": "2026-06-12",
+              "status": "PRESENT",
+              "content": "مخارج الحروف + الدرس العاشر , ص: 105"
+            },
+            {
+              "number": 5,
+              "date": "2026-06-16",
+              "status": "PRESENT",
+              "content": "اتمام الجزء الاول من المستوى التمهيدي."
+            },
+            {
+              "number": 6,
+              "date": "2026-06-16",
+              "status": "PRESENT",
+              "content": "rattrapé / إملاء"
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 5,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 6,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 7,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 8,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "el": "EL094",
+      "subject": "Fait le 19/3",
+      "tab": "Maeva Rocher-Denizon",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-03-23",
+              "status": "PRESENT",
+              "content": "مقدمة - الدرس الاول ص 8"
+            },
+            {
+              "number": 2,
+              "date": "2025-04-06",
+              "status": "PRESENT",
+              "content": "قراءة و كتابة الحروف الى حرف الكاف -ص 10"
+            },
+            {
+              "number": 3,
+              "date": "2025-04-13",
+              "status": "PRESENT",
+              "content": "املاء - اتمام قراءة و كتابة بقية الحروف - ص 12"
+            },
+            {
+              "number": 4,
+              "date": "2025-04-20",
+              "status": "PRESENT",
+              "content": "املاء - مراجعة - الدرس الثاني الحركات - ص 17"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-04-27",
+              "status": "PRESENT",
+              "content": "مراجعة - الدرس الثالث المدود ص 19"
+            },
+            {
+              "number": 2,
+              "date": "2025-05-04",
+              "status": "PRESENT",
+              "content": "الدرس الثالث المدود ص 22"
+            },
+            {
+              "number": 3,
+              "date": "2025-05-11",
+              "status": "PRESENT",
+              "content": "مراجعة - التنوين ص 26"
+            },
+            {
+              "number": 4,
+              "date": "2025-05-18",
+              "status": "PRESENT",
+              "content": "التنوين - الحروف المتصلة حرف التاء ص 33"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-05-31",
+              "status": "PRESENT",
+              "content": "مراجعة - كتابة و قراءة تحية الاسلام  - السلام عليكم و رحمة الله وبركاته-"
+            },
+            {
+              "number": 2,
+              "date": "2025-06-14",
+              "status": "PRESENT",
+              "content": "مراجعة - ص 34 - 35"
+            },
+            {
+              "number": 3,
+              "date": "2025-06-21",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف السين - ص 42"
+            },
+            {
+              "number": 4,
+              "date": "2025-07-05",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - حرف الظاء - ص 47"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-07-12",
+              "status": "PRESENT",
+              "content": "املاء - قراءة ص 48"
+            },
+            {
+              "number": 2,
+              "date": "2025-07-19",
+              "status": "PRESENT",
+              "content": "قراءة  و كتابة - ص49"
+            },
+            {
+              "number": 3,
+              "date": "2025-07-26",
+              "status": "PRESENT",
+              "content": "قراءة و كتابة مع اصلاح التمارين - ص 50"
+            },
+            {
+              "number": 4,
+              "date": "2025-08-02",
+              "status": "PRESENT",
+              "content": "قراءة و اصلاح التمارين - ص 53"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-08-16",
+              "status": "PRESENT",
+              "content": "قراءة و اصلاح التمارين"
+            },
+            {
+              "number": 2,
+              "date": "2025-08-23",
+              "status": "PRESENT",
+              "content": "اتمام درس الحروف المتصلة - ص 62"
+            },
+            {
+              "number": 3,
+              "date": "2025-09-06",
+              "status": "PRESENT",
+              "content": "مراجعة و املاء"
+            },
+            {
+              "number": 4,
+              "date": "2025-09-13",
+              "status": "PRESENT",
+              "content": "تمارين ص 63 - 64"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-09-27",
+              "status": "PRESENT",
+              "content": "تمارين - ص 66"
+            },
+            {
+              "number": 2,
+              "date": "2025-10-11",
+              "status": "PRESENT",
+              "content": "درس السكون - ص 68 موعود"
+            },
+            {
+              "number": 3,
+              "date": "2025-10-18",
+              "status": "PRESENT",
+              "content": "درس السكون - ص 69"
+            },
+            {
+              "number": 4,
+              "date": "2025-10-25",
+              "status": "PRESENT",
+              "content": "درس السكون - ص 70"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-11-01",
+              "status": "PRESENT",
+              "content": "تلاوة سورة الفاتحة"
+            },
+            {
+              "number": 2,
+              "date": "2025-11-08",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": "2025-11-15",
+              "status": "PRESENT",
+              "content": "قراءة"
+            },
+            {
+              "number": 4,
+              "date": "2025-11-22",
+              "status": "PRESENT",
+              "content": "قراءة _ درس الشدة - ص 73"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-11-29",
+              "status": "PRESENT",
+              "content": "مراجعة _ ص 73"
+            },
+            {
+              "number": 2,
+              "date": "2025-12-06",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 3,
+              "date": "2025-12-14",
+              "status": "PRESENT",
+              "content": "الدرس الثامن مراجعة عامة و فوائد _ عطَلة _ ص 81"
+            },
+            {
+              "number": 4,
+              "date": "2025-12-20",
+              "status": "PRESENT",
+              "content": "ص 83"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-27",
+              "status": "PRESENT",
+              "content": "les supports de hamza"
+            },
+            {
+              "number": 2,
+              "date": "2026-01-03",
+              "status": "PRESENT",
+              "content": "les supports de hamza"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-10",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 4,
+              "date": "2026-01-11",
+              "status": "PRESENT",
+              "content": "درس الفصل و درس الالوان - ص 120"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-01-24",
+              "status": "PRESENT",
+              "content": "مخارج الحروف _ الالف المدية و الفتحة _ مراجعة"
+            },
+            {
+              "number": 2,
+              "date": "2026-01-31",
+              "status": "PRESENT",
+              "content": "اصلاح تمارين درس الألوان -ص 126"
+            },
+            {
+              "number": 3,
+              "date": "2026-02-14",
+              "status": "PRESENT",
+              "content": "اصلاح التمارين _ درس الاعداد ص 127 _ الواو و الياء المديتان و الكسرة و الضمة"
+            },
+            {
+              "number": 4,
+              "date": "2026-02-21",
+              "status": "PRESENT",
+              "content": "اصلاح التمارين ص 130 - قراءة"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-02-28",
+              "status": "PRESENT",
+              "content": "Les spécificités relatives à la calligraphie du Coran _ المهن 132_ اﻟﺤُﺮوفُ اﻟﻘَﻤَرﻳﱠﺔُ وَ اﻟﺤُﺮوفُ اﻟﺸﱠﻤْﺴﻴﱠﺔ 154"
+            },
+            {
+              "number": 2,
+              "date": "2026-03-07",
+              "status": "PRESENT",
+              "content": "انجاز تمارين درس المهن _ درس بعض الحيوانات _ 141"
+            },
+            {
+              "number": 3,
+              "date": "2026-06-14",
+              "status": "PRESENT",
+              "content": "حصة قراءة"
+            },
+            {
+              "number": 4,
+              "date": "2026-03-28",
+              "status": "PRESENT",
+              "content": "اصلاح التمارين"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-04-04",
+              "status": "PRESENT",
+              "content": "اصلاح تمارين درس الحيوانات ص 149 - درس همزة الوصل ص 181"
+            },
+            {
+              "number": 2,
+              "date": "2026-04-11",
+              "status": "PRESENT",
+              "content": "قراءة اِبْنُ خَالِدٍ فِي الْمَدْرَسَةِ، وَابْنُ حَامِدٍ فِي الْجَامِعَةِ. ص 181 _ الحروف القمرية والحروف الشمسية - انجاز تمارين - ص 156"
+            },
+            {
+              "number": 3,
+              "date": "2026-04-18",
+              "status": "PRESENT",
+              "content": "اتمام تمارين درس همزة الوصل - انجاز تمارين درس الحروف الشمسية والقمرية ص 158 نكمل قراءة الجمل في الحصة القادمة ان شاء الله"
+            },
+            {
+              "number": 4,
+              "date": "2026-04-25",
+              "status": "PRESENT",
+              "content": "اتمام تمارين درس الحيوانات - ص 44 ; اتمام تمارين درس الحروف الشمسية والقمرية - ص 51; الحروف الحلقية"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-05-02",
+              "status": "PRESENT",
+              "content": "حصة مراجعة وقراءة نصوص تحتوي على حروف: الهمزة,الهاء و العين"
+            },
+            {
+              "number": 2,
+              "date": "2026-05-10",
+              "status": "PRESENT",
+              "content": "حصة قراء وفهم نصوص تحتوي على حروف: الهمزة,الهاء و العين"
+            },
+            {
+              "number": 3,
+              "date": "2026-05-16",
+              "status": "PRESENT",
+              "content": "قراءة نصوص تحتوي على حرف الخاء و مراجعة حرفي الخاء والغين"
+            },
+            {
+              "number": 4,
+              "date": "2026-05-23",
+              "status": "PRESENT",
+              "content": "حروف اللسان: ق، ك؛ قراءة"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-06-06",
+              "status": "PRESENT",
+              "content": "مراجعة وقراءة"
+            },
+            {
+              "number": 2,
+              "date": "2026-06-13",
+              "status": "PRESENT",
+              "content": "حروف وسط اللسان ج ش ي _ ص 90"
+            },
+            {
+              "number": 3,
+              "date": "2026-06-20",
+              "status": "PRESENT",
+              "content": "مراجعة وقراءة"
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "el": "EL104",
+      "subject": "Paiements",
+      "tab": "Oumou Diarra",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-02-16",
+              "status": "PRESENT",
+              "content": "الدرس الاول حروف الهجاء"
+            },
+            {
+              "number": 2,
+              "date": "2025-02-23",
+              "status": "PRESENT",
+              "content": "الدرس الاول حروف الهجاء الى حرف الثاء"
+            },
+            {
+              "number": 3,
+              "date": "2025-03-02",
+              "status": "PRESENT",
+              "content": "انشطة - حرف الجيم"
+            },
+            {
+              "number": 4,
+              "date": "2025-03-09",
+              "status": "PRESENT",
+              "content": "حروف ج ح خ د"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-03-16",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 2,
+              "date": "2025-03-23",
+              "status": "PRESENT",
+              "content": "مراجعة - حرف الذال"
+            },
+            {
+              "number": 3,
+              "date": "2025-04-08",
+              "status": "PRESENT",
+              "content": "مراجعة - تعلم كتابة الحروف ر ز س ش"
+            },
+            {
+              "number": 4,
+              "date": "2025-04-15",
+              "status": "PRESENT",
+              "content": "مراجعة - تعلم كتابة حرفي ص ض"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-04-22",
+              "status": "PRESENT",
+              "content": "حصة مراجعة - كتابة و املاء"
+            },
+            {
+              "number": 2,
+              "date": "2025-04-29",
+              "status": "PRESENT",
+              "content": "مراجعة - ط ظ ع غ"
+            },
+            {
+              "number": 3,
+              "date": "2025-05-06",
+              "status": "PRESENT",
+              "content": "انشطة"
+            },
+            {
+              "number": 4,
+              "date": "2025-05-13",
+              "status": "PRESENT",
+              "content": "انشطة"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-05-20",
+              "status": "PRESENT",
+              "content": "انشطة"
+            },
+            {
+              "number": 2,
+              "date": "2025-05-27",
+              "status": "PRESENT",
+              "content": "حروف - ق ف ك"
+            },
+            {
+              "number": 3,
+              "date": "2025-06-03",
+              "status": "PRESENT",
+              "content": "مراجعة - قراءة تلوين كتابة و املاء"
+            },
+            {
+              "number": 4,
+              "date": "2025-06-17",
+              "status": "PRESENT",
+              "content": "مراجعة _ قراءة  _ تلوين"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-06-23",
+              "status": "PRESENT",
+              "content": "مراجعة - تعلم الحروف ل م ن"
+            },
+            {
+              "number": 2,
+              "date": "2025-07-01",
+              "status": "PRESENT",
+              "content": "مراجعة و املاء"
+            },
+            {
+              "number": 3,
+              "date": "2025-07-07",
+              "status": "PRESENT",
+              "content": "مراجعة - تعلم الحروف ه و ي"
+            },
+            {
+              "number": 4,
+              "date": "2025-07-15",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-07-22",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 2,
+              "date": "2025-07-29",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-19",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 2,
+              "date": "2025-12-28",
+              "status": "PRESENT",
+              "content": "مراجعة _ درس الحركات"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-02",
+              "status": "PRESENT",
+              "content": "كتابة الحروف مع الحركات الثلاث: ألف ، باء، دال و لام."
+            },
+            {
+              "number": 4,
+              "date": "2026-01-11",
+              "status": "PRESENT",
+              "content": "كتابة الحروف مع الحركات الثلاث: راء و تاء - مراجعة"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-01-18",
+              "status": "PRESENT",
+              "content": "كتابة الحروف مع الحركات الثلاث: ص،ز،ج"
+            },
+            {
+              "number": 2,
+              "date": "2026-01-24",
+              "status": "PRESENT",
+              "content": "مراجعة + كتابة الحروف مع الحركات الثلاث : ث، ذ، ح،ض،ط،س،ش، م، ه"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-31",
+              "status": "PRESENT",
+              "content": "مراجعة + كتابة الحروف مع الحركات الثلاث : و، ي، ع، ف، غ، خ، ظ، ك، ق، ن"
+            },
+            {
+              "number": 4,
+              "date": "2026-02-15",
+              "status": "PRESENT",
+              "content": "مراجعة - انجاز التمارين ص 11"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-02-21",
+              "status": "PRESENT",
+              "content": "انجاز تمارين ص12، ص 17"
+            },
+            {
+              "number": 2,
+              "date": "2026-02-28",
+              "status": "PRESENT",
+              "content": "تمارين ص 17 - عُ , مراجعة"
+            },
+            {
+              "number": 3,
+              "date": "2026-03-07",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2026-03-14",
+              "status": "PRESENT",
+              "content": "مراجعة - تمرين ص 17 قِ"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-03-28",
+              "status": "PRESENT",
+              "content": "اتمام تمرين ص 17"
+            },
+            {
+              "number": 2,
+              "date": "2026-04-04",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 3,
+              "date": "2026-04-11",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 4,
+              "date": "2026-04-18",
+              "status": "PRESENT",
+              "content": "انجاز تمرين ص 18"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-04-25",
+              "status": "PRESENT",
+              "content": "إملاء"
+            },
+            {
+              "number": 2,
+              "date": "2026-05-02",
+              "status": "PRESENT",
+              "content": "المدود - ص:18"
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PRESENT",
+              "content": "المدود : أ، ب"
+            },
+            {
+              "number": 4,
+              "date": "2026-05-16",
+              "status": "PRESENT",
+              "content": "المدود : ا، ب، ت، ث، د، ذ"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-05-23",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PRESENT",
+              "content": "Rattrapé le: 17.06: مراجعة المدود"
+            },
+            {
+              "number": 4,
+              "date": "2026-06-20",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "el": "EL103",
+      "subject": "Paiements",
+      "tab": "Dado Diarra",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-02-16",
+              "status": "PRESENT",
+              "content": "الدرس الاول حروف الهجاء"
+            },
+            {
+              "number": 2,
+              "date": "2025-02-23",
+              "status": "PRESENT",
+              "content": "الدرس الاول حروف الهجاء الى حرف الشين"
+            },
+            {
+              "number": 3,
+              "date": "2025-03-02",
+              "status": "PRESENT",
+              "content": "الدرس الاول حروف الهجاء الى حرف الفاء"
+            },
+            {
+              "number": 4,
+              "date": "2025-03-09",
+              "status": "PRESENT",
+              "content": "الدرس الاول حروف الهجاء الى حرف ي"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-03-16",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 2,
+              "date": "2025-03-23",
+              "status": "PRESENT",
+              "content": "الدرس الثاني  الحركات ص 16"
+            },
+            {
+              "number": 3,
+              "date": "2025-04-10",
+              "status": "PRESENT",
+              "content": "الدرس الثاني  الحركات ص 17"
+            },
+            {
+              "number": 4,
+              "date": "2025-04-17",
+              "status": "PRESENT",
+              "content": "مراجعة  - الدرس الثالث المدود ص 19"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-04-24",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 2,
+              "date": "2025-05-01",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 3,
+              "date": "2025-05-08",
+              "status": "PRESENT",
+              "content": "مراجعة - الدرس الثالث المدود ص 22"
+            },
+            {
+              "number": 4,
+              "date": "2025-05-15",
+              "status": "PRESENT",
+              "content": "الدرس الثالث - ص 23"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-05-22",
+              "status": "PRESENT",
+              "content": "الدرس الثالث - ص 24"
+            },
+            {
+              "number": 2,
+              "date": "2025-05-29",
+              "status": "PRESENT",
+              "content": "مراجعة و املاء"
+            },
+            {
+              "number": 3,
+              "date": "2025-06-12",
+              "status": "PRESENT",
+              "content": "التنوين - ص 26"
+            },
+            {
+              "number": 4,
+              "date": "2025-06-19",
+              "status": "PRESENT",
+              "content": "التنوين - ص 29"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-06-24",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة - السكون - الشدة - ص31"
+            },
+            {
+              "number": 2,
+              "date": "2025-07-03",
+              "status": "PRESENT",
+              "content": "حرف التاء - ص 33 - تاج"
+            },
+            {
+              "number": 3,
+              "date": "2025-07-10",
+              "status": "PRESENT",
+              "content": "حرف التاء - املاء"
+            },
+            {
+              "number": 4,
+              "date": "2025-07-17",
+              "status": "PRESENT",
+              "content": "حرف الثاء - املاء"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-07-28",
+              "status": "PRESENT",
+              "content": "املاء - حرف الجيم و الحاء - ص 36"
+            },
+            {
+              "number": 2,
+              "date": "2025-07-31",
+              "status": "PRESENT",
+              "content": "حرف الخاء و الدال - ص 38"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-19",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            },
+            {
+              "number": 2,
+              "date": "2025-12-26",
+              "status": "PRESENT",
+              "content": "مراجعة _ حرف الالف و الباء _ ص 32"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-02",
+              "status": "PRESENT",
+              "content": "مراجعة حرفا التاء و الثاء - ثَوْرٌ ـ ص 34"
+            },
+            {
+              "number": 4,
+              "date": "2026-10-10",
+              "status": "PRESENT",
+              "content": "مراجعة حرف الجيم - ص 35"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-01-17",
+              "status": "PRESENT",
+              "content": "مراجعة - حرف الحاء \"حليب\" - ص 36"
+            },
+            {
+              "number": 2,
+              "date": "2026-01-24",
+              "status": "PRESENT",
+              "content": "مراجعة - حرف الحاء \"لحم\" - ص 36"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-31",
+              "status": "PRESENT",
+              "content": "حروف: خ، د، ذ، ر (ريش) - ص 40"
+            },
+            {
+              "number": 4,
+              "date": "2026-02-15",
+              "status": "PRESENT",
+              "content": "مراجعة"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-02-21",
+              "status": "PRESENT",
+              "content": "حروف ر،ز،س،ش - ص 43"
+            },
+            {
+              "number": 2,
+              "date": "2028-02-28",
+              "status": "PRESENT",
+              "content": "حروف ص،ض،ط -ص 46"
+            },
+            {
+              "number": 3,
+              "date": "2026-03-07",
+              "status": "PRESENT",
+              "content": "حرف الظاء - قراءة ص 48: ذُبِحَ"
+            },
+            {
+              "number": 4,
+              "date": "2026-03-14",
+              "status": "PRESENT",
+              "content": "انجاز تمارين - ص 49"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-03-28",
+              "status": "PRESENT",
+              "content": "انجاز التمارين - خُضَرٌ , ص 51"
+            },
+            {
+              "number": 2,
+              "date": "2026-04-04",
+              "status": "PRESENT",
+              "content": "مراجعة - انجاز تمرين ص 51: بُرْجٌ"
+            },
+            {
+              "number": 3,
+              "date": "2023-04-11",
+              "status": "PRESENT",
+              "content": "انجاز تمارين - حرف العين، ص:52."
+            },
+            {
+              "number": 4,
+              "date": "2026-04-20",
+              "status": "PRESENT",
+              "content": "حروف: غ، ف، ق - ص 55"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-04-25",
+              "status": "PRESENT",
+              "content": "الحروف المتصلة: ك،ل،م،ن،ه- هِلاَلٌ - ص 59"
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PRESENT",
+              "content": "الحروف المتصلة : ه،و،ي ، التدريب الأول ص 62، عَصِيرٌ"
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PRESENT",
+              "content": "اتمام التدريب الأول و التدريب الثاني ، ص: 63"
+            },
+            {
+              "number": 4,
+              "date": "2026-05-16",
+              "status": "PRESENT",
+              "content": "انجاز التمارين ص: 64,65(طريق)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-05-23",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PRESENT",
+              "content": "انجاز تمارين ص: 66 كَتِفٌ"
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "ABSENT",
+              "content": "rattrapé le 15/06 : انجاز التمارين ص : 66+ 67 - مُصَيْطِرًا."
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PRESENT",
+              "content": "انجاز التمارين ص : 67 - 77"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "el": "EL036",
+      "subject": "Fait le 23/10 \n\n8 sessions payées d’avance\n\n1/8",
+      "tab": "Carole umm Yasmine ARABE",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2023-10-24",
+              "status": "PRESENT",
+              "content": "révision"
+            },
+            {
+              "number": 2,
+              "date": "2023-10-31",
+              "status": "PRESENT",
+              "content": "révision vocabulaire"
+            },
+            {
+              "number": 3,
+              "date": "2023-11-07",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2023-11-14",
+              "status": "PRESENT",
+              "content": "révision"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-04-12",
+              "status": "PRESENT",
+              "content": "اصلاح التمارين ,حالات كتابة الهمزة المتوسطة على النبرة و على السطر"
+            },
+            {
+              "number": 2,
+              "date": "2026-04-19",
+              "status": "PRESENT",
+              "content": "قراءة المفردات الجديدة ص 181"
+            },
+            {
+              "number": 3,
+              "date": "2026-04-26",
+              "status": "PRESENT",
+              "content": "اصلاح الجمل + دراسة نص و الإجابة عن الأسئلة."
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PRESENT",
+              "content": "دراسة نص و الإجابة عن الأسئلة + قراءة مفردات جديدة، ص: 183"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-05-10",
+              "status": "PRESENT",
+              "content": "حصة تعبير كتابي"
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PRESENT",
+              "content": "قراءة المصطلحات الجديدة  -انجاز التمارين ص 185- ﻛَﻴْﻒَ ذَﻫَﺐَ مُصْطَفَى وَأُخْتُهُ إِلَى السُّوقِ؟   اصلاح التمارين والاملاء"
+            },
+            {
+              "number": 3,
+              "date": "2026-05-24",
+              "status": "PRESENT",
+              "content": "انجاز التمارين _ ص 185 - 186"
+            },
+            {
+              "number": 4,
+              "date": "2026-05-17",
+              "status": "PRESENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-06-14",
+              "status": "PRESENT",
+              "content": "انجاز التمارين ص 187 _ 188 _ 189"
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PRESENT",
+              "content": "اصلاح التمارين _ انجاز تمرين ص: 190 _ أَفِي النَّهَارِ تُفَضِّلُ الذَّهَابَ إِلَى السُّوقِ أَمْ فِي اللَّيْلِ؟"
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

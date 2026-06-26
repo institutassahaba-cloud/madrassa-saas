@@ -6,8 +6,8 @@ export async function GET() {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const user = session.user as any
-  if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const user = session.user
+  if (!["DIRECTOR", "SECRETARY"].includes(user.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const teachers = await prisma.user.findMany({
     where: { tenantId: user.tenantId, role: "TEACHER", isActive: true },
@@ -51,4 +51,32 @@ export async function GET() {
   })
 
   return NextResponse.json(teachers)
+}
+
+export async function PATCH(req: Request) {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const user = session.user
+  if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
+  const body = await req.json()
+  const { teacherId, individualRate, binomeRate, groupRate, paymentInfo } = body
+  if (!teacherId) return NextResponse.json({ error: "teacherId required" }, { status: 400 })
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: teacherId, tenantId: user.tenantId },
+  })
+  if (!teacher) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  const updated = await prisma.user.update({
+    where: { id: teacherId },
+    data: {
+      individualRate: individualRate !== undefined ? (individualRate != null ? Number(individualRate) : null) : undefined,
+      binomeRate: binomeRate !== undefined ? (binomeRate != null ? Number(binomeRate) : null) : undefined,
+      groupRate: groupRate !== undefined ? (groupRate != null ? Number(groupRate) : null) : undefined,
+      paymentInfo: paymentInfo !== undefined ? (paymentInfo || null) : undefined,
+    },
+  })
+
+  return NextResponse.json({ id: updated.id, individualRate: updated.individualRate, binomeRate: updated.binomeRate, groupRate: updated.groupRate, paymentInfo: updated.paymentInfo })
 }

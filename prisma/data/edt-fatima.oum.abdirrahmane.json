@@ -1,0 +1,80 @@
+[
+ {
+  "day": 3,
+  "start": "08:00",
+  "end": "08:30",
+  "name": "disponible"
+ },
+ {
+  "day": 0,
+  "start": "08:00",
+  "end": "08:30",
+  "name": "disponible"
+ },
+ {
+  "day": 2,
+  "start": "10:00",
+  "end": "10:30",
+  "name": "disponible"
+ },
+ {
+  "day": 6,
+  "start": "10:30",
+  "end": "11:00",
+  "name": "disponible"
+ },
+ {
+  "day": 4,
+  "start": "13:00",
+  "end": "13:30",
+  "name": "disponible"
+ },
+ {
+  "day": 3,
+  "start": "13:30",
+  "end": "14:00",
+  "name": "cira"
+ },
+ {
+  "day": 0,
+  "start": "13:30",
+  "end": "14:00",
+  "name": "leina"
+ },
+ {
+  "day": 1,
+  "start": "14:00",
+  "end": "14:30",
+  "name": "laura"
+ },
+ {
+  "day": 3,
+  "start": "14:30",
+  "end": "15:00",
+  "name": "disponible"
+ },
+ {
+  "day": 0,
+  "start": "14:30",
+  "end": "15:00",
+  "name": "disponible"
+ },
+ {
+  "day": 1,
+  "start": "15:00",
+  "end": "15:30",
+  "name": "disponible"
+ },
+ {
+  "day": 0,
+  "start": "17:00",
+  "end": "17:30",
+  "name": "najet"
+ },
+ {
+  "day": 2,
+  "start": "18:30",
+  "end": "19:00",
+  "name": "madina 45 minutes"
+ }
+]

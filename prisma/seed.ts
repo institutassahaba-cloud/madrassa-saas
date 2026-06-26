@@ -67,7 +67,7 @@ async function main() {
       level: "Débutant",
       teacherId: teacher.id,
       maxStudents: 15,
-      schedule: { days: ["Samedi", "Dimanche"], startTime: "10:00", endTime: "12:00" },
+      schedule: "Samedi–Dimanche 10:00–12:00",
     },
   })
 
@@ -84,6 +84,7 @@ async function main() {
     await prisma.student.create({
       data: {
         tenantId: tenant.id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...s as any,
         groupId: group.id,
         status: "ACTIVE",

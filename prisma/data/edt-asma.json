@@ -1,0 +1,170 @@
+[
+ {
+  "day": 1,
+  "start": "08:00",
+  "end": "08:30",
+  "name": "ibado"
+ },
+ {
+  "day": 1,
+  "start": "09:00",
+  "end": "09:30",
+  "name": "haby"
+ },
+ {
+  "day": 2,
+  "start": "09:00",
+  "end": "09:30",
+  "name": "haby"
+ },
+ {
+  "day": 2,
+  "start": "09:30",
+  "end": "10:00",
+  "name": "khadi"
+ },
+ {
+  "day": 3,
+  "start": "09:30",
+  "end": "10:00",
+  "name": "koumba"
+ },
+ {
+  "day": 0,
+  "start": "09:30",
+  "end": "10:00",
+  "name": "unayssa & tasnime"
+ },
+ {
+  "day": 6,
+  "start": "10:00",
+  "end": "10:30",
+  "name": "ibado"
+ },
+ {
+  "day": 6,
+  "start": "11:00",
+  "end": "11:30",
+  "name": "yasmine"
+ },
+ {
+  "day": 1,
+  "start": "11:30",
+  "end": "12:00",
+  "name": "hattouma"
+ },
+ {
+  "day": 6,
+  "start": "11:30",
+  "end": "12:00",
+  "name": "maissa"
+ },
+ {
+  "day": 6,
+  "start": "12:00",
+  "end": "12:30",
+  "name": "madina"
+ },
+ {
+  "day": 3,
+  "start": "13:00",
+  "end": "13:30",
+  "name": "nouhayla"
+ },
+ {
+  "day": 6,
+  "start": "13:00",
+  "end": "13:30",
+  "name": "aicha 13h45"
+ },
+ {
+  "day": 1,
+  "start": "13:30",
+  "end": "14:00",
+  "name": "marietou"
+ },
+ {
+  "day": 3,
+  "start": "13:30",
+  "end": "14:00",
+  "name": "zakaria"
+ },
+ {
+  "day": 0,
+  "start": "14:00",
+  "end": "14:30",
+  "name": "myriam el marhoum"
+ },
+ {
+  "day": 0,
+  "start": "14:30",
+  "end": "15:00",
+  "name": "hassane & dieynaba"
+ },
+ {
+  "day": 3,
+  "start": "15:30",
+  "end": "16:00",
+  "name": "kinzi"
+ },
+ {
+  "day": 5,
+  "start": "16:00",
+  "end": "16:30",
+  "name": "kinzi"
+ },
+ {
+  "day": 2,
+  "start": "17:00",
+  "end": "17:30",
+  "name": "kayna 17h15"
+ },
+ {
+  "day": 5,
+  "start": "17:00",
+  "end": "17:30",
+  "name": "sh"
+ },
+ {
+  "day": 3,
+  "start": "17:30",
+  "end": "18:00",
+  "name": "marietou"
+ },
+ {
+  "day": 5,
+  "start": "17:30",
+  "end": "18:00",
+  "name": "marietou"
+ },
+ {
+  "day": 4,
+  "start": "18:00",
+  "end": "18:30",
+  "name": "nadia hofra"
+ },
+ {
+  "day": 5,
+  "start": "18:00",
+  "end": "18:30",
+  "name": "8.0"
+ },
+ {
+  "day": 0,
+  "start": "18:00",
+  "end": "18:30",
+  "name": "-"
+ },
+ {
+  "day": 6,
+  "start": "19:00",
+  "end": "19:30",
+  "name": "koumba"
+ },
+ {
+  "day": 4,
+  "start": "19:30",
+  "end": "20:00",
+  "name": "mariam & adjaratou"
+ }
+]

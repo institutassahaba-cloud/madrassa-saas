@@ -19,6 +19,7 @@ interface Group {
   maxStudents: number
   description: string | null
   teacher: { id: string; name: string } | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   schedule: any
   _count: { students: number }
 }
@@ -47,6 +48,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
 
   function openEdit(group: Group) {
     setEditGroup(group)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const schedule = group.schedule as any
     setForm({
       name: group.name,
@@ -107,6 +109,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {groups.map((group) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const schedule = group.schedule as any
           return (
             <Card key={group.id} className="hover:shadow-md transition-shadow">

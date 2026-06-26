@@ -6,7 +6,7 @@ import { PaymentsClient } from "./payments-client"
 export default async function PaymentsPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")
-  const user = session.user as any
+  const user = session.user
   if (user.role === "TEACHER") redirect("/dashboard")
 
   const now = new Date()
@@ -29,5 +29,6 @@ export default async function PaymentsPage() {
     }),
   ])
 
-  return <PaymentsClient payments={payments as any} students={students as any} currentMonth={month} currentYear={year} />
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <PaymentsClient payments={payments as any} students={students as any} currentMonth={month} currentYear={year} isDirector={user.role === "DIRECTOR"} />
 }

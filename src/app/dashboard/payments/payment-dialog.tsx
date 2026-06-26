@@ -11,6 +11,7 @@ import { MONTHS_FR } from "@/lib/utils"
 interface PaymentDialogProps {
   open: boolean
   onClose: () => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payment: any | null
   students: { id: string; firstName: string; lastName: string; monthlyFee: number }[]
   currentMonth: number
@@ -27,6 +28,7 @@ export function PaymentDialog({ open, onClose, payment, students, currentMonth, 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (payment) {
       setForm({
@@ -45,6 +47,7 @@ export function PaymentDialog({ open, onClose, payment, students, currentMonth, 
     }
     setError("")
   }, [payment, open])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -70,6 +73,7 @@ export function PaymentDialog({ open, onClose, payment, students, currentMonth, 
       if (!res.ok) throw new Error(await res.text())
       onClose()
       window.location.reload()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setError(e.message || "Erreur")
     } finally {

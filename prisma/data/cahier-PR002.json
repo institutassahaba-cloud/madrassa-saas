@@ -1,0 +1,1034 @@
+{
+  "profCode": "PR002",
+  "enrollments": [
+    {
+      "el": "EL053",
+      "subject": "Paiements",
+      "tab": "Neima",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-08",
+              "status": "PRESENT",
+              "content": "Rèvision des courtes Sourates"
+            },
+            {
+              "number": 2,
+              "date": "2025-12-15",
+              "status": "PRESENT",
+              "content": "Rèvision des courtes Sourates"
+            },
+            {
+              "number": 3,
+              "date": "2025-12-22",
+              "status": "PRESENT",
+              "content": "Rèvision des Sourates  \"Infittar-Annabâ\""
+            },
+            {
+              "number": 4,
+              "date": "2025-12-29",
+              "status": "PRESENT",
+              "content": "Rèvision des Sourates \"Almorcalett-Alincen\""
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-02-02",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation du \"Nouh\""
+            },
+            {
+              "number": 2,
+              "date": "2026-02-09",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V1-34 de la Sourate \"Almârej\""
+            },
+            {
+              "number": 3,
+              "date": "2026-02-16",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V1-12 de la sourate\" Al Mârej\" et les V1-V13 du \"Alhaqqa\""
+            },
+            {
+              "number": 4,
+              "date": "2026-02-23",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V13-la fin du \"Alhaqa\""
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-03-02",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V1-25 de la sourate \"Al Kalam\""
+            },
+            {
+              "number": 2,
+              "date": "2026-03-09",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V26-40 de la sourate\" Al Kalam\""
+            },
+            {
+              "number": 3,
+              "date": "2026-03-23",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2026-03-30",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V41-52 du \"AlKalam\""
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-04-06",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V1-12 du \"Almolk\""
+            },
+            {
+              "number": 2,
+              "date": "2026-04-13",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V 13-V26 du \"Almolk\""
+            },
+            {
+              "number": 3,
+              "date": "2026-04-20",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2026-04-29",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation du reste du \"Almolk\" et des V1-V3 du \"Attahrim\""
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-05-11",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V 4-V12 du \"Attahrim\""
+            },
+            {
+              "number": 2,
+              "date": "2026-05-13",
+              "status": "PRESENT",
+              "content": "correction des V1-V2 du \"Attalek\""
+            },
+            {
+              "number": 3,
+              "date": "2026-05-18",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V 3-V5 du \"Attalek\""
+            },
+            {
+              "number": 4,
+              "date": "2026-05-25",
+              "status": "PRESENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "el": "EL057",
+      "subject": "Paiements",
+      "tab": "Aminata Oum Mohamed",
+      "sessions": [
+        {
+          "number": 1,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-06-17",
+              "status": "PRESENT",
+              "content": "Révision des sourates courtes"
+            },
+            {
+              "number": 2,
+              "date": "2025-06-24",
+              "status": "PRESENT",
+              "content": "Rèvision de la règle : allongement المد dans la sourate\" Albaqara\""
+            },
+            {
+              "number": 3,
+              "date": "2025-07-02",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V1_V8 de la sourate\" Albaqara"
+            },
+            {
+              "number": 4,
+              "date": "2025-07-13",
+              "status": "PRESENT",
+              "content": "V9_V13 de la sourate\" Albaqara\""
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-07-15",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V11_V14 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 2,
+              "date": "2025-07-22",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V15_V17 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 3,
+              "date": "2025-08-09",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V18_V19 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 4,
+              "date": "2025-08-10",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V20_V21 de la sourate\" Albaqara\""
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-08-12",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V22_V24 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 2,
+              "date": "2025-08-19",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V25 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 3,
+              "date": "2025-08-29",
+              "status": "PRESENT",
+              "content": "Mémorisation du V26 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 4,
+              "date": "2025-09-02",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V27_V28 de la sourate\" Albaqara\""
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-09-09",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V29_V31 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 2,
+              "date": "2025-09-18",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V32_V33 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 3,
+              "date": "2025-10-07",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V33_V34 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 4,
+              "date": "2025-10-09",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V35_V36 de la sourate\" Albaqara\""
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-10-14",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V37_V38 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 2,
+              "date": "2025-10-16",
+              "status": "PRESENT",
+              "content": "Mèmorisation du V39_V41 de la sourate\" Albaqara\""
+            },
+            {
+              "number": 3,
+              "date": "2025-10-21",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2025-10-28",
+              "status": "ABSENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-11-04",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": "2025-11-11",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": "2025-11-19",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation du V50-V51 du \"Albaqara\""
+            },
+            {
+              "number": 4,
+              "date": "2025-11-26",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V52-54 du \"Albaqara\""
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-03",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V55-57 du \"Albaqara \""
+            },
+            {
+              "number": 2,
+              "date": "2025-12-10",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V58-59 la sourate\" Al Baqara\""
+            },
+            {
+              "number": 3,
+              "date": "2025-12-16",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation du V60"
+            },
+            {
+              "number": 4,
+              "date": "2025-12-24",
+              "status": "PRESENT",
+              "content": "Rèvision des versets mémorisès"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2025-12-31",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation du V61 du\"Albaqara\""
+            },
+            {
+              "number": 2,
+              "date": "2026-01-07",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation du V62"
+            },
+            {
+              "number": 3,
+              "date": "2026-01-14",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V63-64 de la \"Albaqara\""
+            },
+            {
+              "number": 4,
+              "date": "2026-01-21",
+              "status": "PRESENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-01-28",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des 65-V67 du \"Albaqara\""
+            },
+            {
+              "number": 2,
+              "date": "2026-02-04",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V68-70 du \"Albaqara\""
+            },
+            {
+              "number": 3,
+              "date": "2026-02-11",
+              "status": "ABSENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2026-02-19",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V71-72 de la sourate\" Al Baqara\""
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-02-25",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V73-75 de la sourate\" Al Baqara \""
+            },
+            {
+              "number": 2,
+              "date": "2026-03-04",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V 79-V81 du\" Albaqara \""
+            },
+            {
+              "number": 3,
+              "date": "2026-03-11",
+              "status": "PRESENT",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": "2026-03-25",
+              "status": "ABSENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "lessons": [
+            {
+              "number": 1,
+              "date": "2026-05-05",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V 92-V95 du \"Albaqara \""
+            },
+            {
+              "number": 2,
+              "date": "2026-05-12",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V 96-V99 du\" Albaqara \""
+            },
+            {
+              "number": 3,
+              "date": "2026-05-19",
+              "status": "PRESENT",
+              "content": "correction et mèmorisation des V100-V102 du \"Albaqara \""
+            },
+            {
+              "number": 4,
+              "date": "2026-06-02",
+              "status": "PRESENT",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "lessons": [
+            {
+              "number": 1,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 2,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 3,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            },
+            {
+              "number": 4,
+              "date": null,
+              "status": "PENDING",
+              "content": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

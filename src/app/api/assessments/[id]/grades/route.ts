@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const user = session.user as any
+  const user = session.user
 
   const { id } = await params
   const { grades } = await req.json()
@@ -14,7 +14,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!assessment) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   await prisma.$transaction(
-    grades.map((g: any) =>
+    (grades as { studentId: string; score: number | null; observation?: string }[]).map((g) =>
       prisma.grade.upsert({
         where: { assessmentId_studentId: { assessmentId: id, studentId: g.studentId } },
         create: { assessmentId: id, studentId: g.studentId, score: g.score, observation: g.observation },

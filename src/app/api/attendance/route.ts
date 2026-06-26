@@ -5,12 +5,12 @@ import { prisma } from "@/lib/prisma"
 export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const user = session.user as any
+  const user = session.user
 
   const { records } = await req.json()
 
   await prisma.$transaction(
-    records.map((r: any) =>
+    (records as { studentId: string; groupId: string; date: string; status: string; note?: string }[]).map((r) =>
       prisma.attendance.upsert({
         where: {
           studentId_groupId_date: {
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const user = session.user as any
+  const user = session.user
 
   const { searchParams } = new URL(req.url)
   const groupId = searchParams.get("groupId")

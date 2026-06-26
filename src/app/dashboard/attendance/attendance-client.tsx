@@ -84,7 +84,7 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Présences</h2>
-          <p className="text-sm text-gray-500">Faire l'appel et enregistrer les présences</p>
+          <p className="text-sm text-gray-500">Faire l&apos;appel et enregistrer les présences</p>
         </div>
       </div>
 
@@ -205,7 +205,7 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
       ) : (
         <Card>
           <CardContent className="py-12 text-center text-gray-400">
-            Sélectionnez un groupe pour faire l'appel
+            Sélectionnez un groupe pour faire l&apos;appel
           </CardContent>
         </Card>
       )}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { rateForSize } from "@/lib/group-rates"
 import { z } from "zod"
 
 const studentSchema = z.object({
@@ -14,7 +15,13 @@ const studentSchema = z.object({
   city: z.string().optional(),
   groupId: z.string().optional(),
   level: z.string().optional(),
+  subject: z.string().optional(),
   monthlyFee: z.string().or(z.number()).transform(Number),
+  hourlyRate: z.string().or(z.number()).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
+  lessonsPerWeek: z.string().or(z.number()).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
+  duration: z.string().optional(),
+  startSession: z.string().or(z.number()).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
+  joinExisting: z.boolean().optional(),
   parentName: z.string().optional(),
   parentPhone: z.string().optional(),
   parentEmail: z.string().email().optional().or(z.literal("")),
@@ -24,7 +31,7 @@ const studentSchema = z.object({
 export async function GET() {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const tenantId = (session.user as any).tenantId
+  const tenantId = (session.user).tenantId
 
   const students = await prisma.student.findMany({
     where: { tenantId },
@@ -37,7 +44,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const user = session.user as any
+  const user = session.user
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const body = await req.json()
@@ -58,12 +65,67 @@ export async function POST(req: Request) {
       city: data.city || null,
       groupId: data.groupId || null,
       level: data.level || null,
+      subject: data.subject || null,
       monthlyFee: data.monthlyFee,
+      hourlyRate: data.hourlyRate ?? null,
+      lessonsPerWeek: data.lessonsPerWeek ?? null,
+      duration: data.duration || null,
       parentName: data.parentName || null,
       parentPhone: data.parentPhone || null,
       parentEmail: data.parentEmail || null,
       notes: data.notes || null,
     },
   })
+
+  if (data.groupId) {
+    const group = await prisma.group.findFirst({
+      where: { id: data.groupId, tenantId: user.tenantId },
+      select: { teacherId: true },
+    })
+    if (group?.teacherId) {
+      let sessionNumber = data.startSession && data.startSession > 0 ? data.startSession : 1
+
+      if (data.joinExisting) {
+        const maxSession = await prisma.lessonSession.findFirst({
+          where: {
+            tenantId: user.tenantId,
+            student: { groupId: data.groupId },
+          },
+          orderBy: { number: "desc" },
+          select: { number: true },
+        })
+        if (maxSession) sessionNumber = maxSession.number
+      }
+
+      await prisma.lessonSession.create({
+        data: {
+          tenantId: user.tenantId,
+          studentId: student.id,
+          teacherId: group.teacherId,
+          subject: data.subject || "Coran",
+          number: sessionNumber,
+          lessons: {
+            create: Array.from({ length: 8 }, (_, i) => ({
+              tenantId: user.tenantId,
+              number: i + 1,
+              status: "PENDING",
+            })),
+          },
+        },
+      })
+    }
+  }
+
+  if (data.groupId) {
+    const activeCount = await prisma.student.count({
+      where: { groupId: data.groupId, tenantId: user.tenantId, status: "ACTIVE" },
+    })
+    const newRate = rateForSize(activeCount)
+    await prisma.student.updateMany({
+      where: { groupId: data.groupId, tenantId: user.tenantId, status: "ACTIVE" },
+      data: { hourlyRate: newRate },
+    })
+  }
+
   return NextResponse.json(student, { status: 201 })
 }

@@ -1,237 +1,218 @@
 "use client"
 import { useState } from "react"
-import { Plus, ChevronDown, ChevronRight, Save, Loader2 } from "lucide-react"
+import { Upload, FileText, Trash2, Loader2, ChevronDown, ChevronUp, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { formatDate } from "@/lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-interface Grade {
-  id: string
-  score: number | null
-  observation: string | null
-  student: { firstName: string; lastName: string }
+const LEVELS = [
+  { value: "DEBUTANT", label: "Niveau débutant" },
+  { value: "PREPARATOIRE", label: "Niveau préparatoire" },
+  { value: "NIVEAU_01", label: "Niveau 01" },
+  { value: "NIVEAU_02", label: "Niveau 02" },
+  { value: "NIVEAU_03", label: "Niveau 03" },
+  { value: "NIVEAU_04", label: "Niveau 04" },
+  { value: "NIVEAU_05", label: "Niveau 05" },
+]
+
+const LEVEL_LABELS: Record<string, string> = {}
+for (const l of LEVELS) LEVEL_LABELS[l.value] = l.label
+
+const LEVEL_COLORS: Record<string, string> = {
+  DEBUTANT: "bg-gray-100 text-gray-700 border-gray-200",
+  PREPARATOIRE: "bg-amber-50 text-amber-700 border-amber-200",
+  NIVEAU_01: "bg-blue-50 text-blue-700 border-blue-200",
+  NIVEAU_02: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  NIVEAU_03: "bg-violet-50 text-violet-700 border-violet-200",
+  NIVEAU_04: "bg-pink-50 text-pink-700 border-pink-200",
+  NIVEAU_05: "bg-red-50 text-red-700 border-red-200",
 }
 
-interface Assessment {
+interface ExamFile {
   id: string
   title: string
-  subject: string | null
-  date: Date
-  maxScore: number
-  group: { id: string; name: string }
-  teacher: { name: string } | null
-  grades: Grade[]
+  level: string
+  fileName: string
+  fileUrl: string
+  fileSize: number | null
+  uploadedBy: string | null
+  createdAt: string
 }
 
-interface Student {
-  id: string
-  firstName: string
-  lastName: string
+function formatSize(bytes: number | null): string {
+  if (!bytes) return ""
+  if (bytes < 1024) return `${bytes} o`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
 }
 
-interface Group {
-  id: string
-  name: string
-  students: Student[]
-}
-
-const EMPTY = { title: "", subject: "", groupId: "", date: "", maxScore: "20" }
-
-export function AssessmentsClient({ assessments, groups, role, userId }: {
-  assessments: Assessment[]
-  groups: Group[]
-  role: string
-  userId: string
-}) {
+export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFile[]; role: string }) {
+  const [exams, setExams] = useState(initialExams)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [gradesOpen, setGradesOpen] = useState<string | null>(null)
-  const [form, setForm] = useState(EMPTY)
-  const [grades, setGrades] = useState<Record<string, { score: string; obs: string }>>({})
-  const [loading, setLoading] = useState(false)
-  const [savingGrades, setSavingGrades] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [title, setTitle] = useState("")
+  const [level, setLevel] = useState("")
+  const [file, setFile] = useState<File | null>(null)
+  const [expandedLevels, setExpandedLevels] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    for (const l of LEVELS) init[l.value] = true
+    return init
+  })
 
-  function openGrades(assessment: Assessment) {
-    setGradesOpen(assessment.id)
-    const initial: Record<string, { score: string; obs: string }> = {}
-    assessment.grades.forEach((g) => {
-      initial[`${assessment.id}_student`] = { score: String(g.score ?? ""), obs: g.observation ?? "" }
-    })
-    const group = groups.find((g) => g.id === assessment.group.id)
-    if (group) {
-      group.students.forEach((s) => {
-        const existing = assessment.grades.find((g: any) => g.student.firstName === s.firstName)
-        initial[s.id] = existing
-          ? { score: String(existing.score ?? ""), obs: existing.observation ?? "" }
-          : { score: "", obs: "" }
-      })
-    }
-    setGrades(initial)
+  const canManage = ["DIRECTOR", "SECRETARY"].includes(role)
+
+  const examsByLevel = LEVELS.map((l) => ({
+    ...l,
+    exams: exams.filter((e) => e.level === l.value),
+  })).filter((l) => l.exams.length > 0 || canManage)
+
+  function toggleLevel(lv: string) {
+    setExpandedLevels((prev) => ({ ...prev, [lv]: !prev[lv] }))
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleUpload(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
-    try {
-      await fetch("/api/assessments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, maxScore: Number(form.maxScore) }),
-      })
+    if (!file || !title || !level) return
+    setUploading(true)
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("title", title)
+    formData.append("level", level)
+    const res = await fetch("/api/exams", { method: "POST", body: formData })
+    if (res.ok) {
+      const newExam = await res.json()
+      setExams((prev) => [newExam, ...prev])
       setDialogOpen(false)
-      window.location.reload()
-    } finally {
-      setLoading(false)
+      setTitle("")
+      setLevel("")
+      setFile(null)
     }
+    setUploading(false)
   }
 
-  async function handleSaveGrades(assessmentId: string) {
-    setSavingGrades(true)
-    try {
-      const records = Object.entries(grades).map(([studentId, v]) => ({
-        studentId,
-        score: v.score ? Number(v.score) : null,
-        observation: v.obs || null,
-      }))
-      await fetch(`/api/assessments/${assessmentId}/grades`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ grades: records }),
-      })
-      window.location.reload()
-    } finally {
-      setSavingGrades(false)
-    }
+  async function handleDelete(id: string) {
+    if (!confirm("Supprimer ce contrôle ?")) return
+    await fetch(`/api/exams/${id}`, { method: "DELETE" })
+    setExams((prev) => prev.filter((e) => e.id !== id))
   }
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Contrôles & Évaluations</h2>
-          <p className="text-sm text-gray-500">{assessments.length} contrôle(s)</p>
+          <h1 className="text-2xl font-bold text-gray-900">Contrôles</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{exams.length} contrôle{exams.length !== 1 ? "s" : ""} classé{exams.length !== 1 ? "s" : ""} par niveau</p>
         </div>
-        <Button onClick={() => { setForm(EMPTY); setDialogOpen(true) }}>
-          <Plus className="h-4 w-4" />
-          Créer un contrôle
-        </Button>
+        {canManage && (
+          <Button onClick={() => setDialogOpen(true)}>
+            <Upload className="h-4 w-4" />
+            Uploader un contrôle
+          </Button>
+        )}
       </div>
 
+      {/* Liste par niveau */}
       <div className="space-y-3">
-        {assessments.length === 0 && (
-          <Card>
-            <CardContent className="py-10 text-center text-gray-400">Aucun contrôle créé</CardContent>
-          </Card>
-        )}
-        {assessments.map((a) => {
-          const group = groups.find((g) => g.id === a.group.id)
-          const avg = a.grades.length > 0
-            ? (a.grades.reduce((s, g) => s + (g.score ?? 0), 0) / a.grades.filter((g) => g.score !== null).length).toFixed(1)
-            : null
-          const isOpen = gradesOpen === a.id
-
+        {examsByLevel.map(({ value, label, exams: levelExams }) => {
+          const isOpen = expandedLevels[value] ?? true
+          const colors = LEVEL_COLORS[value] || "bg-gray-50 text-gray-700 border-gray-200"
           return (
-            <Card key={a.id}>
-              <CardHeader className="pb-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">{a.title}</CardTitle>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {a.group.name} · {formatDate(a.date)}
-                      {a.subject && ` · ${a.subject}`}
-                      {a.teacher && ` · Prof. ${a.teacher.name}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {avg && (
-                      <Badge variant="info">Moy. {avg}/{a.maxScore}</Badge>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => isOpen ? setGradesOpen(null) : openGrades(a)}>
-                      {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      Notes
-                    </Button>
-                  </div>
+            <div key={value} className={`rounded-xl border ${colors} overflow-hidden`}>
+              <button
+                onClick={() => toggleLevel(value)}
+                className="flex w-full items-center justify-between p-4 text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold">{label}</span>
+                  <span className="rounded-full bg-white/60 px-2 py-0.5 text-xs font-medium">
+                    {levelExams.length} fichier{levelExams.length !== 1 ? "s" : ""}
+                  </span>
                 </div>
-              </CardHeader>
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
 
-              {isOpen && group && (
-                <CardContent className="pt-4">
-                  <div className="space-y-2">
-                    {group.students.map((s) => (
-                      <div key={s.id} className="flex items-center gap-3 rounded-lg bg-gray-50 px-4 py-2">
-                        <p className="flex-1 text-sm font-medium text-gray-900">{s.firstName} {s.lastName}</p>
-                        <Input
-                          type="number"
-                          min="0"
-                          max={a.maxScore}
-                          step="0.25"
-                          className="w-20 text-center"
-                          placeholder={`/${a.maxScore}`}
-                          value={grades[s.id]?.score ?? ""}
-                          onChange={(e) => setGrades((g) => ({ ...g, [s.id]: { ...g[s.id], score: e.target.value, obs: g[s.id]?.obs ?? "" } }))}
-                        />
-                        <Input
-                          className="w-48"
-                          placeholder="Observation..."
-                          value={grades[s.id]?.obs ?? ""}
-                          onChange={(e) => setGrades((g) => ({ ...g, [s.id]: { ...g[s.id], obs: e.target.value, score: g[s.id]?.score ?? "" } }))}
-                        />
-                      </div>
-                    ))}
-                    <div className="flex justify-end pt-2">
-                      <Button size="sm" onClick={() => handleSaveGrades(a.id)} disabled={savingGrades}>
-                        {savingGrades ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        Enregistrer les notes
-                      </Button>
+              {isOpen && (
+                <div className="border-t border-current/10 bg-white">
+                  {levelExams.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-sm text-gray-400">Aucun contrôle pour ce niveau</p>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {levelExams.map((exam) => (
+                        <div key={exam.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
+                          <FileText className="h-5 w-5 text-gray-400 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{exam.title}</p>
+                            <p className="text-xs text-gray-400">
+                              {exam.fileName}
+                              {exam.fileSize ? ` · ${formatSize(exam.fileSize)}` : ""}
+                              {exam.uploadedBy ? ` · par ${exam.uploadedBy}` : ""}
+                              {" · "}
+                              {new Date(exam.createdAt).toLocaleDateString("fr-FR")}
+                            </p>
+                          </div>
+                          <a
+                            href={exam.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50 hover:text-blue-600"
+                            title="Télécharger"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                          {canManage && (
+                            <button
+                              onClick={() => handleDelete(exam.id)}
+                              className="rounded-lg border border-gray-200 bg-white p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                </CardContent>
+                  )}
+                </div>
               )}
-            </Card>
+            </div>
           )
         })}
       </div>
 
+      {/* Dialog upload */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Créer un contrôle</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
+          <DialogHeader><DialogTitle>Uploader un contrôle</DialogTitle></DialogHeader>
+          <form onSubmit={handleUpload} className="space-y-4">
             <div className="space-y-1.5">
               <Label>Titre *</Label>
-              <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex: Contrôle de mi-session Coran" required />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Matière</Label>
-                <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} placeholder="ex: Arabe, Coran..." />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Note max</Label>
-                <Input type="number" value={form.maxScore} onChange={(e) => setForm((f) => ({ ...f, maxScore: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5 col-span-2">
-                <Label>Groupe *</Label>
-                <Select value={form.groupId} onValueChange={(v) => setForm((f) => ({ ...f, groupId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                  <SelectContent>
-                    {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5 col-span-2">
-                <Label>Date *</Label>
-                <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} required />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Niveau *</Label>
+              <Select value={level} onValueChange={setLevel} required>
+                <SelectTrigger><SelectValue placeholder="Choisir le niveau..." /></SelectTrigger>
+                <SelectContent>
+                  {LEVELS.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Fichier (PDF, image) *</Label>
+              <Input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                required
+              />
             </div>
             <div className="flex gap-3 justify-end">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Créer
+              <Button type="submit" disabled={uploading || !file || !title || !level}>
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Uploader
               </Button>
             </div>
           </form>

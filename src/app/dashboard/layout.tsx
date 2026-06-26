@@ -7,7 +7,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth()
   if (!session?.user) redirect("/login")
 
-  const user = session.user as any
+  const user = session.user
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">

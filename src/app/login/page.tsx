@@ -12,7 +12,25 @@ export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [form, setForm] = useState({ email: "", password: "", tenantSlug: "" })
+  const [form, setForm] = useState({ email: "", password: "" })
+
+  const DEMO_ROLES = [
+    { label: "Directeur",  email: "directeur@assahaba.com",                icon: "🎓" },
+    { label: "Secrétaire", email: "secretaire@assahaba.com",               icon: "📋" },
+    { label: "Professeur", email: "samia.umm.abderrahmen@assahaba.com",    icon: "📖" },
+  ]
+
+  async function quickDemo(email: string) {
+    setLoading(true)
+    setError("")
+    const result = await signIn("credentials", {
+      email,
+      password: "admin1234",
+      redirect: false,
+    })
+    if (result?.error) { setError("Erreur de connexion rapide."); setLoading(false) }
+    else router.push("/dashboard")
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,7 +43,7 @@ export default function LoginPage() {
     })
 
     if (result?.error) {
-      setError("Identifiants incorrects ou institut introuvable.")
+      setError("Identifiants incorrects.")
       setLoading(false)
     } else {
       router.push("/dashboard")
@@ -41,7 +59,7 @@ export default function LoginPage() {
             <GraduationCap className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">MadrassaApp</h1>
-          <p className="mt-1 text-sm text-gray-500">Gestion d'instituts islamiques</p>
+          <p className="mt-1 text-sm text-gray-500">Gestion d&apos;instituts islamiques</p>
         </div>
 
         <Card className="shadow-lg">
@@ -51,17 +69,6 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="tenantSlug">Identifiant de l'institut</Label>
-                <Input
-                  id="tenantSlug"
-                  placeholder="ex: institut-assahaba"
-                  value={form.tenantSlug}
-                  onChange={(e) => setForm((f) => ({ ...f, tenantSlug: e.target.value }))}
-                  required
-                />
-              </div>
-
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -96,15 +103,32 @@ export default function LoginPage() {
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 Se connecter
               </Button>
+
+              {process.env.NODE_ENV === "development" && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-center text-xs text-gray-400">⚡ Accès démo rapide</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DEMO_ROLES.map((r) => (
+                      <button
+                        key={r.email}
+                        type="button"
+                        onClick={() => quickDemo(r.email)}
+                        disabled={loading}
+                        className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-emerald-200 bg-emerald-50 py-3 text-xs font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-colors disabled:opacity-50"
+                      >
+                        <span className="text-xl">{r.icon}</span>
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-gray-400">
-          Vous n'avez pas encore de compte ?{" "}
-          <a href="/register" className="text-emerald-600 hover:underline">
-            Créer un institut
-          </a>
+          Institut As-Sahaba — Accès interne
         </p>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { MONTHS_FR } from "@/lib/utils"
 export async function GET() {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const tenantId = (session.user as any).tenantId
+  const tenantId = (session.user).tenantId
 
   const year = new Date().getFullYear()
 
@@ -18,7 +18,7 @@ export async function GET() {
   })
 
   const data = Array.from({ length: 12 }, (_, i) => {
-    const found = payments.find((p: any) => p.month === i + 1)
+    const found = payments.find((p) => p.month === i + 1)
     return {
       month: MONTHS_FR[i].slice(0, 3),
       amount: found ? Number(found._sum.amount ?? 0) : 0,

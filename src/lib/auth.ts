@@ -15,31 +15,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: {},
         password: {},
-        tenantSlug: {},
       },
       async authorize(credentials) {
         const parsed = z.object({
           email: z.string().email(),
           password: z.string().min(6),
-          tenantSlug: z.string(),
         }).safeParse(credentials)
 
         if (!parsed.success) return null
 
-        const { email, password, tenantSlug } = parsed.data
+        const { email, password } = parsed.data
 
-        const tenant = await prisma.tenant.findUnique({
-          where: { slug: tenantSlug, isActive: true },
+        const user = await prisma.user.findFirst({
+          where: { email, isActive: true },
+          include: { tenant: { select: { name: true, isActive: true } } },
         })
-        if (!tenant) return null
-
-        const user = await prisma.user.findUnique({
-          where: { tenantId_email: { tenantId: tenant.id, email } },
-        })
-        if (!user || !user.password || !user.isActive) return null
+        if (!user || !user.password || !user.tenant?.isActive) return null
 
         const valid = await bcrypt.compare(password, user.password)
         if (!valid) return null
+
+        prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {})
 
         return {
           id: user.id,
@@ -47,8 +43,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           role: user.role,
           tenantId: user.tenantId,
-          tenantSlug: tenant.slug,
-          tenantName: tenant.name,
+          tenantName: user.tenant.name,
+          mustChangePassword: user.mustChangePassword,
         }
       },
     }),

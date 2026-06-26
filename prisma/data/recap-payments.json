@@ -1,0 +1,5572 @@
+[
+  {
+    "date": "2026-05-26",
+    "profCode": "PR001",
+    "studentRaw": "Rahma Sahouane",
+    "sessionNumber": 24,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Rahma Sahouane",
+    "note": null
+  },
+  {
+    "date": "2026-05-28",
+    "profCode": "PR001",
+    "studentRaw": "Mounia Ben Abdallah",
+    "sessionNumber": 16,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Mounia Ben Abdallah",
+    "note": null
+  },
+  {
+    "date": "2026-05-28",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Touré",
+    "sessionNumber": 16,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "Fatoumata Touré",
+    "note": null
+  },
+  {
+    "date": "2026-05-28",
+    "profCode": "PR001",
+    "studentRaw": "Al Hammari Hajar",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Hajar El ammari",
+    "note": "Coran "
+  },
+  {
+    "date": "2026-05-28",
+    "profCode": "PR001",
+    "studentRaw": "Al. Ammari Hajar",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Hajar El ammari",
+    "note": "Nouraniyyah "
+  },
+  {
+    "date": "2026-05-29",
+    "profCode": "PR001",
+    "studentRaw": "Sihem chaïb",
+    "sessionNumber": 9,
+    "amount": 31.5,
+    "paymentType": null,
+    "payerName": "Mohamed Bounouhi",
+    "note": "9 cours de 30MIN"
+  },
+  {
+    "date": "2026-05-29",
+    "profCode": "PR001",
+    "studentRaw": "Hassani Aboukaria",
+    "sessionNumber": 14,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "aboukaria hassani",
+    "note": null
+  },
+  {
+    "date": "2026-05-30",
+    "profCode": "PR001",
+    "studentRaw": "Magassa Founé",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "MLLE FOUNE MAGASSA",
+    "note": "Coran"
+  },
+  {
+    "date": "2026-06-02",
+    "profCode": "PR001",
+    "studentRaw": "Ismaïl fagour",
+    "sessionNumber": 16,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "William Fagour",
+    "note": null
+  },
+  {
+    "date": "2026-06-02",
+    "profCode": "PR001",
+    "studentRaw": "Nour El Houda et Fatima",
+    "sessionNumber": 6,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "myriam Lachgar",
+    "note": null
+  },
+  {
+    "date": "2026-06-03",
+    "profCode": "PR001",
+    "studentRaw": "Awa Niasse",
+    "sessionNumber": 5,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Awa Niasse",
+    "note": null
+  },
+  {
+    "date": "2026-06-03",
+    "profCode": "PR001",
+    "studentRaw": "Neima Abdillahi",
+    "sessionNumber": 14,
+    "amount": 21.53,
+    "paymentType": null,
+    "payerName": "Neima Abdillahi farah",
+    "note": null
+  },
+  {
+    "date": "2026-06-03",
+    "profCode": "PR001",
+    "studentRaw": "Deka farah",
+    "sessionNumber": 2,
+    "amount": 19.62,
+    "paymentType": null,
+    "payerName": "Deka Abdillahi farah",
+    "note": null
+  },
+  {
+    "date": "2026-06-05",
+    "profCode": "PR001",
+    "studentRaw": "Atika",
+    "sessionNumber": 7,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "Atika SEDKI",
+    "note": null
+  },
+  {
+    "date": "2026-06-05",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata bagayoko",
+    "sessionNumber": 5,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Fatouma BAGAYOKO",
+    "note": null
+  },
+  {
+    "date": "2026-06-06",
+    "profCode": "PR001",
+    "studentRaw": "Imran En nidem",
+    "sessionNumber": 8,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "FAZIL Saeeda",
+    "note": null
+  },
+  {
+    "date": "2026-06-06",
+    "profCode": "PR001",
+    "studentRaw": "Laura Lespelette",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "a payé 56 car avecFatima"
+  },
+  {
+    "date": "2026-06-07",
+    "profCode": "PR001",
+    "studentRaw": "Fathia",
+    "sessionNumber": 23,
+    "amount": 20.98,
+    "paymentType": null,
+    "payerName": "Fathia Abdillahi farah",
+    "note": null
+  },
+  {
+    "date": "2026-06-10",
+    "profCode": "PR001",
+    "studentRaw": "Ismail Ait Amer Meziane",
+    "sessionNumber": 10,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Sofiane Ait Amer Meziane",
+    "note": null
+  },
+  {
+    "date": "2026-06-10",
+    "profCode": "PR001",
+    "studentRaw": "El kafroun Farida",
+    "sessionNumber": 7,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "MR OU MME EL KAFROUN ABDELOUAFI",
+    "note": "Coran et arabe "
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR001",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 14,
+    "amount": 10.5,
+    "paymentType": "PAYPAL",
+    "payerName": "Carole Barros",
+    "note": " À payé 30?50 carcours avrc Sarra"
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR001",
+    "studentRaw": "Hamza",
+    "sessionNumber": 18,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Dado Diallo",
+    "note": " A payé 66 pour la fraterie "
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR001",
+    "studentRaw": "Gnouma Gandega",
+    "sessionNumber": 8,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Dado Diallo",
+    "note": null
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR001",
+    "studentRaw": "Aicha Gandega",
+    "sessionNumber": 8,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Dado Diallo",
+    "note": null
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR001",
+    "studentRaw": "Hamza",
+    "sessionNumber": 20,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Dado Diallo",
+    "note": null
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Gandega",
+    "sessionNumber": 8,
+    "amount": 9.520000000000001,
+    "paymentType": null,
+    "payerName": "Dado Diallo",
+    "note": null
+  },
+  {
+    "date": "2026-06-14",
+    "profCode": "PR001",
+    "studentRaw": "Ibrahim Boulsane",
+    "sessionNumber": 17,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "Nour El Houda Firane",
+    "note": null
+  },
+  {
+    "date": "2026-06-15",
+    "profCode": "PR001",
+    "studentRaw": "Imane Destouches",
+    "sessionNumber": 14,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Imane Destouches",
+    "note": null
+  },
+  {
+    "date": "2026-06-15",
+    "profCode": "PR001",
+    "studentRaw": "Yasmina Bint Atika",
+    "sessionNumber": 2,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Atika Sedki",
+    "note": "8 cours"
+  },
+  {
+    "date": "2026-06-16",
+    "profCode": "PR001",
+    "studentRaw": "Beldia oum Narimen",
+    "sessionNumber": 42,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Narimen Ferchichi",
+    "note": null
+  },
+  {
+    "date": "2026-06-16",
+    "profCode": "PR001",
+    "studentRaw": "Kady Cissoko",
+    "sessionNumber": 32,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "AMINATA CISSOKO",
+    "note": null
+  },
+  {
+    "date": "2026-06-17",
+    "profCode": "PR001",
+    "studentRaw": "Ilyes Destouches",
+    "sessionNumber": 10,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Bilal Destouches",
+    "note": null
+  },
+  {
+    "date": "2026-06-20",
+    "profCode": "PR001",
+    "studentRaw": "Imran En nidem",
+    "sessionNumber": 9,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "FAZIL Saeeda",
+    "note": null
+  },
+  {
+    "date": "2026-05-29",
+    "profCode": "PR003",
+    "studentRaw": "Madina Dramé",
+    "sessionNumber": 3,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Khadi dramé",
+    "note": null
+  },
+  {
+    "date": "2026-05-31",
+    "profCode": "PR003",
+    "studentRaw": "Koumba Faye",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Ko faye",
+    "note": "a payé 70euros car promo"
+  },
+  {
+    "date": "2026-05-31",
+    "profCode": "PR003",
+    "studentRaw": "Dieynaba et Hassan",
+    "sessionNumber": 3,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Ko faye",
+    "note": "A payé 70euros car promo"
+  },
+  {
+    "date": "2026-06-02",
+    "profCode": "PR003",
+    "studentRaw": "Nadia",
+    "sessionNumber": 31,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "idriss il sait",
+    "note": null
+  },
+  {
+    "date": "2026-06-02",
+    "profCode": "PR003",
+    "studentRaw": "Yasmine",
+    "sessionNumber": 21,
+    "amount": 14.0,
+    "paymentType": "WISE",
+    "payerName": "idriss il sait",
+    "note": "Vue avec idriss "
+  },
+  {
+    "date": "2026-06-02",
+    "profCode": "PR003",
+    "studentRaw": "Maissa",
+    "sessionNumber": 21,
+    "amount": 14.0,
+    "paymentType": "WISE",
+    "payerName": "idriss il sait",
+    "note": null
+  },
+  {
+    "date": "2026-06-07",
+    "profCode": "PR003",
+    "studentRaw": "Haby",
+    "sessionNumber": 6,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby sy",
+    "note": null
+  },
+  {
+    "date": "2026-06-07",
+    "profCode": "PR003",
+    "studentRaw": "Manel Loussaifi",
+    "sessionNumber": 9,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": ": Manel El Mahroum",
+    "note": null
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR003",
+    "studentRaw": "Nouhayla et Zakariya Ahdoum",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Mahjouba Ait m bark",
+    "note": "14euros chacun "
+  },
+  {
+    "date": "2026-06-13",
+    "profCode": "PR003",
+    "studentRaw": "Unayssa / Tassnim",
+    "sessionNumber": 3,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hatika Hamada",
+    "note": "21 chacune "
+  },
+  {
+    "date": "2026-06-17",
+    "profCode": "PR003",
+    "studentRaw": "Sidibe Mariam Sidibe Adjaratou",
+    "sessionNumber": 3,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Mariam Sidibe",
+    "note": null
+  },
+  {
+    "date": "2026-06-20",
+    "profCode": "PR003",
+    "studentRaw": "Aicha",
+    "sessionNumber": 6,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "hawa keita (paypal de la pote à sa mère)",
+    "note": null
+  },
+  {
+    "date": "2026-06-07",
+    "profCode": "PR002",
+    "studentRaw": "Neima",
+    "sessionNumber": 7,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Deka Hassan",
+    "note": null
+  },
+  {
+    "date": "2026-05-30",
+    "profCode": "PR008",
+    "studentRaw": "Mathilde Raymond",
+    "sessionNumber": 2,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "nicolas chane-law",
+    "note": null
+  },
+  {
+    "date": "2026-06-13",
+    "profCode": "PR005",
+    "studentRaw": "Kenza Ben Yahia",
+    "sessionNumber": 14,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Kenza Ben Yahia",
+    "note": null
+  },
+  {
+    "date": "2026-06-21",
+    "profCode": "PR005",
+    "studentRaw": "Sikina",
+    "sessionNumber": 27,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : SIKINA MADI MBIROU",
+    "note": null
+  },
+  {
+    "date": "2026-06-20",
+    "profCode": "PR005",
+    "studentRaw": "Ouidati",
+    "sessionNumber": 26,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "MME HARITHI OUIDATI",
+    "note": null
+  },
+  {
+    "date": "2026-05-26",
+    "profCode": "PR006",
+    "studentRaw": "Ilyes Destouches",
+    "sessionNumber": 5,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "/",
+    "note": "session 5 payé en retard"
+  },
+  {
+    "date": "2026-06-08",
+    "profCode": "PR006",
+    "studentRaw": "Esma Jami",
+    "sessionNumber": 8,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Wafa Mazigh",
+    "note": null
+  },
+  {
+    "date": "2026-05-27",
+    "profCode": "PR007",
+    "studentRaw": "Maeva Rocher Denizon",
+    "sessionNumber": 14,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "MaevaRocher-Denizon",
+    "note": null
+  },
+  {
+    "date": "2026-06-09",
+    "profCode": "PR007",
+    "studentRaw": "Dao et Oumou",
+    "sessionNumber": 13,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Aissatou Diarra",
+    "note": "20+20"
+  },
+  {
+    "date": "2026-06-11",
+    "profCode": "PR007",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Carole Barros",
+    "note": " À payé 30,50 carcours avecSarra.  Reste 1euros"
+  },
+  {
+    "date": "2025-05-30",
+    "profCode": "PR004",
+    "studentRaw": "Iradati Harithi",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Rizlane Rizlane",
+    "note": null
+  },
+  {
+    "date": "2026-06-06",
+    "profCode": "PR004",
+    "studentRaw": "Laura Lespelette",
+    "sessionNumber": 9,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "a payé 56 car avecsamua umm abdirahman "
+  },
+  {
+    "date": "2026-04-25",
+    "profCode": "PR001",
+    "studentRaw": "Bouchra Kharzouki",
+    "sessionNumber": 28,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bouchra Khazrouki",
+    "note": null
+  },
+  {
+    "date": "2026-04-25",
+    "profCode": "PR001",
+    "studentRaw": "Sihem chaïb",
+    "sessionNumber": 8,
+    "amount": 17.5,
+    "paymentType": "PAYPAL",
+    "payerName": "Mohamed Bounouhi",
+    "note": null
+  },
+  {
+    "date": "2026-04-25",
+    "profCode": "PR001",
+    "studentRaw": "Saada Umm \"aaliyah",
+    "sessionNumber": 22,
+    "amount": 53.86,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Saada Hassan",
+    "note": "À payé 57 car on lui devait 1,21"
+  },
+  {
+    "date": "2026-04-28",
+    "profCode": "PR001",
+    "studentRaw": "Rahma Souane",
+    "sessionNumber": 23,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Rahma Sahouane",
+    "note": null
+  },
+  {
+    "date": "2026-04-28",
+    "profCode": "PR001",
+    "studentRaw": "Mounia Ben Abdallah",
+    "sessionNumber": 15,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Mounia Ben Abdallah",
+    "note": null
+  },
+  {
+    "date": "2026-04-29",
+    "profCode": "PR001",
+    "studentRaw": "Zahra Elmi Daher",
+    "sessionNumber": 10,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Zahra Elmi Daher",
+    "note": null
+  },
+  {
+    "date": "2026-05-01",
+    "profCode": "PR001",
+    "studentRaw": "Al. Ammari Hajar",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Hajar El ammari",
+    "note": "42 AU TOTAL"
+  },
+  {
+    "date": "2026-05-01",
+    "profCode": "PR001",
+    "studentRaw": "Al Hammari Hajar",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Hajar El ammari",
+    "note": null
+  },
+  {
+    "date": "2026-05-01",
+    "profCode": "PR001",
+    "studentRaw": "Magassa Founé",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "MLLE FOUNE MAGASSA",
+    "note": "42 AU TOTAL"
+  },
+  {
+    "date": "2026-05-01",
+    "profCode": "PR001",
+    "studentRaw": "Imran En nidem",
+    "sessionNumber": 7,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "FAZIL Saeeda",
+    "note": null
+  },
+  {
+    "date": "2026-05-03",
+    "profCode": "PR001",
+    "studentRaw": "Neima Abdillahi",
+    "sessionNumber": 13,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Neima Abdillahi farah",
+    "note": null
+  },
+  {
+    "date": "2026-05-03",
+    "profCode": "PR001",
+    "studentRaw": "Deka Farah",
+    "sessionNumber": 1,
+    "amount": 19.62,
+    "paymentType": "PAYPAL",
+    "payerName": "Deka Neima (à vérifier)",
+    "note": " Deja Verifier"
+  },
+  {
+    "date": "2026-05-04",
+    "profCode": "PR001",
+    "studentRaw": "Hassani Aboukaria",
+    "sessionNumber": 13,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "aboukaria hassani",
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR001",
+    "studentRaw": "Nahil Touil",
+    "sessionNumber": 8,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "jihan hajri",
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR001",
+    "studentRaw": "Awa Niasse",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Awa Niasse",
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR001",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 13,
+    "amount": 10.5,
+    "paymentType": "PAYPAL",
+    "payerName": "Carole Barros",
+    "note": "Paiement groupé 31,50e (10,5+21e)"
+  },
+  {
+    "date": "2026-05-06",
+    "profCode": "PR001",
+    "studentRaw": "Laura Lespilette",
+    "sessionNumber": 5,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "A payé 56 car cours avecFatima",
+    "note": null
+  },
+  {
+    "date": "2026-05-07",
+    "profCode": "PR001",
+    "studentRaw": "Nour El Houda / Fatima",
+    "sessionNumber": 5,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-09",
+    "profCode": "PR001",
+    "studentRaw": "Beldia Umm Narime",
+    "sessionNumber": 40,
+    "amount": 84.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Narimen Ferchichi",
+    "note": "2 sessiosn "
+  },
+  {
+    "date": "2026-05-09",
+    "profCode": "PR001",
+    "studentRaw": "Fathia",
+    "sessionNumber": 22,
+    "amount": 20.98,
+    "paymentType": null,
+    "payerName": "Fathia Abdillahi farah",
+    "note": "à paye 22?43 car frais ppl "
+  },
+  {
+    "date": "2026-05-10",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata bagayoko",
+    "sessionNumber": 4,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Fatouma BAGAYOKO",
+    "note": null
+  },
+  {
+    "date": "2026-05-12",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Zaynab Oum Ibrahim",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Zaynab ummu Ibrahim",
+    "note": "38 car frais ppl "
+  },
+  {
+    "date": "2026-05-12",
+    "profCode": "PR001",
+    "studentRaw": "Diani Cissé",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Cisse Diani",
+    "note": null
+  },
+  {
+    "date": "2026-05-13",
+    "profCode": "PR001",
+    "studentRaw": "Atika",
+    "sessionNumber": 6,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Atika Sedki",
+    "note": "28 coran + 28 nouraniyya"
+  },
+  {
+    "date": "2026-05-13",
+    "profCode": "PR001",
+    "studentRaw": "Al Fakroun Farida",
+    "sessionNumber": 6,
+    "amount": 56.0,
+    "paymentType": "WISE",
+    "payerName": "MME EL KAFROUN ABDELOUAFI",
+    "note": "28 coran + 28 nouraniyya"
+  },
+  {
+    "date": "2026-05-13",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Gandega",
+    "sessionNumber": 7,
+    "amount": 10.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hawa Gandega",
+    "note": "A payé 66 pour tout le monde"
+  },
+  {
+    "date": "2026-05-13",
+    "profCode": "PR001",
+    "studentRaw": "Aicha Gandega",
+    "sessionNumber": 7,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-13",
+    "profCode": "PR001",
+    "studentRaw": "Gnouma Gandega",
+    "sessionNumber": 7,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-13",
+    "profCode": "PR001",
+    "studentRaw": "Hamza - Nourniyyah",
+    "sessionNumber": 17,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-13",
+    "profCode": "PR001",
+    "studentRaw": "Hamza - Coran",
+    "sessionNumber": 19,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-15",
+    "profCode": "PR001",
+    "studentRaw": "Dilek",
+    "sessionNumber": 27,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Kadioglu Dilek",
+    "note": null
+  },
+  {
+    "date": "2026-05-15",
+    "profCode": "PR001",
+    "studentRaw": "Ilyes Destouches",
+    "sessionNumber": 9,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bilal Dsetouches",
+    "note": null
+  },
+  {
+    "date": "2026-05-15",
+    "profCode": "PR001",
+    "studentRaw": "Lilyana Beaujeon",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": "Imane Medkour",
+    "note": null
+  },
+  {
+    "date": "2026-05-17",
+    "profCode": "PR001",
+    "studentRaw": "Angélique",
+    "sessionNumber": 6,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "Angélique Ruez",
+    "note": null
+  },
+  {
+    "date": "2026-05-17",
+    "profCode": "PR001",
+    "studentRaw": "Ibrahim Boulsane",
+    "sessionNumber": 16,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "Nour El Houda Firane",
+    "note": null
+  },
+  {
+    "date": "2026-05-18",
+    "profCode": "PR001",
+    "studentRaw": "Imane Destouches",
+    "sessionNumber": 13,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Imane Destouches",
+    "note": null
+  },
+  {
+    "date": "2026-05-19",
+    "profCode": "PR001",
+    "studentRaw": "Dilek",
+    "sessionNumber": 4,
+    "amount": 14.0,
+    "paymentType": "WISE",
+    "payerName": "Kadioglu Dilek",
+    "note": null
+  },
+  {
+    "date": "2026-05-20",
+    "profCode": "PR001",
+    "studentRaw": "Kady Cissoko",
+    "sessionNumber": 31,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "AMINATA CISSOKO",
+    "note": null
+  },
+  {
+    "date": "2026-05-21",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Yasmina Bint Atika",
+    "sessionNumber": null,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Atika Sedki",
+    "note": "A payé 14+10 pour frais Atika à offerts 2 cours a sa fille"
+  },
+  {
+    "date": "2026-05-23",
+    "profCode": "PR001",
+    "studentRaw": "zahira lamkadmi",
+    "sessionNumber": 6,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "Houria Ouzyneb",
+    "note": null
+  },
+  {
+    "date": "2026-05-23",
+    "profCode": "PR001",
+    "studentRaw": "Saada um3aliyah",
+    "sessionNumber": 23,
+    "amount": 56.72,
+    "paymentType": null,
+    "payerName": "Saada Hassan",
+    "note": "A payé 60 : 2euros de frais ppl du mois dernier et ce mois ci aussi "
+  },
+  {
+    "date": "2026-05-23",
+    "profCode": "PR001",
+    "studentRaw": "Bouchra Khazrouki",
+    "sessionNumber": 29,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Bouchra Khazrouki",
+    "note": null
+  },
+  {
+    "date": "2026-04-28",
+    "profCode": "PR003",
+    "studentRaw": "Madina dramé",
+    "sessionNumber": 27,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypak : Khadi dramé",
+    "note": null
+  },
+  {
+    "date": "2026-05-03",
+    "profCode": "PR003",
+    "studentRaw": "Koumba Faye",
+    "sessionNumber": 2,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Ko Faye",
+    "note": null
+  },
+  {
+    "date": "2026-05-03",
+    "profCode": "PR003",
+    "studentRaw": "Dieynaba Aissatou et Hassane",
+    "sessionNumber": 2,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Ko Faye",
+    "note": null
+  },
+  {
+    "date": "2026-05-07",
+    "profCode": "PR003",
+    "studentRaw": "Haby Tajwid",
+    "sessionNumber": 4,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": "70 + Aiche et Kayna "
+  },
+  {
+    "date": "2026-05-07",
+    "profCode": "PR003",
+    "studentRaw": "Haby Coran",
+    "sessionNumber": 5,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "70 + Aiche et Kayna "
+  },
+  {
+    "date": "2026-05-07",
+    "profCode": "PR003",
+    "studentRaw": "Aicha",
+    "sessionNumber": 5,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "70 + Aiche et Kayna "
+  },
+  {
+    "date": "2026-05-07",
+    "profCode": "PR003",
+    "studentRaw": "Kayna",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "70 + Aiche et Kayna "
+  },
+  {
+    "date": "2026-05-08",
+    "profCode": "PR003",
+    "studentRaw": "Nouhayla et Zakariya Ahdoum",
+    "sessionNumber": 2,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Mahjouba Ait m bark",
+    "note": "14euros chacun "
+  },
+  {
+    "date": "2026-05-06",
+    "profCode": "PR003",
+    "studentRaw": "Manel Loussaifi",
+    "sessionNumber": 2,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": ": Manel El Mahroum",
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR003",
+    "studentRaw": "Nadia",
+    "sessionNumber": 2,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR003",
+    "studentRaw": "Yasmine",
+    "sessionNumber": 2,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR003",
+    "studentRaw": "Maissa",
+    "sessionNumber": 2,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR003",
+    "studentRaw": "Ines",
+    "sessionNumber": 2,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-05-20",
+    "profCode": "PR003",
+    "studentRaw": "Sidibe Mariam Sidibe Adjaratou",
+    "sessionNumber": 3,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Mariam Sidibe",
+    "note": null
+  },
+  {
+    "date": "2026-05-20",
+    "profCode": "PR003",
+    "studentRaw": "Marietou Umm Ibrahim",
+    "sessionNumber": null,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Marietou bagayoko",
+    "note": null
+  },
+  {
+    "date": "2026-05-22",
+    "profCode": "PR003",
+    "studentRaw": "Khadi Drame",
+    "sessionNumber": 2,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "drame khadi",
+    "note": null
+  },
+  {
+    "date": "2026-05-23",
+    "profCode": "PR003",
+    "studentRaw": "Hatouma Dembele",
+    "sessionNumber": 2,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Hatouma dembele",
+    "note": null
+  },
+  {
+    "date": "2026-05-03",
+    "profCode": "PR002",
+    "studentRaw": "Neima",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Deka Hassan",
+    "note": null
+  },
+  {
+    "date": "2026-05-19",
+    "profCode": "PR002",
+    "studentRaw": "Omaya Kabteni",
+    "sessionNumber": 9,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "NADJIBA AGHARBI",
+    "note": null
+  },
+  {
+    "date": "2026-05-17",
+    "profCode": "PR008",
+    "studentRaw": "Chaima Bouaka",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Chaima Bouaka",
+    "note": null
+  },
+  {
+    "date": "2026-04-29",
+    "profCode": "PR005",
+    "studentRaw": "Youssouf, nahouda, Madi",
+    "sessionNumber": 11,
+    "amount": 144.0,
+    "paymentType": null,
+    "payerName": "MLE SANDINI NANGUY",
+    "note": "à payé 396"
+  },
+  {
+    "date": "2026-04-29",
+    "profCode": "PR005",
+    "studentRaw": "Salima, Sandini",
+    "sessionNumber": 11,
+    "amount": 252.0,
+    "paymentType": null,
+    "payerName": "MLE SANDINI NANGUY",
+    "note": "à payé 396"
+  },
+  {
+    "date": "2026-05-01",
+    "profCode": "PR005",
+    "studentRaw": "Kenza Ben Yahia",
+    "sessionNumber": 13,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Kenza Ben Yahia",
+    "note": null
+  },
+  {
+    "date": "2026-05-10",
+    "profCode": "PR005",
+    "studentRaw": "Marietou Umm Ibrahim",
+    "sessionNumber": 7,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Marietou BAGAYOKO",
+    "note": null
+  },
+  {
+    "date": "2026-05-11",
+    "profCode": "PR005",
+    "studentRaw": "Imanes Destouch",
+    "sessionNumber": 19,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Imane Destouches",
+    "note": null
+  },
+  {
+    "date": "2026-05-12",
+    "profCode": "PR005",
+    "studentRaw": "Deka / Niema",
+    "sessionNumber": 19,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Deka Hassan",
+    "note": "21 chacune "
+  },
+  {
+    "date": "2026-05-12",
+    "profCode": "PR005",
+    "studentRaw": "Aicha Diaby",
+    "sessionNumber": 7,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Aisseta Diaby",
+    "note": "21 - Duo "
+  },
+  {
+    "date": "2026-05-18",
+    "profCode": "PR005",
+    "studentRaw": "Bellili Rosa",
+    "sessionNumber": 5,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Mahamadou Diaby",
+    "note": null
+  },
+  {
+    "date": "2026-05-20",
+    "profCode": "PR005",
+    "studentRaw": "Ouidati",
+    "sessionNumber": 25,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "MME HARITHI OUIDATI",
+    "note": null
+  },
+  {
+    "date": "2026-05-21",
+    "profCode": "PR005",
+    "studentRaw": "Familli Arrar",
+    "sessionNumber": 23,
+    "amount": 128.0,
+    "paymentType": null,
+    "payerName": "IDRISS",
+    "note": null
+  },
+  {
+    "date": "2026-05-22",
+    "profCode": "PR005",
+    "studentRaw": "Sikina",
+    "sessionNumber": 25,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : SIKINA MADI MBIROU",
+    "note": "À payé pour 2 sessions "
+  },
+  {
+    "date": "2026-04-28",
+    "profCode": "PR006",
+    "studentRaw": "Nour Edekraoui",
+    "sessionNumber": 18,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Asmaâ EL KHALFAOUI EDEKRAOUI",
+    "note": null
+  },
+  {
+    "date": "2026-04-28",
+    "profCode": "PR006",
+    "studentRaw": "Meryem Edekraoui",
+    "sessionNumber": 22,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Asmaâ EL KHALFAOUI EDEKRAOUI",
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR006",
+    "studentRaw": "Myriam",
+    "sessionNumber": 7,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "myriam hammoumi",
+    "note": null
+  },
+  {
+    "date": "2026-05-05",
+    "profCode": "PR006",
+    "studentRaw": "Sabrina",
+    "sessionNumber": 7,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "myriam hammoumi",
+    "note": null
+  },
+  {
+    "date": "2026-05-07",
+    "profCode": "PR006",
+    "studentRaw": "Mahady drame",
+    "sessionNumber": 7,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "drame khadi",
+    "note": null
+  },
+  {
+    "date": "2026-04-28",
+    "profCode": "PR007",
+    "studentRaw": "Maeva Rocher-Denizon",
+    "sessionNumber": 13,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "MaevaRocher-Denizon",
+    "note": null
+  },
+  {
+    "date": "2026-05-06",
+    "profCode": "PR007",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "Carole Barros",
+    "note": "Paiement groupé 31,50e (10,5+21e)"
+  },
+  {
+    "date": "2026-05-06",
+    "profCode": "PR004",
+    "studentRaw": "Laura Lespilette",
+    "sessionNumber": 8,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "56 car avec Samia Umm Abdi",
+    "note": null
+  },
+  {
+    "date": "2026-05-15",
+    "profCode": "PR009",
+    "studentRaw": "Roqya Sanogo",
+    "sessionNumber": 2,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Rokya Sanogo",
+    "note": null
+  },
+  {
+    "date": "2026-03-26",
+    "profCode": "PR001",
+    "studentRaw": "Atika",
+    "sessionNumber": 4,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Atika Sedki",
+    "note": null
+  },
+  {
+    "date": "2026-03-28",
+    "profCode": "PR001",
+    "studentRaw": "Ismail - Ait Amer Meziane",
+    "sessionNumber": 8,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Sofiane Ait Amer Meziane",
+    "note": null
+  },
+  {
+    "date": "2026-03-28",
+    "profCode": "PR001",
+    "studentRaw": "Sihem Chaib",
+    "sessionNumber": 6,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Mohamed Bounouhi",
+    "note": "Payemnt de 12+2euro "
+  },
+  {
+    "date": "2026-03-30",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Touré",
+    "sessionNumber": 14,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "24+4"
+  },
+  {
+    "date": "2026-03-30",
+    "profCode": "PR001",
+    "studentRaw": "Siham Chaib",
+    "sessionNumber": null,
+    "amount": 9.5,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Mohamed Bounouhi",
+    "note": "9+0,5 / A payé en plus carerreur dans les sessions précédentes"
+  },
+  {
+    "date": "2026-04-01",
+    "profCode": "PR001",
+    "studentRaw": "Hajar al Ammarai",
+    "sessionNumber": 2,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal: Hajar Al ammari",
+    "note": "Nouraniyya + Coran "
+  },
+  {
+    "date": "2026-04-01",
+    "profCode": "PR001",
+    "studentRaw": "Magassa Founé",
+    "sessionNumber": 2,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Magassa Founé",
+    "note": "Nouraniyyah + Coran "
+  },
+  {
+    "date": "2026-03-28",
+    "profCode": "PR001",
+    "studentRaw": "Bouchra Khazrouki",
+    "sessionNumber": 27,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal Bouchra Khazrouki",
+    "note": null
+  },
+  {
+    "date": "2026-04-01",
+    "profCode": "PR001",
+    "studentRaw": "Imran En Nidem",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Fazil Saeeda",
+    "note": null
+  },
+  {
+    "date": "2026-03-30",
+    "profCode": "PR001",
+    "studentRaw": "Neima Abdillahi farah",
+    "sessionNumber": null,
+    "amount": 22.48,
+    "paymentType": "PAYPAL",
+    "payerName": "ayrpal :Neima Abdillahi farah",
+    "note": null
+  },
+  {
+    "date": "2026-04-03",
+    "profCode": "PR001",
+    "studentRaw": "Dilek",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "Kadioglu Dilek",
+    "note": null
+  },
+  {
+    "date": "2026-04-03",
+    "profCode": "PR001",
+    "studentRaw": "Monia Ben Abdallah",
+    "sessionNumber": 14,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Monia Ben Abdallah",
+    "note": null
+  },
+  {
+    "date": "2026-04-03",
+    "profCode": "PR001",
+    "studentRaw": "Syrine Hagani",
+    "sessionNumber": 25,
+    "amount": 56.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "24+32 / A payé pour 2 sessions "
+  },
+  {
+    "date": "2026-04-04",
+    "profCode": "PR001",
+    "studentRaw": "Hassani Aboukaria",
+    "sessionNumber": 12,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aboukaria Hassani",
+    "note": "24 + 4"
+  },
+  {
+    "date": "2026-04-04",
+    "profCode": "PR001",
+    "studentRaw": "Lillyana Beaujon",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal. : Lillyana Beaujon",
+    "note": "reprise des cours "
+  },
+  {
+    "date": "2026-04-06",
+    "profCode": "PR001",
+    "studentRaw": "Beldia Umm Narimen",
+    "sessionNumber": 39,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Narimen",
+    "note": null
+  },
+  {
+    "date": "2026-04-07",
+    "profCode": "PR001",
+    "studentRaw": "Nahil Touhil",
+    "sessionNumber": 7,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Jihane Hajiri",
+    "note": null
+  },
+  {
+    "date": "2026-04-07",
+    "profCode": "PR001",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 12,
+    "amount": 10.5,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Carole",
+    "note": "3 cours de 30min par session "
+  },
+  {
+    "date": "2026-04-07",
+    "profCode": "PR001",
+    "studentRaw": "Awa niasse",
+    "sessionNumber": 2,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Niasse Awa",
+    "note": null
+  },
+  {
+    "date": "2026-04-07",
+    "profCode": "PR001",
+    "studentRaw": "Zahra Elmi Daher",
+    "sessionNumber": 9,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Zahra Elmi Daher",
+    "note": null
+  },
+  {
+    "date": "2026-04-09",
+    "profCode": "PR001",
+    "studentRaw": "Ismail Fagour",
+    "sessionNumber": 15,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Wiliam Fagour",
+    "note": null
+  },
+  {
+    "date": "2026-04-09",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Elmi Daher",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hawa Elmii Daher",
+    "note": "24+4"
+  },
+  {
+    "date": "2026-04-08",
+    "profCode": "PR001",
+    "studentRaw": "Nour El Houda / Fatima",
+    "sessionNumber": 4,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Maryam Lachagar",
+    "note": null
+  },
+  {
+    "date": "2026-04-08",
+    "profCode": "PR001",
+    "studentRaw": "llyes Destouches",
+    "sessionNumber": 8,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bilal Destouches",
+    "note": null
+  },
+  {
+    "date": "2026-04-10",
+    "profCode": "PR001",
+    "studentRaw": "Fatiha",
+    "sessionNumber": 21,
+    "amount": 20.57,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fatiha Abdillah Farah",
+    "note": "frais noté sur le tableau."
+  },
+  {
+    "date": "2026-04-12",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Bagayoko",
+    "sessionNumber": 3,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fatouma Bagayokho",
+    "note": null
+  },
+  {
+    "date": "2026-04-12",
+    "profCode": "PR001",
+    "studentRaw": "Nihal Bint Dilek",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-04-12",
+    "profCode": "PR001",
+    "studentRaw": "Diilek",
+    "sessionNumber": 4,
+    "amount": 42.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-04-13",
+    "profCode": "PR001",
+    "studentRaw": "Imane Destouches",
+    "sessionNumber": 12,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :",
+    "note": null
+  },
+  {
+    "date": "2026-04-13",
+    "profCode": "PR001",
+    "studentRaw": "Kady Cissokho",
+    "sessionNumber": 30,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aminata Cissokho",
+    "note": null
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Gandega",
+    "sessionNumber": 6,
+    "amount": 10.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hawa Gandega",
+    "note": "PAIEMENT TOTAL 66"
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR001",
+    "studentRaw": "Aicha Gandega",
+    "sessionNumber": 7,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "PAIEMENT TOTAL 66"
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR001",
+    "studentRaw": "Gnouma Gandega",
+    "sessionNumber": 6,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "PAIEMENT TOTAL 66"
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR001",
+    "studentRaw": "Hamza - Nourniyyah",
+    "sessionNumber": 18,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "PAIEMENT TOTAL 66"
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR001",
+    "studentRaw": "Hamza Coran",
+    "sessionNumber": 18,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "PAIEMENT TOTAL 66"
+  },
+  {
+    "date": "2026-04-18",
+    "profCode": "PR001",
+    "studentRaw": "Angélique",
+    "sessionNumber": 5,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Ruez Angélique",
+    "note": null
+  },
+  {
+    "date": "2026-04-19",
+    "profCode": "PR001",
+    "studentRaw": "Ibrahim Bouslane",
+    "sessionNumber": 17,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Nour Al Houda Firane",
+    "note": null
+  },
+  {
+    "date": "2026-04-20",
+    "profCode": "PR001",
+    "studentRaw": "Diani Cissé",
+    "sessionNumber": 5,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal: Diani",
+    "note": "24+4"
+  },
+  {
+    "date": "2026-04-20",
+    "profCode": "PR001",
+    "studentRaw": "Al Fakroun Farida",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "MME EL KAFROUN ABDELOUAFI",
+    "note": null
+  },
+  {
+    "date": "2026-04-22",
+    "profCode": "PR001",
+    "studentRaw": "Atika",
+    "sessionNumber": 5,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal Sedki",
+    "note": "28+14eros (car elle a ajouté 2 cours par session) + Elle a offert 2 cours a sa soeur Farida "
+  },
+  {
+    "date": "2026-04-23",
+    "profCode": "PR001",
+    "studentRaw": "Ismael Ait Amer Meziane",
+    "sessionNumber": 9,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Sofiane Ait Amer Meziane",
+    "note": null
+  },
+  {
+    "date": "0202-04-23",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Touré",
+    "sessionNumber": 14,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "Fatoumata toure",
+    "note": null
+  },
+  {
+    "date": "1936-03-25",
+    "profCode": "PR003",
+    "studentRaw": "Khady dramé",
+    "sessionNumber": 26,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Khady dramé",
+    "note": "à fait un payement de 12+2euros"
+  },
+  {
+    "date": "2026-03-30",
+    "profCode": "PR003",
+    "studentRaw": "Yasmine",
+    "sessionNumber": 19,
+    "amount": 14.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "RAS"
+  },
+  {
+    "date": "2026-03-30",
+    "profCode": "PR003",
+    "studentRaw": "Nadia",
+    "sessionNumber": 29,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-03-30",
+    "profCode": "PR003",
+    "studentRaw": "Maissa",
+    "sessionNumber": 19,
+    "amount": 14.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-04-03",
+    "profCode": "PR003",
+    "studentRaw": "Madina dramé",
+    "sessionNumber": 26,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal. Khady dramé",
+    "note": null
+  },
+  {
+    "date": "2026-04-04",
+    "profCode": "PR003",
+    "studentRaw": "Sidibé Mariame et Adjaratou",
+    "sessionNumber": 10,
+    "amount": 42.0,
+    "paymentType": "WISE",
+    "payerName": "mariame",
+    "note": "34+8"
+  },
+  {
+    "date": "2026-04-06",
+    "profCode": "PR003",
+    "studentRaw": "Coumba Faye",
+    "sessionNumber": 13,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Koumba FAYE",
+    "note": "À payé 58 au total"
+  },
+  {
+    "date": "2026-04-06",
+    "profCode": "PR003",
+    "studentRaw": "Djenaba / Hassane",
+    "sessionNumber": 7,
+    "amount": 34.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Koumba Faye",
+    "note": "À payé 58 "
+  },
+  {
+    "date": "2026-04-08",
+    "profCode": "PR003",
+    "studentRaw": "Haby Tajwid",
+    "sessionNumber": 3,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": "60 + 10"
+  },
+  {
+    "date": "2026-04-08",
+    "profCode": "PR003",
+    "studentRaw": "Haby Quran",
+    "sessionNumber": 4,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : 👆🏾",
+    "note": null
+  },
+  {
+    "date": "2026-04-08",
+    "profCode": "PR003",
+    "studentRaw": "Kayna",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "👆🏾",
+    "note": null
+  },
+  {
+    "date": "2026-04-08",
+    "profCode": "PR003",
+    "studentRaw": "Aicha",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "👆🏾",
+    "note": null
+  },
+  {
+    "date": "2026-04-08",
+    "profCode": "PR003",
+    "studentRaw": "Nouhayla / Zakariyyah Ahdoum / 30-10",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Ahdoum Mahjouba",
+    "note": "14 chacun "
+  },
+  {
+    "date": "2026-04-11",
+    "profCode": "PR003",
+    "studentRaw": "Manel Loussaifi",
+    "sessionNumber": 7,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Manel El Mahroum",
+    "note": null
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR003",
+    "studentRaw": "Unayssa",
+    "sessionNumber": 24,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hatika Hamada",
+    "note": "84 euros pour 2 session, de même pour Tesnim"
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR003",
+    "studentRaw": "Tesnim",
+    "sessionNumber": 25,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hatika Hamada",
+    "note": null
+  },
+  {
+    "date": "2026-04-20",
+    "profCode": "PR003",
+    "studentRaw": "Khady dramé",
+    "sessionNumber": 27,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Khadi drame",
+    "note": "TOTAL 35"
+  },
+  {
+    "date": "2026-04-22",
+    "profCode": "PR003",
+    "studentRaw": "Sidibé Mariame et Adjaratou",
+    "sessionNumber": 11,
+    "amount": 42.0,
+    "paymentType": "WISE",
+    "payerName": "MARIAM SIDIBE",
+    "note": null
+  },
+  {
+    "date": "2026-04-04",
+    "profCode": "PR002",
+    "studentRaw": "Neima",
+    "sessionNumber": 5,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Deka Hassan",
+    "note": "24+4"
+  },
+  {
+    "date": "2026-04-09",
+    "profCode": "PR002",
+    "studentRaw": "Aminata Umm Mohamed",
+    "sessionNumber": 11,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aminata Diani",
+    "note": "Pour 2 sessions"
+  },
+  {
+    "date": "2026-04-20",
+    "profCode": "PR002",
+    "studentRaw": "Omaya Kabteni",
+    "sessionNumber": 8,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Najiba Agharbi",
+    "note": null
+  },
+  {
+    "date": "2026-03-26",
+    "profCode": "PR008",
+    "studentRaw": "Kenza Bouffera",
+    "sessionNumber": 12,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal. :",
+    "note": null
+  },
+  {
+    "date": "2026-04-07",
+    "profCode": "PR008",
+    "studentRaw": "Maeva Raymond",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-04-07",
+    "profCode": "PR008",
+    "studentRaw": "Mariame/Adjaratou",
+    "sessionNumber": 6,
+    "amount": 42.0,
+    "paymentType": "WISE",
+    "payerName": "Mariam Sidibé",
+    "note": null
+  },
+  {
+    "date": "2026-08-04",
+    "profCode": "PR008",
+    "studentRaw": "⭐ Nouvel élève : Mathilde Raymond",
+    "sessionNumber": null,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Nicolas Chane-Law",
+    "note": null
+  },
+  {
+    "date": "2026-04-18",
+    "profCode": "PR008",
+    "studentRaw": "Lina",
+    "sessionNumber": 2,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "OK",
+    "note": null
+  },
+  {
+    "date": "2026-03-28",
+    "profCode": "PR005",
+    "studentRaw": "Sakina",
+    "sessionNumber": 24,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : SIKINA MADI MBIROU",
+    "note": null
+  },
+  {
+    "date": "2026-04-01",
+    "profCode": "PR005",
+    "studentRaw": "Kenza Ben Yahyia",
+    "sessionNumber": 11,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "AYPAL : Kenza Ben yahyia",
+    "note": null
+  },
+  {
+    "date": "2026-04-10",
+    "profCode": "PR005",
+    "studentRaw": "Famille Arrar",
+    "sessionNumber": 22,
+    "amount": 128.0,
+    "paymentType": null,
+    "payerName": "Vue avec idriss",
+    "note": null
+  },
+  {
+    "date": "2026-04-13",
+    "profCode": "PR005",
+    "studentRaw": "Imanes Destouches",
+    "sessionNumber": 18,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Imanes destouches",
+    "note": null
+  },
+  {
+    "date": "2026-04-13",
+    "profCode": "PR005",
+    "studentRaw": "Deka / Neima",
+    "sessionNumber": 18,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hassan Deka",
+    "note": null
+  },
+  {
+    "date": "2026-04-15",
+    "profCode": "PR005",
+    "studentRaw": "Aîcha Diaby",
+    "sessionNumber": 6,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : aisseeta Diaby",
+    "note": null
+  },
+  {
+    "date": "2026-04-17",
+    "profCode": "PR005",
+    "studentRaw": "Marietou Umm Ibrahim",
+    "sessionNumber": 6,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Marietou",
+    "note": null
+  },
+  {
+    "date": "2026-04-21",
+    "profCode": "PR005",
+    "studentRaw": "Belili Rosa",
+    "sessionNumber": 4,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fahima Bellili",
+    "note": null
+  },
+  {
+    "date": "2026-04-18",
+    "profCode": "PR005",
+    "studentRaw": "Ouidathi",
+    "sessionNumber": 24,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": "HARITHI OUIDATI",
+    "note": null
+  },
+  {
+    "date": "2026-03-02",
+    "profCode": "PR006",
+    "studentRaw": "Maeva",
+    "sessionNumber": 2,
+    "amount": 14.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "ok"
+  },
+  {
+    "date": "2024-04-10",
+    "profCode": "PR006",
+    "studentRaw": "Mahady Dramé",
+    "sessionNumber": 6,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Khadi dramé",
+    "note": "OK"
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR006",
+    "studentRaw": "Meryem Bhamed",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Salima Bourzami (via ancienne adresse assahaba)",
+    "note": "OK"
+  },
+  {
+    "date": "2026-04-12",
+    "profCode": "PR006",
+    "studentRaw": "Sirine Jami",
+    "sessionNumber": 7,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Wafa Mazigh",
+    "note": "ok"
+  },
+  {
+    "date": "2026-04-21",
+    "profCode": "PR006",
+    "studentRaw": "Esma Jami",
+    "sessionNumber": 7,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Wafa Mazigh",
+    "note": "ok"
+  },
+  {
+    "date": "2026-03-26",
+    "profCode": "PR007",
+    "studentRaw": "Maissa",
+    "sessionNumber": 26,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Idriss",
+    "note": null
+  },
+  {
+    "date": "2026-04-02",
+    "profCode": "PR007",
+    "studentRaw": "Maeva",
+    "sessionNumber": 12,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-04-07",
+    "profCode": "PR007",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 20,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Carole",
+    "note": null
+  },
+  {
+    "date": "2026-04-14",
+    "profCode": "PR007",
+    "studentRaw": "Ines Ait Amer Meziane",
+    "sessionNumber": 8,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Sana",
+    "note": null
+  },
+  {
+    "date": "2026-04-10",
+    "profCode": "PR007",
+    "studentRaw": "Maissa",
+    "sessionNumber": 27,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Idriss",
+    "note": null
+  },
+  {
+    "date": "2026-04-20",
+    "profCode": "PR007",
+    "studentRaw": "Dado et Ouma Diarra",
+    "sessionNumber": 11,
+    "amount": 40.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aissatou Diarra",
+    "note": " 20+20"
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR004",
+    "studentRaw": "⭐ Nouvel élève : Fatoumata Gary",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :",
+    "note": "28+10euros de frais d'inscription"
+  },
+  {
+    "date": "2026-04-14",
+    "profCode": "PR004",
+    "studentRaw": "Cira Diallo",
+    "sessionNumber": 5,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : CiraDiallo",
+    "note": null
+  },
+  {
+    "date": "2026-04-16",
+    "profCode": "PR004",
+    "studentRaw": "Leina",
+    "sessionNumber": 6,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Naoual Haddoch",
+    "note": null
+  },
+  {
+    "date": "2026-04-20",
+    "profCode": "PR004",
+    "studentRaw": "Madina dramé",
+    "sessionNumber": 29,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Khadi drame",
+    "note": "TOTAL 35"
+  },
+  {
+    "date": "2026-11-04",
+    "profCode": "PR009",
+    "studentRaw": "⭐ Nouvel élève : Rokya Sanogo",
+    "sessionNumber": null,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Rokya Sanogo",
+    "note": "56 + 10eros de frais d'rinscritpion"
+  },
+  {
+    "date": "2026-02-26",
+    "profCode": "PR001",
+    "studentRaw": "Diani Cisse",
+    "sessionNumber": 4,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Diani cisse",
+    "note": null
+  },
+  {
+    "date": "2026-02-27",
+    "profCode": "PR001",
+    "studentRaw": "Salimata CORAN",
+    "sessionNumber": 11,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Salimata Bagayoko",
+    "note": "TOTAL 26e (erreur de 2euro)"
+  },
+  {
+    "date": "2026-02-27",
+    "profCode": "PR001",
+    "studentRaw": "Salimata Mouton",
+    "sessionNumber": 11,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Salimata Bagayoko",
+    "note": "TOTAL 26e (erreur de 2euro)"
+  },
+  {
+    "date": "2026-02-27",
+    "profCode": "PR001",
+    "studentRaw": "Sihem Chaib",
+    "sessionNumber": 5,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Mohamed Bounouhi",
+    "note": null
+  },
+  {
+    "date": "2026-02-28",
+    "profCode": "PR001",
+    "studentRaw": "Ismail Ait Amer Mezian",
+    "sessionNumber": 7,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Sofiane Ait Amer Meziane",
+    "note": null
+  },
+  {
+    "date": "2026-02-01",
+    "profCode": "PR001",
+    "studentRaw": "Bouchra Khazrouki",
+    "sessionNumber": 26,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bouchra Khazrouki",
+    "note": null
+  },
+  {
+    "date": "0206-03-02",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Touré",
+    "sessionNumber": 13,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "MLE FATIMA DIABY",
+    "note": null
+  },
+  {
+    "date": "2026-03-03",
+    "profCode": "PR001",
+    "studentRaw": "Imran En Nidem",
+    "sessionNumber": 5,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Fazil Saeeda",
+    "note": null
+  },
+  {
+    "date": "2026-03-04",
+    "profCode": "PR001",
+    "studentRaw": "Mounia Ben Abdallah sesion 13",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Monia Ben Abdallah",
+    "note": null
+  },
+  {
+    "date": "2026-03-05",
+    "profCode": "PR001",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 11,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Carole Barros",
+    "note": "A payé 40 car cours avec Sarah "
+  },
+  {
+    "date": "2026-03-05",
+    "profCode": "PR001",
+    "studentRaw": "Nahil Touil",
+    "sessionNumber": 6,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Jihane Hajiri",
+    "note": null
+  },
+  {
+    "date": "1936-03-05",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Elmi Daher",
+    "sessionNumber": 5,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hawa Elmi Daher",
+    "note": null
+  },
+  {
+    "date": "2026-03-06",
+    "profCode": "PR001",
+    "studentRaw": "Laura Lespelette",
+    "sessionNumber": 3,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "laura lespelette",
+    "note": "a payé 45 car cours avecFatima "
+  },
+  {
+    "date": "2026-03-06",
+    "profCode": "PR001",
+    "studentRaw": "Dilek",
+    "sessionNumber": 24,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "Kadioglu Dilek",
+    "note": null
+  },
+  {
+    "date": "2026-03-06",
+    "profCode": "PR001",
+    "studentRaw": "Syrine Hagani",
+    "sessionNumber": 24,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "MME HAGANI RHARIBA",
+    "note": null
+  },
+  {
+    "date": "2026-06-03",
+    "profCode": "PR001",
+    "studentRaw": "Al Hammari Hajar",
+    "sessionNumber": null,
+    "amount": 4.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hajar El ammari",
+    "note": "elles font finalement 1H de nouraniyyah  et 1H e quran "
+  },
+  {
+    "date": "2026-06-03",
+    "profCode": "PR001",
+    "studentRaw": "Magassa Founé",
+    "sessionNumber": null,
+    "amount": 4.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :Founé Magassa",
+    "note": "elles font finalemnt 1H de nouraniyyah et 1H de uran "
+  },
+  {
+    "date": "2026-03-09",
+    "profCode": "PR001",
+    "studentRaw": "Imanes Destouches",
+    "sessionNumber": 11,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Imanes destouches",
+    "note": null
+  },
+  {
+    "date": "2026-03-09",
+    "profCode": "PR001",
+    "studentRaw": "Hassani Aboukaria",
+    "sessionNumber": 11,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aboukaria Hassani",
+    "note": null
+  },
+  {
+    "date": "2026-03-10",
+    "profCode": "PR001",
+    "studentRaw": "Zahra Elmi Daher",
+    "sessionNumber": 8,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Zahra Elmi Daher",
+    "note": "A payé le reste à charge "
+  },
+  {
+    "date": "2026-10-03",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Awa Niasse",
+    "sessionNumber": null,
+    "amount": 18.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "28 car frais d'inscritpion "
+  },
+  {
+    "date": "2026-03-12",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Bagayoko",
+    "sessionNumber": 2,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bagayoko Fatouma",
+    "note": null
+  },
+  {
+    "date": "2026-03-13",
+    "profCode": "PR001",
+    "studentRaw": "Ismael Fagour - SESSIOON 14",
+    "sessionNumber": null,
+    "amount": 36.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal = Wiliam Fagour",
+    "note": null
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR001",
+    "studentRaw": "Nihal Bien Dilek",
+    "sessionNumber": 2,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": "EM Dilek",
+    "note": null
+  },
+  {
+    "date": "2026-03-15",
+    "profCode": "PR001",
+    "studentRaw": "Beldia",
+    "sessionNumber": 38,
+    "amount": 36.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Narimen",
+    "note": null
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR001",
+    "studentRaw": "Aicha /Gnouma",
+    "sessionNumber": 5,
+    "amount": 11.3,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Dado Diallo👇🏾",
+    "note": "A payé 46 euros pour les 4"
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Gandega",
+    "sessionNumber": 5,
+    "amount": 8.0,
+    "paymentType": null,
+    "payerName": "👇🏾",
+    "note": null
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR001",
+    "studentRaw": "Hamza Gandega",
+    "sessionNumber": 17,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "👇🏾",
+    "note": null
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR001",
+    "studentRaw": "Hamza Gandega",
+    "sessionNumber": 17,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "👆🏾",
+    "note": null
+  },
+  {
+    "date": "2026-03-18",
+    "profCode": "PR001",
+    "studentRaw": "Khady Cissokho",
+    "sessionNumber": 29,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :Khady cissokho",
+    "note": null
+  },
+  {
+    "date": "2026-03-18",
+    "profCode": "PR001",
+    "studentRaw": "Angélique",
+    "sessionNumber": 4,
+    "amount": 48.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Ruez Angélique",
+    "note": null
+  },
+  {
+    "date": "2026-03-18",
+    "profCode": "PR001",
+    "studentRaw": "Fatima et Nour al Houda",
+    "sessionNumber": 3,
+    "amount": 34.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Maryam lachagar",
+    "note": "17 chacune "
+  },
+  {
+    "date": "2026-03-19",
+    "profCode": "PR001",
+    "studentRaw": "Ilyes Destouches",
+    "sessionNumber": 7,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bilal Destouches",
+    "note": null
+  },
+  {
+    "date": "2026-03-23",
+    "profCode": "PR001",
+    "studentRaw": "Saadia Umm Aaliyah",
+    "sessionNumber": 21,
+    "amount": 51.96,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :",
+    "note": "48 + FRAIS PPL"
+  },
+  {
+    "date": "2026-03-22",
+    "profCode": "PR001",
+    "studentRaw": "El fakroun Farida",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-03-23",
+    "profCode": "PR001",
+    "studentRaw": "Ibrahim Bouslane",
+    "sessionNumber": 16,
+    "amount": 48.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Nour El Houda Firrrane",
+    "note": null
+  },
+  {
+    "date": "2026-03-24",
+    "profCode": "PR001",
+    "studentRaw": "Chenaoui Insaf",
+    "sessionNumber": 4,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Insaf",
+    "note": null
+  },
+  {
+    "date": "2026-03-03",
+    "profCode": "PR003",
+    "studentRaw": "Khady Dramé",
+    "sessionNumber": 25,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Khadi dramé",
+    "note": null
+  },
+  {
+    "date": "2026-03-04",
+    "profCode": "PR003",
+    "studentRaw": "Nadia",
+    "sessionNumber": 28,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "DIRECTEUR",
+    "note": null
+  },
+  {
+    "date": "2026-03-04",
+    "profCode": "PR003",
+    "studentRaw": "Yasmine",
+    "sessionNumber": 18,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": "DIRECTEUR",
+    "note": null
+  },
+  {
+    "date": "2026-03-04",
+    "profCode": "PR003",
+    "studentRaw": "Maissa",
+    "sessionNumber": 18,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": "DIRECTEUR",
+    "note": null
+  },
+  {
+    "date": "2026-03-05",
+    "profCode": "PR003",
+    "studentRaw": "Mokhtari Nassira",
+    "sessionNumber": 3,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Nassira Mokhtar",
+    "note": null
+  },
+  {
+    "date": "2026-03-05",
+    "profCode": "PR003",
+    "studentRaw": "Marietou Umm Ibrahim",
+    "sessionNumber": 18,
+    "amount": 9.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Marietou Bgayoko",
+    "note": " 9 car on lui devant 3euros"
+  },
+  {
+    "date": "2026-03-07",
+    "profCode": "PR003",
+    "studentRaw": "Dieynaba - Aissatou et Hassan",
+    "sessionNumber": 6,
+    "amount": 34.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Ko Faye",
+    "note": null
+  },
+  {
+    "date": "2026-03-05",
+    "profCode": "PR003",
+    "studentRaw": "Nouhayla",
+    "sessionNumber": 40,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "ayal : Ahdoum Mahjouba",
+    "note": "A  payer 24 car il y a son frère aussi "
+  },
+  {
+    "date": "2026-03-05",
+    "profCode": "PR003",
+    "studentRaw": "Zaariyyah",
+    "sessionNumber": 10,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Ahdoum Mahjouba",
+    "note": "24 car il y a sa soeur "
+  },
+  {
+    "date": "2026-03-13",
+    "profCode": "PR003",
+    "studentRaw": "Maydani Fagour - SESSIOON 12",
+    "sessionNumber": null,
+    "amount": 72.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal = Wiliam Fagour",
+    "note": null
+  },
+  {
+    "date": "2026-03-15",
+    "profCode": "PR003",
+    "studentRaw": "Manel Loussaifi",
+    "sessionNumber": 6,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Manel El Marhoum",
+    "note": null
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR003",
+    "studentRaw": "Haby Tajwid",
+    "sessionNumber": 2,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": "12+48 SUR PAYPAL"
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR003",
+    "studentRaw": "Haby Coran",
+    "sessionNumber": 3,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": null
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR003",
+    "studentRaw": "Kayna",
+    "sessionNumber": 3,
+    "amount": 18.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": null
+  },
+  {
+    "date": "2026-03-14",
+    "profCode": "PR003",
+    "studentRaw": "Aicha",
+    "sessionNumber": 3,
+    "amount": 18.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": null
+  },
+  {
+    "date": "2026-03-24",
+    "profCode": "PR003",
+    "studentRaw": "Kenzi / Ibado",
+    "sessionNumber": null,
+    "amount": 380.09,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal ;",
+    "note": "Envoyer 400 dont 19?91 de frai paypal "
+  },
+  {
+    "date": "2026-02-28",
+    "profCode": "PR002",
+    "studentRaw": "Neima",
+    "sessionNumber": 4,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Deka Hassan",
+    "note": null
+  },
+  {
+    "date": "2026-03-24",
+    "profCode": "PR002",
+    "studentRaw": "Omaya Kabteni",
+    "sessionNumber": 7,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :Najiba agharbi",
+    "note": null
+  },
+  {
+    "date": "2026-02-28",
+    "profCode": "PR008",
+    "studentRaw": "Mariam-Adjaratou",
+    "sessionNumber": 7,
+    "amount": 42.0,
+    "paymentType": "WISE",
+    "payerName": "Mariame Sidibé",
+    "note": null
+  },
+  {
+    "date": "2026-05-03",
+    "profCode": "PR008",
+    "studentRaw": "⭐ Nouvel élève : Oum Sajid",
+    "sessionNumber": null,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Oumrati Mohamed",
+    "note": null
+  },
+  {
+    "date": "2026-09-03",
+    "profCode": "PR008",
+    "studentRaw": "⭐ Nouvel élève : Lina",
+    "sessionNumber": null,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Dorothee Cail",
+    "note": "(paiment prix par le directeur car 13600)"
+  },
+  {
+    "date": "2026-02-28",
+    "profCode": "PR005",
+    "studentRaw": "Marietou Umm Ibrahim",
+    "sessionNumber": 5,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Mariame Bagayoko",
+    "note": null
+  },
+  {
+    "date": "2026-02-28",
+    "profCode": "PR005",
+    "studentRaw": "Aicha Diaby",
+    "sessionNumber": 5,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : aisseta Diaby",
+    "note": null
+  },
+  {
+    "date": "2026-02-28",
+    "profCode": "PR005",
+    "studentRaw": "Imane Destouchhes",
+    "sessionNumber": 17,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Imanes Destouches",
+    "note": null
+  },
+  {
+    "date": "2026-03-06",
+    "profCode": "PR005",
+    "studentRaw": "Belili Rosa",
+    "sessionNumber": 3,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Mahady Diaby",
+    "note": null
+  },
+  {
+    "date": "2026-02-27",
+    "profCode": "PR006",
+    "studentRaw": "Nour Ederrkaoui",
+    "sessionNumber": 17,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Asmaa Elkhalfaoui",
+    "note": null
+  },
+  {
+    "date": "2026-03-03",
+    "profCode": "PR006",
+    "studentRaw": "Meryem Ederkaoui",
+    "sessionNumber": 5,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Asmaa Alkhalfaoui",
+    "note": null
+  },
+  {
+    "date": "2026-03-03",
+    "profCode": "PR006",
+    "studentRaw": "Esma Jami",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Wafa Mazigh",
+    "note": null
+  },
+  {
+    "date": "1936-03-05",
+    "profCode": "PR007",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 19,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Carole Barros",
+    "note": " A payé 40 car ours avec Samia Umm Abdillah "
+  },
+  {
+    "date": "2026-03-17",
+    "profCode": "PR007",
+    "studentRaw": "Dado Diarra",
+    "sessionNumber": 10,
+    "amount": 20.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aissatou Diarra",
+    "note": "40euros car moitié pour Oumou "
+  },
+  {
+    "date": "2026-03-17",
+    "profCode": "PR007",
+    "studentRaw": "Oumou Diarra",
+    "sessionNumber": 10,
+    "amount": 20.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aissatou Diarra",
+    "note": null
+  },
+  {
+    "date": "2026-03-17",
+    "profCode": "PR007",
+    "studentRaw": "Ines Ait Amer Meziane",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :",
+    "note": null
+  },
+  {
+    "date": "2026-03-06",
+    "profCode": "PR004",
+    "studentRaw": "Lara Lespelette",
+    "sessionNumber": 7,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "A payé 45 car cours avec Samia oum abdirahman "
+  },
+  {
+    "date": "2026-03-15",
+    "profCode": "PR004",
+    "studentRaw": "Najat",
+    "sessionNumber": 2,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Najat Abbsadouk",
+    "note": null
+  },
+  {
+    "date": "2026-03-17",
+    "profCode": "PR004",
+    "studentRaw": "Madina Dramé",
+    "sessionNumber": 18,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Dramé Khady",
+    "note": null
+  },
+  {
+    "date": "2026-03-17",
+    "profCode": "PR004",
+    "studentRaw": "Leina",
+    "sessionNumber": 20,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Naoual Haddouhe",
+    "note": null
+  },
+  {
+    "date": "2016-01-25",
+    "profCode": "PR001",
+    "studentRaw": "Al Fakroun Farida - SESSSION 2",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bouchra Khazrouki",
+    "note": null
+  },
+  {
+    "date": "2026-01-26",
+    "profCode": "PR001",
+    "studentRaw": "Ismael Fagour",
+    "sessionNumber": 13,
+    "amount": 36.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : William Fagour",
+    "note": null
+  },
+  {
+    "date": "2026-01-26",
+    "profCode": "PR001",
+    "studentRaw": "Atika Sedki",
+    "sessionNumber": 2,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal Atika Sedki",
+    "note": null
+  },
+  {
+    "date": "2026-01-26",
+    "profCode": "PR001",
+    "studentRaw": "Ibrahim Bouslane",
+    "sessionNumber": 15,
+    "amount": 48.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Nour El Houda Firane",
+    "note": null
+  },
+  {
+    "date": "2026-01-28",
+    "profCode": "PR001",
+    "studentRaw": "Imran En nidem",
+    "sessionNumber": 4,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fazil Saeeda",
+    "note": null
+  },
+  {
+    "date": "2026-01-30",
+    "profCode": "PR001",
+    "studentRaw": "Hanane Boukhalfa",
+    "sessionNumber": 4,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "Boukhalfa Dounia (whatsap: bouchiki)",
+    "note": null
+  },
+  {
+    "date": "2026-01-30",
+    "profCode": "PR001",
+    "studentRaw": "Syrine Hagani",
+    "sessionNumber": 23,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Syrine Hagani",
+    "note": null
+  },
+  {
+    "date": "2026-01-31",
+    "profCode": "PR001",
+    "studentRaw": "Nahïl Touhil",
+    "sessionNumber": 5,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Jihan Hajri",
+    "note": null
+  },
+  {
+    "date": "2026-01-31",
+    "profCode": "PR001",
+    "studentRaw": "Bouchra Kharzrouki",
+    "sessionNumber": 25,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Bouchra Khazrouki",
+    "note": null
+  },
+  {
+    "date": "2026-02-02",
+    "profCode": "PR001",
+    "studentRaw": "Imane Destouches",
+    "sessionNumber": 10,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : imane destouches",
+    "note": null
+  },
+  {
+    "date": "2026-02-03",
+    "profCode": "PR001",
+    "studentRaw": "Siham Chaïb",
+    "sessionNumber": 4,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Mohamed Bounouhi",
+    "note": null
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR001",
+    "studentRaw": "Dilek",
+    "sessionNumber": 23,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "Kadioglu Dilek",
+    "note": null
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR001",
+    "studentRaw": "Hassani Aboukaria",
+    "sessionNumber": 10,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aboukaria Hassani",
+    "note": null
+  },
+  {
+    "date": "2026-02-05",
+    "profCode": "PR001",
+    "studentRaw": "Fatiha",
+    "sessionNumber": 20,
+    "amount": 23.43,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fathia Abdillahi farah",
+    "note": "25 euros dont 6,28 de frais paypal (pour les prochains mois) "
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR001",
+    "studentRaw": "Laura Lespiette",
+    "sessionNumber": 2,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "MLE LAURA LESPILETTE",
+    "note": "A payé 45euros car cours avec Ftima "
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR001",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 10,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Carole Barros",
+    "note": null
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR001",
+    "studentRaw": "Monia Ben Abdellah",
+    "sessionNumber": 12,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Monia Ben AbdaLlah",
+    "note": null
+  },
+  {
+    "date": "2026-02-07",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Touré",
+    "sessionNumber": 12,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "MLE FATOUMATA TOURE",
+    "note": null
+  },
+  {
+    "date": "2026-02-07",
+    "profCode": "PR001",
+    "studentRaw": "Angélique",
+    "sessionNumber": 3,
+    "amount": 48.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Ruez Angélique",
+    "note": null
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR001",
+    "studentRaw": "⭐️ Carina Um Abdillah",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Helena Figueirido Peres",
+    "note": "54 payement pour elle est Jenna + frais d'incription "
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR001",
+    "studentRaw": "⭐️ Jenna",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Helena Figueirido Peres",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-11",
+    "profCode": "PR001",
+    "studentRaw": "Hawa elmi Daher",
+    "sessionNumber": 4,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hawa Elmi Daher",
+    "note": null
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR001",
+    "studentRaw": "⭐️ Aicha Mennnadi",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypla Aicha Mennadi",
+    "note": null
+  },
+  {
+    "date": "2026-02-12",
+    "profCode": "PR001",
+    "studentRaw": "⭐️ Bagayoko Fatouma",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Bagayoko fatouma",
+    "note": null
+  },
+  {
+    "date": "2026-02-14",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Nihal Bint Dilek",
+    "sessionNumber": 1,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": "DILEK",
+    "note": null
+  },
+  {
+    "date": "2026-02-13",
+    "profCode": "PR001",
+    "studentRaw": "Nour El Houda",
+    "sessionNumber": 2,
+    "amount": 17.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Maryam Lachgar",
+    "note": "A payé 34 car duo avecFatima 👇🏾"
+  },
+  {
+    "date": "2026-02-13",
+    "profCode": "PR001",
+    "studentRaw": "Fatima",
+    "sessionNumber": 2,
+    "amount": 17.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Maryam Lachagar",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-14",
+    "profCode": "PR001",
+    "studentRaw": "Beldia Umm Narimen - SESION 37",
+    "sessionNumber": null,
+    "amount": 36.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Narimen",
+    "note": null
+  },
+  {
+    "date": "2026-02-16",
+    "profCode": "PR001",
+    "studentRaw": "Zahira Lamkadmi",
+    "sessionNumber": 3,
+    "amount": 96.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Houria Ouzyneb",
+    "note": "2 sessions "
+  },
+  {
+    "date": "2026-02-19",
+    "profCode": "PR001",
+    "studentRaw": "Insaf Chenaoui",
+    "sessionNumber": 3,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Insaf",
+    "note": null
+  },
+  {
+    "date": "2026-02-18",
+    "profCode": "PR001",
+    "studentRaw": "Khady cissokho",
+    "sessionNumber": 28,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aminata Cissoko",
+    "note": null
+  },
+  {
+    "date": "2026-02-18",
+    "profCode": "PR001",
+    "studentRaw": "Ibrahim Bouslane",
+    "sessionNumber": 16,
+    "amount": 48.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal Nour El houda firane",
+    "note": null
+  },
+  {
+    "date": "2026-02-20",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Gandega",
+    "sessionNumber": 4,
+    "amount": 8.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fodie Gandega",
+    "note": "46 POUR LES 4 👇🏾"
+  },
+  {
+    "date": "2026-02-20",
+    "profCode": "PR001",
+    "studentRaw": "Aicha et Gnouma Gendea",
+    "sessionNumber": 4,
+    "amount": 11.3,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fodie Gandega",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-20",
+    "profCode": "PR001",
+    "studentRaw": "Hamza Nouraniya",
+    "sessionNumber": 18,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fodie Gandega",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-20",
+    "profCode": "PR001",
+    "studentRaw": "Hamza Quran",
+    "sessionNumber": 17,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Fodie Gandega",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-20",
+    "profCode": "PR001",
+    "studentRaw": "Zahra Elmi Daher",
+    "sessionNumber": 6,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Zahra",
+    "note": "33 dont 21 &vec Fatima"
+  },
+  {
+    "date": "2026-02-23",
+    "profCode": "PR001",
+    "studentRaw": "Souane Rahma",
+    "sessionNumber": 22,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Rahma souane",
+    "note": null
+  },
+  {
+    "date": "2026-02-23",
+    "profCode": "PR001",
+    "studentRaw": "Atika",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "ayppal : Atika Sedki",
+    "note": null
+  },
+  {
+    "date": "2026-02-24",
+    "profCode": "PR001",
+    "studentRaw": "Karima",
+    "sessionNumber": 24,
+    "amount": 34.61,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :Karima El Kachari",
+    "note": "A payé pour 3 sessions (12euros la sessions) / frais payapal de 1?39"
+  },
+  {
+    "date": "2026-02-25",
+    "profCode": "PR001",
+    "studentRaw": "Al Fakroun Farida",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "Illian El Kafroun",
+    "note": null
+  },
+  {
+    "date": "2026-02-26",
+    "profCode": "PR001",
+    "studentRaw": "Karima",
+    "sessionNumber": 27,
+    "amount": 37.39,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :Karima El Kachari",
+    "note": "A payé pour 3 sessions (12euros la sessions) / frais payapal de 1?39"
+  },
+  {
+    "date": "2026-02-27",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Magassa Founé",
+    "sessionNumber": null,
+    "amount": 34.0,
+    "paymentType": null,
+    "payerName": "Magassa Founé",
+    "note": null
+  },
+  {
+    "date": "2026-02-27",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Al Ammari Hajar",
+    "sessionNumber": null,
+    "amount": 34.0,
+    "paymentType": null,
+    "payerName": "Hajar El Ammari",
+    "note": null
+  },
+  {
+    "date": "2026-01-30",
+    "profCode": "PR003",
+    "studentRaw": "Dieynaba-Aissatou et Hassane (",
+    "sessionNumber": 5,
+    "amount": 34.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : KO faye",
+    "note": "Paiement regroupé 58e 👇🏾"
+  },
+  {
+    "date": "2026-01-30",
+    "profCode": "PR003",
+    "studentRaw": "Koumba Faye CORAN (",
+    "sessionNumber": 12,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : KO faye",
+    "note": "Paiement regroupé 58e 👆🏾"
+  },
+  {
+    "date": "2026-01-30",
+    "profCode": "PR003",
+    "studentRaw": "Tasnim",
+    "sessionNumber": 23,
+    "amount": 18.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hatika Hamada",
+    "note": "Reçu 72€ payement groupé 👇🏾 pour 2 sessions "
+  },
+  {
+    "date": "2026-01-30",
+    "profCode": "PR003",
+    "studentRaw": "Uneyssa",
+    "sessionNumber": 23,
+    "amount": 18.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hatika Hamada",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-02",
+    "profCode": "PR003",
+    "studentRaw": "Marietou",
+    "sessionNumber": 17,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Marietou Bagayoko",
+    "note": "payement groupé avec Lilia 33euros au total, mais à payé 36 suite à une errer"
+  },
+  {
+    "date": "2026-02-03",
+    "profCode": "PR003",
+    "studentRaw": "Nadia Hofra",
+    "sessionNumber": 27,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "Nadia Hofra",
+    "note": null
+  },
+  {
+    "date": "2026-02-03",
+    "profCode": "PR003",
+    "studentRaw": "Ines Alamrani",
+    "sessionNumber": 26,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-02-03",
+    "profCode": "PR003",
+    "studentRaw": "Yasmina Hofra",
+    "sessionNumber": 17,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-02-03",
+    "profCode": "PR003",
+    "studentRaw": "Maissa Hofra",
+    "sessionNumber": 17,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR003",
+    "studentRaw": "Mokhtari Nassira",
+    "sessionNumber": 2,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Nassira Mokhar",
+    "note": null
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR003",
+    "studentRaw": "Hatouma Dembele",
+    "sessionNumber": 5,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : hatouma dembele",
+    "note": null
+  },
+  {
+    "date": "2026-02-09",
+    "profCode": "PR003",
+    "studentRaw": "Nouheyla Ahdoum",
+    "sessionNumber": 29,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": "MME AHDOUM MAHJOUBA",
+    "note": "À payé 24, dont 12 pour Zakariya👇🏾"
+  },
+  {
+    "date": "2026-02-09",
+    "profCode": "PR003",
+    "studentRaw": "Zakariya Ahdoum",
+    "sessionNumber": 9,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": "MME AHDOUM MAHJOUBA",
+    "note": "A payé 24,dont 12 pour Nouheyla 👆🏾"
+  },
+  {
+    "date": "2026-02-13",
+    "profCode": "PR003",
+    "studentRaw": "Kayna",
+    "sessionNumber": 2,
+    "amount": 18.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": "A payé 30 dont 12euros pour Haby 👇🏾"
+  },
+  {
+    "date": "2026-02-13",
+    "profCode": "PR003",
+    "studentRaw": "Haby",
+    "sessionNumber": 2,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": "A payé 30 dont 18 euros pour Kayna 👆🏾"
+  },
+  {
+    "date": "2026-02-13",
+    "profCode": "PR003",
+    "studentRaw": "Aicha",
+    "sessionNumber": 2,
+    "amount": 18.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": "Payement separé de Kayna et Haby "
+  },
+  {
+    "date": "2026-02-14",
+    "profCode": "PR003",
+    "studentRaw": "Haby (tajwid)",
+    "sessionNumber": 1,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haby Sy",
+    "note": "22euros dont 10 de frais"
+  },
+  {
+    "date": "2026-02-16",
+    "profCode": "PR003",
+    "studentRaw": "Sidibé Mariam",
+    "sessionNumber": 9,
+    "amount": 17.0,
+    "paymentType": "WISE",
+    "payerName": "Mariam Sidibé",
+    "note": "34, payement groupé. Avec adjaratou "
+  },
+  {
+    "date": "2026-02-16",
+    "profCode": "PR003",
+    "studentRaw": "Sidibé Adjaratou",
+    "sessionNumber": 9,
+    "amount": 17.0,
+    "paymentType": "WISE",
+    "payerName": "Mariam Sidibé",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-18",
+    "profCode": "PR003",
+    "studentRaw": "Manel Loussaifi",
+    "sessionNumber": 5,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal: Manel",
+    "note": null
+  },
+  {
+    "date": "2026-02-19",
+    "profCode": "PR003",
+    "studentRaw": "Madina",
+    "sessionNumber": 25,
+    "amount": 12.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Khadi dramé",
+    "note": "Paiement groupe 12+14 = 26"
+  },
+  {
+    "date": "2026-02-05",
+    "profCode": "PR002",
+    "studentRaw": "Meryem Bahamed",
+    "sessionNumber": 5,
+    "amount": 48.0,
+    "paymentType": "WISE",
+    "payerName": "BOURZAMI SALIMA",
+    "note": "76 payé car  cours avec Maria aussi "
+  },
+  {
+    "date": "2026-02-07",
+    "profCode": "PR002",
+    "studentRaw": "Ouidati Harithi",
+    "sessionNumber": 6,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "HARITHI OUIDATI",
+    "note": null
+  },
+  {
+    "date": "2026-02-23",
+    "profCode": "PR002",
+    "studentRaw": "Omaya Kabteni",
+    "sessionNumber": 6,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Najiba Agharbi",
+    "note": null
+  },
+  {
+    "date": "2026-02-24",
+    "profCode": "PR002",
+    "studentRaw": "Aminata Oum Mohamed",
+    "sessionNumber": 6,
+    "amount": 24.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Haa Aminata Diani",
+    "note": null
+  },
+  {
+    "date": "2026-01-27",
+    "profCode": "PR008",
+    "studentRaw": "Nail Ait Amer Meziane",
+    "sessionNumber": 3,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "SABRINELLE - VIR",
+    "note": null
+  },
+  {
+    "date": "2026-01-29",
+    "profCode": "PR008",
+    "studentRaw": "KENZA Boufera",
+    "sessionNumber": 11,
+    "amount": 56.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal - Kenza Boufera",
+    "note": null
+  },
+  {
+    "date": "2026-02-01",
+    "profCode": "PR008",
+    "studentRaw": "Araxel",
+    "sessionNumber": 2,
+    "amount": 30.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal",
+    "note": "#ERROR!"
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR008",
+    "studentRaw": "Abdullah",
+    "sessionNumber": 6,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Papal :Sikina Madi Mbirou",
+    "note": "À payé 82 (part de Romayssa + 2 sessions payées)"
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR008",
+    "studentRaw": "Romayssa",
+    "sessionNumber": 6,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Sikina Madi Mbirou",
+    "note": "A payé 82 (part de Abdullah + 2 sessions payées)"
+  },
+  {
+    "date": "2026-02-10",
+    "profCode": "PR008",
+    "studentRaw": "⭐️ Mennadi Aicha",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal :",
+    "note": "à payé 38 dont 10euros de frais d'inscription "
+  },
+  {
+    "date": "2026-02-03",
+    "profCode": "PR008",
+    "studentRaw": "⭐️Hibo",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "ABDIRAHMAN DIRSHE,HIBO",
+    "note": "38 (dont 10 de frais dinscription)"
+  },
+  {
+    "date": "2026-02-01",
+    "profCode": "PR005",
+    "studentRaw": "Aïcha Diaby",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aisseta Diaby",
+    "note": null
+  },
+  {
+    "date": "2026-02-02",
+    "profCode": "PR005",
+    "studentRaw": "Marietou",
+    "sessionNumber": 4,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal Marietou Bagayoko",
+    "note": "Payement groupé avec Asma "
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR005",
+    "studentRaw": "Youssouf 89 10",
+    "sessionNumber": null,
+    "amount": 42.0,
+    "paymentType": "WISE",
+    "payerName": "V : SANDINI NANGUY",
+    "note": "396€ payé pour 3 sessions  👇🏾"
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR005",
+    "studentRaw": "Nahouda",
+    "sessionNumber": null,
+    "amount": 16.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "👇🏾"
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR005",
+    "studentRaw": "Madi",
+    "sessionNumber": null,
+    "amount": 16.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "👇🏾"
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR005",
+    "studentRaw": "Salima",
+    "sessionNumber": null,
+    "amount": 16.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "👇🏾"
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR005",
+    "studentRaw": "Sandhini",
+    "sessionNumber": null,
+    "amount": 42.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "👆🏾"
+  },
+  {
+    "date": "2026-02-09",
+    "profCode": "PR005",
+    "studentRaw": "Belili Rosa",
+    "sessionNumber": 2,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Mahamadou Diaby",
+    "note": null
+  },
+  {
+    "date": "2026-02-16",
+    "profCode": "PR005",
+    "studentRaw": "Deka -neima",
+    "sessionNumber": 17,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Hassan Deka",
+    "note": null
+  },
+  {
+    "date": "2026-02-18",
+    "profCode": "PR005",
+    "studentRaw": "KenzaBen Yahyia",
+    "sessionNumber": 11,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Kenza Ben Yahia",
+    "note": null
+  },
+  {
+    "date": "2026-02-20",
+    "profCode": "PR005",
+    "studentRaw": "Ouidati",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-30",
+    "profCode": "PR006",
+    "studentRaw": "Sirine Jami",
+    "sessionNumber": 5,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal:: Wafa Mazigh",
+    "note": null
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR006",
+    "studentRaw": "Esma Jami",
+    "sessionNumber": 5,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Wafa Mazigh",
+    "note": null
+  },
+  {
+    "date": "2026-02-05",
+    "profCode": "PR006",
+    "studentRaw": "Meryem Bahamed",
+    "sessionNumber": 4,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "BOURZAMI SALIMA",
+    "note": "A payé 76 car cours avec samia umm haroun "
+  },
+  {
+    "date": "2026-02-10",
+    "profCode": "PR006",
+    "studentRaw": "Meryem Edekraoui",
+    "sessionNumber": 20,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Payapl : Asmaa Al khalfaoui Ederkaoui",
+    "note": null
+  },
+  {
+    "date": "2026-02-07",
+    "profCode": "PR006",
+    "studentRaw": "Mohamed Diarra",
+    "sessionNumber": 7,
+    "amount": 40.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aissatou Diarra",
+    "note": "Paiement de 85e le 06/02 (élève de Sarah et maria)"
+  },
+  {
+    "date": "2026-02-15",
+    "profCode": "PR006",
+    "studentRaw": "Sirine Jami",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Wafa mazigh ?",
+    "note": null
+  },
+  {
+    "date": "2026-02-16",
+    "profCode": "PR006",
+    "studentRaw": "Sbrina / Myiam",
+    "sessionNumber": 5,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal",
+    "note": "21 euros chacune "
+  },
+  {
+    "date": "2026-02-16",
+    "profCode": "PR006",
+    "studentRaw": "Sabrina / Myriam",
+    "sessionNumber": 4,
+    "amount": 42.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal",
+    "note": "La session d'avant n'avait pas été payé"
+  },
+  {
+    "date": "2026-02-19",
+    "profCode": "PR006",
+    "studentRaw": "Mahady Dramé",
+    "sessionNumber": 5,
+    "amount": 14.0,
+    "paymentType": "PAYPAL",
+    "payerName": "ayal. : Khady dramé",
+    "note": "A payé 26 (pourmadina qui est avecAsma)"
+  },
+  {
+    "date": "2026-02-25",
+    "profCode": "PR006",
+    "studentRaw": "Maeva",
+    "sessionNumber": 2,
+    "amount": 14.0,
+    "paymentType": "WISE",
+    "payerName": "ROCHER DENIZON MAEVA",
+    "note": null
+  },
+  {
+    "date": "2026-01-26",
+    "profCode": "PR007",
+    "studentRaw": "Mayssa",
+    "sessionNumber": 24,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal (géré par le directeur)",
+    "note": null
+  },
+  {
+    "date": "2026-02-02",
+    "profCode": "PR007",
+    "studentRaw": "Beldia",
+    "sessionNumber": 33,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Narimen Ferchichi",
+    "note": null
+  },
+  {
+    "date": "2026-02-03",
+    "profCode": "PR007",
+    "studentRaw": "Ines Ait Amer Meziane",
+    "sessionNumber": 6,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Sofiane Ait Amer Meziane",
+    "note": null
+  },
+  {
+    "date": "2026-02-07",
+    "profCode": "PR007",
+    "studentRaw": "Dado Diarra",
+    "sessionNumber": 8,
+    "amount": 20.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aissatou Diarra",
+    "note": "Paiement de 85e le 06/02 (élève de Sarah et maria)"
+  },
+  {
+    "date": "2026-02-07",
+    "profCode": "PR007",
+    "studentRaw": "Oumou Diarra",
+    "sessionNumber": 8,
+    "amount": 20.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Aissatou Diarra",
+    "note": "Paiement de 85e le 06/02 (élève de Sarah et maria)"
+  },
+  {
+    "date": "2026-02-23",
+    "profCode": "PR007",
+    "studentRaw": "Mayssa",
+    "sessionNumber": 25,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Avec le chef",
+    "note": null
+  },
+  {
+    "date": "2026-02-25",
+    "profCode": "PR007",
+    "studentRaw": "Maeva",
+    "sessionNumber": 2,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "ROCHER DENIZON MAEVA",
+    "note": null
+  },
+  {
+    "date": "2026-01-25",
+    "profCode": "PR004",
+    "studentRaw": "Madina",
+    "sessionNumber": 17,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "AYPal: Drame Khadi",
+    "note": null
+  },
+  {
+    "date": "2026-02-04",
+    "profCode": "PR004",
+    "studentRaw": "Cira Diallo",
+    "sessionNumber": 4,
+    "amount": 28.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Cira Diallo",
+    "note": null
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR004",
+    "studentRaw": "Laura Lespiette",
+    "sessionNumber": 6,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": "MLE LAURA LESPILETTE",
+    "note": "A payé 45 euros car. Cours avec samia Umm Abdirahman"
+  },
+  {
+    "date": "2026-02-06",
+    "profCode": "PR004",
+    "studentRaw": "Leina",
+    "sessionNumber": 19,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Naoual Haddouch",
+    "note": null
+  },
+  {
+    "date": "2026-02-20",
+    "profCode": "PR004",
+    "studentRaw": "ZahraElmi Daher",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Zahra.",
+    "note": "A payé 33 dont 12euros avec samia "
+  },
+  {
+    "date": "2026-02-22",
+    "profCode": "PR004",
+    "studentRaw": "Iradati Harith",
+    "sessionNumber": 9,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "HARITHI IRADATI",
+    "note": null
+  },
+  {
+    "date": "2026-02-23",
+    "profCode": "PR004",
+    "studentRaw": "Chayma",
+    "sessionNumber": 3,
+    "amount": 21.0,
+    "paymentType": "PAYPAL",
+    "payerName": "aypal : Chayma Hamidi",
+    "note": null
+  },
+  {
+    "date": "2025-12-26",
+    "profCode": "PR001",
+    "studentRaw": "Imran En nidem",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "FAZIL Saeeda",
+    "note": "Saeeda en nidem"
+  },
+  {
+    "date": "2025-12-27",
+    "profCode": "PR001",
+    "studentRaw": "Rahma Sahouane",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Rahma Sahouane",
+    "note": null
+  },
+  {
+    "date": "2025-12-29",
+    "profCode": "PR001",
+    "studentRaw": "Ismail fagour",
+    "sessionNumber": null,
+    "amount": 36.0,
+    "paymentType": null,
+    "payerName": "William Fagour",
+    "note": null
+  },
+  {
+    "date": "2025-12-04",
+    "profCode": "PR001",
+    "studentRaw": "Karima",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Karima",
+    "note": null
+  },
+  {
+    "date": "2025-12-29",
+    "profCode": "PR001",
+    "studentRaw": "Brahim bouslane",
+    "sessionNumber": null,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": "Nour El Houda Firane",
+    "note": null
+  },
+  {
+    "date": "2026-01-01",
+    "profCode": "PR001",
+    "studentRaw": "Dilek",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Dilek - VIR",
+    "note": null
+  },
+  {
+    "date": "2026-01-03",
+    "profCode": "PR001",
+    "studentRaw": "Ismail Ait Amer Meziane",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "SANA",
+    "note": "PAIEMENT GROUPE 40E (12 ISmael ait avec Samia) +28 (Ines avec Sarah)"
+  },
+  {
+    "date": "2026-01-05",
+    "profCode": "PR001",
+    "studentRaw": "Nahil Touil",
+    "sessionNumber": 4,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "JIHAN HAJRI",
+    "note": null
+  },
+  {
+    "date": "2026-01-05",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata touré",
+    "sessionNumber": 11,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-06",
+    "profCode": "PR001",
+    "studentRaw": "Hawa Elmi daher",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Hawa",
+    "note": null
+  },
+  {
+    "date": "2024-06-05",
+    "profCode": "PR001",
+    "studentRaw": "Laura lespilette",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Laura",
+    "note": null
+  },
+  {
+    "date": "2026-01-09",
+    "profCode": "PR001",
+    "studentRaw": "Syrine hagani",
+    "sessionNumber": 22,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-06",
+    "profCode": "PR001",
+    "studentRaw": "Bouchra Khazrouki",
+    "sessionNumber": 24,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Bouchra",
+    "note": null
+  },
+  {
+    "date": "2026-01-06",
+    "profCode": "PR001",
+    "studentRaw": "Neima Abdillahi",
+    "sessionNumber": null,
+    "amount": 23.43,
+    "paymentType": null,
+    "payerName": "Neima",
+    "note": "1€ frais Paypal "
+  },
+  {
+    "date": "2026-01-06",
+    "profCode": "PR001",
+    "studentRaw": "Diani Cisse",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Diani",
+    "note": null
+  },
+  {
+    "date": "2026-09-10",
+    "profCode": "PR001",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 9,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Carole",
+    "note": "TOTAL DE 40 e (28arabe sarah / 12 Coran Samia)"
+  },
+  {
+    "date": "2026-01-11",
+    "profCode": "PR001",
+    "studentRaw": "Mounia Ben Abdallah",
+    "sessionNumber": 11,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Mounia Ben Abdallah",
+    "note": null
+  },
+  {
+    "date": "2026-01-12",
+    "profCode": "PR001",
+    "studentRaw": "Angelique",
+    "sessionNumber": 2,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": "Ruez Angelique",
+    "note": null
+  },
+  {
+    "date": "2026-12-01",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Fatou Umm Ar-Rumayssah",
+    "sessionNumber": null,
+    "amount": 32.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-17",
+    "profCode": "PR001",
+    "studentRaw": "zahira lamkdmi",
+    "sessionNumber": 2,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": "zahira",
+    "note": null
+  },
+  {
+    "date": "2026-01-19",
+    "profCode": "PR001",
+    "studentRaw": "Hawa gandega",
+    "sessionNumber": 3,
+    "amount": 8.0,
+    "paymentType": null,
+    "payerName": "dado",
+    "note": null
+  },
+  {
+    "date": "2026-01-19",
+    "profCode": "PR001",
+    "studentRaw": "Aïcha et gnouma gandega",
+    "sessionNumber": 4,
+    "amount": 11.3,
+    "paymentType": null,
+    "payerName": "dado",
+    "note": null
+  },
+  {
+    "date": "2026-01-19",
+    "profCode": "PR001",
+    "studentRaw": "Hamza gandega",
+    "sessionNumber": 30,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "dado",
+    "note": null
+  },
+  {
+    "date": "2026-01-19",
+    "profCode": "PR001",
+    "studentRaw": "Hamza gandega nouraniyya",
+    "sessionNumber": null,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "dado",
+    "note": "Total=46euros pour les 4"
+  },
+  {
+    "date": "2026-01-19",
+    "profCode": "PR001",
+    "studentRaw": "FARAH DEKA",
+    "sessionNumber": 7,
+    "amount": 22.48,
+    "paymentType": null,
+    "payerName": "Farah",
+    "note": "− 1,52 € de frais a demandé au prochain paiement\n"
+  },
+  {
+    "date": "2026-01-20",
+    "profCode": "PR001",
+    "studentRaw": "zarah Elmi daher",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Zarah",
+    "note": "elle avait noté cours d'arabe mais cest coran*"
+  },
+  {
+    "date": "2026-01-20",
+    "profCode": "PR001",
+    "studentRaw": "kadi cissokho",
+    "sessionNumber": 27,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "cissokho",
+    "note": null
+  },
+  {
+    "date": "2026-01-21",
+    "profCode": "PR001",
+    "studentRaw": "BELDIA OUM NARIMEN",
+    "sessionNumber": 36,
+    "amount": 36.0,
+    "paymentType": null,
+    "payerName": "BELDIA",
+    "note": null
+  },
+  {
+    "date": "2026-01-23",
+    "profCode": "PR001",
+    "studentRaw": "CHENAOUI INSSAF",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "INSSAF",
+    "note": null
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Nour El Houda",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": null,
+    "payerName": "Myriam lachgar",
+    "note": "Pauement groupé 34e👇🏾"
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Fatima",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": null,
+    "payerName": "Myriam lachgar",
+    "note": "👆🏾"
+  },
+  {
+    "date": "2025-12-25",
+    "profCode": "PR003",
+    "studentRaw": "⭐ Nouvel élève : Araxel",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Abdi osman Araxel",
+    "note": null
+  },
+  {
+    "date": "2025-12-26",
+    "profCode": "PR003",
+    "studentRaw": "Mariame et adjaratou",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": null,
+    "payerName": "Mariame Sidibe VIR",
+    "note": "Payemt groupé de 38€ avec Sirine "
+  },
+  {
+    "date": "2025-12-29",
+    "profCode": "PR003",
+    "studentRaw": "marietou",
+    "sessionNumber": null,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": "Marietou",
+    "note": "coran et tajwid"
+  },
+  {
+    "date": "2026-01-03",
+    "profCode": "PR003",
+    "studentRaw": "Nadia",
+    "sessionNumber": 26,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-03",
+    "profCode": "PR003",
+    "studentRaw": "Ines",
+    "sessionNumber": 25,
+    "amount": 25.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-03",
+    "profCode": "PR003",
+    "studentRaw": "Yasmine",
+    "sessionNumber": 16,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2006-01-03",
+    "profCode": "PR003",
+    "studentRaw": "meissa",
+    "sessionNumber": 16,
+    "amount": 12.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "TOTAL DES 4 = 72"
+  },
+  {
+    "date": "2026-01-05",
+    "profCode": "PR003",
+    "studentRaw": "⭐️ nouvelle :Mokhtari Nassira",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Nassira Mokhar",
+    "note": null
+  },
+  {
+    "date": "2026-01-09",
+    "profCode": "PR003",
+    "studentRaw": "Zahra Elmi daher",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Zahra",
+    "note": "duo avec Chayma (pas groupé)"
+  },
+  {
+    "date": "2026-01-09",
+    "profCode": "PR003",
+    "studentRaw": "Chayma Hamidi",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Chayma",
+    "note": "duo avec Zarah (pas groupé)"
+  },
+  {
+    "date": "2026-01-10",
+    "profCode": "PR003",
+    "studentRaw": "Zakarya Ahdoum",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "MAHJOU",
+    "note": "GROUPE 24e"
+  },
+  {
+    "date": "2026-01-10",
+    "profCode": "PR003",
+    "studentRaw": "Nouheyla Ahdoum",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "MAHJOU",
+    "note": "GROUPE 24e"
+  },
+  {
+    "date": "2026-01-11",
+    "profCode": "PR003",
+    "studentRaw": "Hatouma Dembele",
+    "sessionNumber": 4,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "hatouma dembela",
+    "note": null
+  },
+  {
+    "date": "2026-01-11",
+    "profCode": "PR003",
+    "studentRaw": "Dieynaba-Aissatou et Hassane",
+    "sessionNumber": 4,
+    "amount": 34.0,
+    "paymentType": null,
+    "payerName": "Kouma faye",
+    "note": null
+  },
+  {
+    "date": "2026-01-14",
+    "profCode": "PR003",
+    "studentRaw": "Saada umm aliya",
+    "sessionNumber": 20,
+    "amount": 46.25,
+    "paymentType": null,
+    "payerName": "Saadia",
+    "note": "frais paypal +2,75 au prochain payement "
+  },
+  {
+    "date": "2026-01-15",
+    "profCode": "PR003",
+    "studentRaw": "Khadi dramé",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Khadi",
+    "note": "Paiement groupé 14 avec Maria (khadi drame) 12 avec Asma "
+  },
+  {
+    "date": "2026-01-16",
+    "profCode": "PR003",
+    "studentRaw": "AISHA ET KAYNA",
+    "sessionNumber": null,
+    "amount": 51.0,
+    "paymentType": null,
+    "payerName": "HABY SY",
+    "note": "Paypal"
+  },
+  {
+    "date": "2026-01-21",
+    "profCode": "PR003",
+    "studentRaw": "Mariame et adjaratou Sidibe",
+    "sessionNumber": 8,
+    "amount": 38.0,
+    "paymentType": null,
+    "payerName": "Mariame",
+    "note": "VIR"
+  },
+  {
+    "date": "2026-01-21",
+    "profCode": "PR003",
+    "studentRaw": "Manel loussaifi",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Manel",
+    "note": null
+  },
+  {
+    "date": "2026-01-21",
+    "profCode": "PR003",
+    "studentRaw": "Najat cira",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "najat",
+    "note": "a ajouter 4 cours en plus "
+  },
+  {
+    "date": "2026-01-24",
+    "profCode": "PR003",
+    "studentRaw": "Madina drame",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Khadi dramé",
+    "note": null
+  },
+  {
+    "date": "2026-01-21",
+    "profCode": "PR003",
+    "studentRaw": "Maidaini Fagour (coran)",
+    "sessionNumber": null,
+    "amount": 72.0,
+    "paymentType": null,
+    "payerName": "William fagour",
+    "note": null
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR003",
+    "studentRaw": "⭐ Nouvel élève : Haby",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "HABY SY",
+    "note": "OK"
+  },
+  {
+    "date": "2015-12-25",
+    "profCode": "PR002",
+    "studentRaw": "Omaya Kabteni",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "NAJIBA AGHARBI",
+    "note": null
+  },
+  {
+    "date": "2025-12-27",
+    "profCode": "PR002",
+    "studentRaw": "meryem bahamed",
+    "sessionNumber": null,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": "salima bourzami",
+    "note": "payemt groupé avec maria 76e"
+  },
+  {
+    "date": "2025-12-29",
+    "profCode": "PR002",
+    "studentRaw": "Aminata oum Mohamed",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "AMINATA Haa diani",
+    "note": null
+  },
+  {
+    "date": "2026-01-05",
+    "profCode": "PR002",
+    "studentRaw": "Neima",
+    "sessionNumber": 2,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Deka Hassan",
+    "note": null
+  },
+  {
+    "date": "2026-01-10",
+    "profCode": "PR002",
+    "studentRaw": "HARITHI OUIDATI",
+    "sessionNumber": 5,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "HARITHI",
+    "note": "VIREMENT"
+  },
+  {
+    "date": "2026-01-22",
+    "profCode": "PR002",
+    "studentRaw": "Oméya Kabteni",
+    "sessionNumber": 3,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Naajiba agharbi",
+    "note": null
+  },
+  {
+    "date": "2005-12-26",
+    "profCode": "PR008",
+    "studentRaw": "MARIAME SIDIBE",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Mariame sidibé VIR",
+    "note": "payemt groupé de 38€ avec Asma"
+  },
+  {
+    "date": "2025-12-31",
+    "profCode": "PR008",
+    "studentRaw": "abdullah / roumayssa",
+    "sessionNumber": null,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Sikina Madi Mbirou",
+    "note": null
+  },
+  {
+    "date": "2025-01-07",
+    "profCode": "PR008",
+    "studentRaw": "Isaac Gary",
+    "sessionNumber": null,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Cira",
+    "note": null
+  },
+  {
+    "date": "2026-01-16",
+    "profCode": "PR008",
+    "studentRaw": "Maeva Raymond",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-23",
+    "profCode": "PR008",
+    "studentRaw": "Chaima bouaka",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Chaima",
+    "note": null
+  },
+  {
+    "date": "2026-01-01",
+    "profCode": "PR005",
+    "studentRaw": "Youssouf nahouda Madi",
+    "sessionNumber": 7,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": "Sandini VIR",
+    "note": "Virement 132 euro au total"
+  },
+  {
+    "date": "2026-01-01",
+    "profCode": "PR005",
+    "studentRaw": "Salima, Sandini",
+    "sessionNumber": 7,
+    "amount": 84.0,
+    "paymentType": null,
+    "payerName": "Sandini VIR",
+    "note": "Virement 132 euro au total"
+  },
+  {
+    "date": "2026-01-03",
+    "profCode": "PR005",
+    "studentRaw": "Marietou umm Ibrahim",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Marietou",
+    "note": "à envoyé 14 car elle a paye 7e en plus en novembre "
+  },
+  {
+    "date": "2026-01-03",
+    "profCode": "PR005",
+    "studentRaw": "Aïcha Diaby",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "Aisseta Diaby",
+    "note": null
+  },
+  {
+    "date": "2026-01-07",
+    "profCode": "PR005",
+    "studentRaw": "⭐ Nouvel élève : Bellili Rosa",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Diaby mahamadou",
+    "note": null
+  },
+  {
+    "date": "2026-01-14",
+    "profCode": "PR005",
+    "studentRaw": "famille Arrar",
+    "sessionNumber": null,
+    "amount": 128.0,
+    "paymentType": null,
+    "payerName": "Arrar",
+    "note": "PAYPAL "
+  },
+  {
+    "date": "2025-01-16",
+    "profCode": "PR005",
+    "studentRaw": "Harithi ouidati",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-20",
+    "profCode": "PR005",
+    "studentRaw": "Kenza be yahyia",
+    "sessionNumber": 1,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Kenza",
+    "note": null
+  },
+  {
+    "date": "2026-10-19",
+    "profCode": "PR005",
+    "studentRaw": "Deka et Neima",
+    "sessionNumber": null,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": "Hassan Deka",
+    "note": null
+  },
+  {
+    "date": "2025-12-26",
+    "profCode": "PR006",
+    "studentRaw": "Nour Edekraoui",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Asmaa el khalfaoui edekraoui",
+    "note": null
+  },
+  {
+    "date": "2025-12-27",
+    "profCode": "PR006",
+    "studentRaw": "meryem bahamed",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "salima bourzami",
+    "note": "payement groupé avec samia umm Haroun  76e"
+  },
+  {
+    "date": "2026-12-31",
+    "profCode": "PR006",
+    "studentRaw": "⭐ Nouvel élève : Dafakha goundo",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Goundo Danfakha",
+    "note": null
+  },
+  {
+    "date": "2026-01-06",
+    "profCode": "PR006",
+    "studentRaw": "Esma Jami",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Wafa Mazigh",
+    "note": null
+  },
+  {
+    "date": "2026-01-08",
+    "profCode": "PR006",
+    "studentRaw": "Meryem edekraoui",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "asmaa",
+    "note": null
+  },
+  {
+    "date": "2026-01-10",
+    "profCode": "PR006",
+    "studentRaw": "Ilyes destouches",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "bilal destouches",
+    "note": null
+  },
+  {
+    "date": "2026-01-16",
+    "profCode": "PR006",
+    "studentRaw": "Mahady dramé",
+    "sessionNumber": null,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": "Khadi drame",
+    "note": "Paiement groupé 14 avec Maria (khadi drame) 12 avec Asma "
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR006",
+    "studentRaw": "⭐ Nouvel élève : Maeva Rocher-Denizon",
+    "sessionNumber": null,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2026-01-24",
+    "profCode": "PR006",
+    "studentRaw": "Nour Ederkaoui",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Asmaa el khalfaoui edekraoui",
+    "note": null
+  },
+  {
+    "date": "2026-01-03",
+    "profCode": "PR007",
+    "studentRaw": "Ines Ait Amer Meziane",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "SANA",
+    "note": "PAIEMENT GROUPE 40E (12 ISmael ait avec Samia) +28 (Ines avec Sarah)"
+  },
+  {
+    "date": "2026-01-10",
+    "profCode": "PR007",
+    "studentRaw": "Carole Umm Yasmine",
+    "sessionNumber": 18,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Carole",
+    "note": "TOTAL DE 40 e (28arabe sarah / 12 Coran Samia)"
+  },
+  {
+    "date": "2026-01-11",
+    "profCode": "PR007",
+    "studentRaw": "Maeva Rocher-Denizon",
+    "sessionNumber": 10,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Maeva",
+    "note": null
+  },
+  {
+    "date": "2026-01-12",
+    "profCode": "PR007",
+    "studentRaw": "Beldia",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Narimen",
+    "note": null
+  },
+  {
+    "date": "2026-01-14",
+    "profCode": "PR007",
+    "studentRaw": "Dado Diarra",
+    "sessionNumber": 8,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "Paiement groupé (42e) 👇🏾"
+  },
+  {
+    "date": "2026-01-14",
+    "profCode": "PR007",
+    "studentRaw": "Oumou Diarra",
+    "sessionNumber": 8,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": " 👆🏾Paiement groupé (42e) "
+  },
+  {
+    "date": "2026-01-05",
+    "profCode": "PR004",
+    "studentRaw": "Laura lespiette",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": "Passée en solo "
+  },
+  {
+    "date": "2025-01-08",
+    "profCode": "PR004",
+    "studentRaw": "YOSRA",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": "- Wissam Belhaj",
+    "note": null
+  },
+  {
+    "date": "2026-01-21",
+    "profCode": "PR004",
+    "studentRaw": "⭐ Nouvel élève : Najat",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Najate Absaddouk",
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR001",
+    "studentRaw": "Zahra Elmi Daher",
+    "sessionNumber": null,
+    "amount": 38.0,
+    "paymentType": null,
+    "payerName": "Zahra elmi Daher",
+    "note": null
+  },
+  {
+    "date": "2025-11-28",
+    "profCode": "PR001",
+    "studentRaw": "Imran En Nidem",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Saeeda",
+    "note": null
+  },
+  {
+    "date": "2025-12-01",
+    "profCode": "PR001",
+    "studentRaw": "Fatoumata Touré",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "fatoumata touré",
+    "note": null
+  },
+  {
+    "date": "2025-12-01",
+    "profCode": "PR001",
+    "studentRaw": "Beldia",
+    "sessionNumber": null,
+    "amount": 36.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-02",
+    "profCode": "PR001",
+    "studentRaw": "Rahma Saouane",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Rahmaa",
+    "note": null
+  },
+  {
+    "date": "2025-12-02",
+    "profCode": "PR001",
+    "studentRaw": "Mounia Ben Abdallah",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-02",
+    "profCode": "PR001",
+    "studentRaw": "Ibrahim Boulsane",
+    "sessionNumber": null,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": "houda",
+    "note": null
+  },
+  {
+    "date": "2025-12-03",
+    "profCode": "PR001",
+    "studentRaw": "umm yasmine",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "Carole(?)",
+    "note": null
+  },
+  {
+    "date": "2025-12-05",
+    "profCode": "PR001",
+    "studentRaw": "Laura lespilette",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-06",
+    "profCode": "PR001",
+    "studentRaw": "neima abdillahi",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-03",
+    "profCode": "PR001",
+    "studentRaw": "ismail ait Amer meziane",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "sanaa seffih",
+    "note": null
+  },
+  {
+    "date": "2025-12-08",
+    "profCode": "PR001",
+    "studentRaw": "diani cissé",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-07",
+    "profCode": "PR001",
+    "studentRaw": "hawa elmi daher",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-09",
+    "profCode": "PR001",
+    "studentRaw": "imane destouches",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "imane destouches",
+    "note": null
+  },
+  {
+    "date": "2025-12-06",
+    "profCode": "PR001",
+    "studentRaw": "nahil touil",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "jihan hajri",
+    "note": null
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR001",
+    "studentRaw": "⭐ Nouvel élève : Angélique",
+    "sessionNumber": null,
+    "amount": 48.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-26",
+    "profCode": "PR003",
+    "studentRaw": "Manel Loussaifi",
+    "sessionNumber": null,
+    "amount": 12.0,
+    "paymentType": null,
+    "payerName": "manel el marhoum",
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR003",
+    "studentRaw": "mariam sidibe",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2015-11-27",
+    "profCode": "PR003",
+    "studentRaw": "adjaratou sidibe",
+    "sessionNumber": null,
+    "amount": 17.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-23",
+    "profCode": "PR003",
+    "studentRaw": "Uneyssa et Tasnime",
+    "sessionNumber": null,
+    "amount": 72.0,
+    "paymentType": null,
+    "payerName": "atika hamada",
+    "note": "reglement de 2 sessions pour les 2 sœurs "
+  },
+  {
+    "date": "2025-12-02",
+    "profCode": "PR003",
+    "studentRaw": "Nouheyla et Zakariya",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Ahdoum",
+    "note": null
+  },
+  {
+    "date": "2025-12-03",
+    "profCode": "PR003",
+    "studentRaw": "marietou bagayoko",
+    "sessionNumber": null,
+    "amount": 76.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "a paye aussi sa session darabe + erreur calcul donc déduire 7e lors du prochain paiement"
+  },
+  {
+    "date": "2026-01-11",
+    "profCode": "PR003",
+    "studentRaw": "Hatouma Dembele",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "hatouma dembela",
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR002",
+    "studentRaw": "maryam behamed",
+    "sessionNumber": null,
+    "amount": 48.0,
+    "paymentType": "WISE",
+    "payerName": "salima bourzami",
+    "note": "76e au total (🌷 Samia umm Haroun + 🌻 Professeur Maria)"
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR002",
+    "studentRaw": "omaya kabteni",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Najiba Agharbi",
+    "note": null
+  },
+  {
+    "date": "2025-11-29",
+    "profCode": "PR002",
+    "studentRaw": "Aminata Oum Mohamed",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": "Aminata diani",
+    "note": null
+  },
+  {
+    "date": "2025-11-30",
+    "profCode": "PR002",
+    "studentRaw": "ouidati harithi",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": "WISE",
+    "payerName": "ouidati harithi",
+    "note": null
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR002",
+    "studentRaw": "⭐ Nouvel élève : Neima",
+    "sessionNumber": null,
+    "amount": 24.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR008",
+    "studentRaw": "⭐ Nouvel élève : Nail Ait Amer Mezia",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "1970-01-01",
+    "profCode": "PR008",
+    "studentRaw": "⭐ Nouvel élève : Maeva Raymond",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-26",
+    "profCode": "PR008",
+    "studentRaw": "kenza boufera",
+    "sessionNumber": null,
+    "amount": 56.0,
+    "paymentType": null,
+    "payerName": "kenza boufera",
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR008",
+    "studentRaw": "⭐ Nouvel élève : Julie Grisolia",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR005",
+    "studentRaw": "Kenza Ben Yahya",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "kenzab",
+    "note": null
+  },
+  {
+    "date": "2025-12-03",
+    "profCode": "PR005",
+    "studentRaw": "marietou bagayoko",
+    "sessionNumber": null,
+    "amount": 76.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "a paye aussi ses sessions de tajwid/coran + erreur calcul donc déduire 7e lors du prochain paiement "
+  },
+  {
+    "date": "2025-12-08",
+    "profCode": "PR005",
+    "studentRaw": "diaby umm adam",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-06",
+    "profCode": "PR005",
+    "studentRaw": "famille arrar",
+    "sessionNumber": null,
+    "amount": 128.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR006",
+    "studentRaw": "maryam behamed",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "salima bourzami",
+    "note": "76e au total (🌷 Samia umm Haroun + 🌻 Professeur Maria)"
+  },
+  {
+    "date": "2025-11-28",
+    "profCode": "PR006",
+    "studentRaw": "Sirine Jami",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-28",
+    "profCode": "PR006",
+    "studentRaw": "Esma Jami",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": "Wafa",
+    "note": "56e au total (soeur Sirine Jami)"
+  },
+  {
+    "date": "2025-12-03",
+    "profCode": "PR006",
+    "studentRaw": "Mahady Drame",
+    "sessionNumber": null,
+    "amount": 14.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-08",
+    "profCode": "PR006",
+    "studentRaw": "myriam, sabrinahammoumi",
+    "sessionNumber": null,
+    "amount": 42.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": "21e chacune "
+  },
+  {
+    "date": "2025-12-06",
+    "profCode": "PR007",
+    "studentRaw": "ines ait Amer Meziane",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR004",
+    "studentRaw": "Zahra Elmi Daher",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "zahra elmi daher",
+    "note": "est aussi avec Samia 🍀"
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR004",
+    "studentRaw": "⭐ Nouvel élève : Chayma Hamidi",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": "chayma hamidi",
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR004",
+    "studentRaw": "Leïna",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-11-27",
+    "profCode": "PR004",
+    "studentRaw": "Mona",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": null,
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-03",
+    "profCode": "PR004",
+    "studentRaw": "Iradati Harithi",
+    "sessionNumber": null,
+    "amount": 28.0,
+    "paymentType": "WISE",
+    "payerName": "Harithi",
+    "note": null
+  },
+  {
+    "date": "2025-12-05",
+    "profCode": "PR004",
+    "studentRaw": "Laura lespilette",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  },
+  {
+    "date": "2025-12-05",
+    "profCode": "PR004",
+    "studentRaw": "Yousra Bendaali",
+    "sessionNumber": null,
+    "amount": 21.0,
+    "paymentType": "WISE",
+    "payerName": null,
+    "note": null
+  }
+]

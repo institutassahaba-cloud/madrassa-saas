@@ -1,75 +1,142 @@
 "use client"
-import { useState } from "react"
-import { Plus, Search, Filter, Download, Edit, Archive, UserCheck } from "lucide-react"
+import { useState, useRef } from "react"
+import { Plus, Search, Upload, Edit, Archive, X, MessageCircle } from "lucide-react"
+import { whatsappLink } from "@/lib/phone"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StudentDialog } from "./student-dialog"
 import { formatDate, formatCurrency } from "@/lib/utils"
 
 const STATUS_CONFIG = {
-  ACTIVE: { label: "Actif", variant: "success" as const },
-  INACTIVE: { label: "Inactif", variant: "warning" as const },
-  ARCHIVED: { label: "Archivé", variant: "secondary" as const },
+  ACTIVE:   { label: "Actif",    variant: "success"   as const },
+  PAUSED:   { label: "En pause", variant: "warning"   as const },
+  STOPPED:  { label: "Arrêté",   variant: "destructive" as const },
+  INACTIVE: { label: "Inactif",  variant: "warning"   as const },
+  ARCHIVED: { label: "Ancien",   variant: "secondary" as const },
+}
+
+const SUBJECT_COLORS: Record<string, string> = {
+  "Coran":        "bg-emerald-100 text-emerald-700",
+  "Nouraniya":    "bg-blue-100 text-blue-700",
+  "Arabe":        "bg-amber-100 text-amber-700",
+  "Langue arabe": "bg-amber-100 text-amber-700",
+  "Tajwid":       "bg-purple-100 text-purple-700",
+  "Fiqh":         "bg-rose-100 text-rose-700",
 }
 
 interface Student {
   id: string
   firstName: string
   lastName: string
+  displayName: string | null
   gender: string
   phone: string | null
   email: string | null
+  parentPhone: string | null
   status: string
+  subject: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   monthlyFee: any
+  hourlyRate: number | null
+  lessonsPerWeek: number | null
+  duration: string | null
   enrollmentDate: Date
   group: { id: string; name: string } | null
+  teacherName: string | null
+  groupSize: number
   level: string | null
+}
+
+// "Individuel" (1 élève) / "Binôme" (2) / "Groupe" (3+) — déduit du nb d'élèves actifs du groupe.
+function courseType(size: number): { label: string; cls: string } {
+  if (size >= 3) return { label: "Groupe",    cls: "bg-indigo-100 text-indigo-700" }
+  if (size === 2) return { label: "Binôme",   cls: "bg-sky-100 text-sky-700" }
+  return { label: "Individuel", cls: "bg-gray-100 text-gray-600" }
+}
+
+// duration stocké en heures décimales FR ("1", "0,5", "0,75") ou texte ("1h", "30 min")
+function formatDuration(d: string | null): string {
+  if (!d) return "—"
+  if (/h|min/i.test(d)) return d
+  const hours = parseFloat(d.replace(",", "."))
+  if (!isFinite(hours) || hours <= 0) return "—"
+  const mins = Math.round(hours * 60)
+  return mins % 60 === 0 ? `${mins / 60}h` : `${mins} min`
 }
 
 interface Group {
   id: string
   name: string
   level: string | null
+  teacherId: string | null
 }
 
-export function StudentsClient({
-  students,
-  groups,
-  role,
-}: {
-  students: Student[]
-  groups: Group[]
-  role: string
-}) {
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("ALL")
-  const [groupFilter, setGroupFilter] = useState("ALL")
+interface Teacher {
+  id: string
+  name: string
+}
+
+interface ImportRow {
+  firstName: string
+  lastName: string
+  subject: string
+  groupName: string
+  monthlyFee: string
+  parentPhone: string
+}
+
+function parseCSV(text: string): ImportRow[] {
+  const lines = text.trim().split("\n").filter(Boolean)
+  // Skip header if present
+  const start = lines[0].toLowerCase().includes("prénom") || lines[0].toLowerCase().includes("prenom") ? 1 : 0
+  return lines.slice(start).map((line) => {
+    const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""))
+    return {
+      firstName:   cols[0] ?? "",
+      lastName:    cols[1] ?? "",
+      subject:     cols[2] ?? "",
+      groupName:   cols[3] ?? "",
+      monthlyFee:  cols[4] ?? "0",
+      parentPhone: cols[5] ?? "",
+    }
+  }).filter((r) => r.firstName)
+}
+
+export function StudentsClient({ students, groups, teachers, role }: { students: Student[]; groups: Group[]; teachers: Teacher[]; role: string }) {
+  const [search, setSearch]         = useState("")
+  const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["ACTIVE"]))
+  const [groupFilter, setGroup]     = useState("ALL")
+  const [subjectFilters, setSubjectFilters] = useState<Set<string>>(new Set())
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editStudent, setEditStudent] = useState<Student | null>(null)
+  const [editStudent, setEdit]      = useState<Student | null>(null)
+  const [importing, setImporting]   = useState(false)
+  const [importResult, setImportResult] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Collect unique subjects from existing students
+  const subjects = Array.from(new Set(students.map((s) => s.subject).filter(Boolean))) as string[]
+
+  function toggleFilter(set: Set<string>, value: string, setter: (s: Set<string>) => void) {
+    const next = new Set(set)
+    next.has(value) ? next.delete(value) : next.add(value)
+    setter(next)
+  }
 
   const filtered = students.filter((s) => {
-    const matchSearch =
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-      (s.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (s.phone ?? "").includes(search)
-    const matchStatus = statusFilter === "ALL" || s.status === statusFilter
-    const matchGroup = groupFilter === "ALL" || s.group?.id === groupFilter
-    return matchSearch && matchStatus && matchGroup
+    const matchSearch  = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
+                         (s.phone ?? "").includes(search)
+    const matchStatus  = statusFilters.size === 0 || statusFilters.has(s.status)
+    const matchGroup   = groupFilter  === "ALL" || s.group?.id === groupFilter
+    const matchSubject = subjectFilters.size === 0 || (s.subject != null && subjectFilters.has(s.subject))
+    return matchSearch && matchStatus && matchGroup && matchSubject
   })
 
-  function openEdit(student: Student) {
-    setEditStudent(student)
-    setDialogOpen(true)
-  }
-
-  function openCreate() {
-    setEditStudent(null)
-    setDialogOpen(true)
-  }
+  const activeCount   = students.filter((s) => s.status === "ACTIVE").length
+  const archivedCount = students.filter((s) => s.status === "ARCHIVED").length
 
   async function handleArchive(id: string) {
     await fetch(`/api/students/${id}`, {
@@ -80,54 +147,138 @@ export function StudentsClient({
     window.location.reload()
   }
 
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const text = await file.text()
+      const rows = parseCSV(text)
+      let ok = 0, fail = 0
+      for (const row of rows) {
+        const group = groups.find((g) => g.name.toLowerCase() === row.groupName.toLowerCase())
+        const res = await fetch("/api/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName:   row.firstName,
+            lastName:    row.lastName,
+            gender:      "FEMALE",
+            subject:     row.subject || null,
+            groupId:     group?.id ?? "",
+            monthlyFee:  row.monthlyFee || "0",
+            parentPhone: row.parentPhone || "",
+          }),
+        })
+        res.ok ? ok++ : fail++
+      }
+      setImportResult(`${ok} élève(s) importé(s)${fail ? `, ${fail} erreur(s)` : ""}.`)
+      if (ok > 0) setTimeout(() => window.location.reload(), 1500)
+    } catch {
+      setImportResult("Erreur lors de la lecture du fichier.")
+    } finally {
+      setImporting(false)
+      if (fileRef.current) fileRef.current.value = ""
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Élèves</h2>
-          <p className="text-sm text-gray-500">{students.length} élèves au total</p>
+          <p className="text-sm text-gray-500">
+            {filtered.length !== students.length
+              ? <><span className="font-medium text-emerald-600">{filtered.length}</span>/{students.length} élèves</>
+              : <>{students.length} élève{students.length > 1 ? "s" : ""}</>
+            }
+            {` · ${activeCount} actif${activeCount > 1 ? "s" : ""}`}
+            {archivedCount > 0 && ` · ${archivedCount} ancien${archivedCount > 1 ? "s" : ""}`}
+          </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Ajouter un élève
-        </Button>
+        <div className="flex gap-2">
+          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={importing}>
+            <Upload className="h-4 w-4" />
+            {importing ? "Import…" : "Importer CSV"}
+          </Button>
+          <Button onClick={() => { setEdit(null); setDialogOpen(true) }}>
+            <Plus className="h-4 w-4" />
+            Ajouter
+          </Button>
+        </div>
       </div>
+
+      {importResult && (
+        <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm text-emerald-700">
+          {importResult}
+          <button onClick={() => setImportResult(null)}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {/* Format CSV info */}
+      <p className="text-xs text-gray-400">
+        Format CSV attendu : <code className="bg-gray-100 px-1 rounded">prénom, nom, matière, groupe, tarif, téléphone parent</code>
+      </p>
 
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Rechercher un élève..."
-                className="pl-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input placeholder="Rechercher…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+              <Select value={groupFilter} onValueChange={setGroup}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Classe" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto">
+                  <SelectItem value="ALL">Toutes les classes</SelectItem>
+                  {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tous les statuts</SelectItem>
-                <SelectItem value="ACTIVE">Actif</SelectItem>
-                <SelectItem value="INACTIVE">Inactif</SelectItem>
-                <SelectItem value="ARCHIVED">Archivé</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={groupFilter} onValueChange={setGroupFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Groupe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tous les groupes</SelectItem>
-                {groups.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-gray-400 self-center mr-1">Statut :</span>
+              {(["ACTIVE", "PAUSED", "STOPPED", "ARCHIVED"] as const).map((key) => {
+                const labels: Record<string, string> = { ACTIVE: "Actifs", PAUSED: "En pause", STOPPED: "Arrêtés", ARCHIVED: "Anciens" }
+                const active = statusFilters.has(key)
+                return (
+                  <button
+                    key={key}
+                    onClick={() => toggleFilter(statusFilters, key, setStatusFilters)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {labels[key]}
+                  </button>
+                )
+              })}
+              <span className="text-xs text-gray-400 self-center ml-3 mr-1">Matière :</span>
+              {subjects.map((s) => {
+                const active = subjectFilters.has(s)
+                const color = SUBJECT_COLORS[s] ?? "bg-gray-100 text-gray-600"
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleFilter(subjectFilters, s, setSubjectFilters)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? `${color} border-current`
+                        : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -139,10 +290,10 @@ export function StudentsClient({
             <TableHeader>
               <TableRow>
                 <TableHead>Élève</TableHead>
-                <TableHead>Groupe</TableHead>
+                <TableHead>Professeur</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Tarif mensuel</TableHead>
-                <TableHead>Inscription</TableHead>
+                <TableHead>Forfait</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
@@ -157,55 +308,73 @@ export function StudentsClient({
               ) : (
                 filtered.map((student) => {
                   const cfg = STATUS_CONFIG[student.status as keyof typeof STATUS_CONFIG]
+                  const subjectColor = student.subject ? (SUBJECT_COLORS[student.subject] ?? "bg-gray-100 text-gray-600") : ""
+                  const type = courseType(student.groupSize)
                   return (
-                    <TableRow key={student.id}>
+                    <TableRow key={student.id} className={student.status === "ARCHIVED" ? "opacity-60" : ""}>
                       <TableCell>
                         <div>
-                          <p className="font-medium text-gray-900">
-                            {student.firstName} {student.lastName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {student.gender === "MALE" ? "Garçon" : "Fille"}
-                            {student.level && ` · Niveau ${student.level}`}
+                          <p className="font-medium text-gray-900">{student.displayName || `${student.firstName} ${student.lastName}`}</p>
+                          <p className="text-xs text-gray-400">
+                            {student.gender === "MALE" ? "Garçon" : student.gender === "FEMALE" ? "Fille" : ""}
+                            {student.level && ` · ${student.level}`}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {student.group ? (
-                          <span className="text-sm text-gray-700">{student.group.name}</span>
-                        ) : (
-                          <span className="text-sm text-gray-400">—</span>
+                        <p className="text-sm text-gray-700">{student.teacherName ?? <span className="text-gray-300">—</span>}</p>
+                        {student.subject && (
+                          <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${subjectColor}`}>
+                            {student.subject}
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {student.phone && <p>{student.phone}</p>}
-                          {student.email && <p className="text-gray-500">{student.email}</p>}
-                        </div>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${type.cls}`}>{type.label}</span>
+                        {student.groupSize >= 2 && student.group && (
+                          <p className="mt-0.5 text-xs text-gray-400">{student.group.name}</p>
+                        )}
                       </TableCell>
-                      <TableCell>
-                        <span className="font-medium text-gray-900">
-                          {formatCurrency(student.monthlyFee)}
-                        </span>
+                      <TableCell className="text-sm text-gray-600 space-y-1">
+                        {student.phone && (() => {
+                          const wa = whatsappLink(student.phone)
+                          return wa ? (
+                            <a href={wa} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-700 hover:underline">
+                              <MessageCircle className="h-3.5 w-3.5" />{student.phone}
+                            </a>
+                          ) : <p>{student.phone}</p>
+                        })()}
+                        {student.parentPhone && student.parentPhone !== student.phone && (() => {
+                          const wa = whatsappLink(student.parentPhone)
+                          return wa ? (
+                            <a href={wa} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:underline">
+                              <MessageCircle className="h-3.5 w-3.5" />Parent : {student.parentPhone}
+                            </a>
+                          ) : <p className="text-gray-400">Parent : {student.parentPhone}</p>
+                        })()}
+                        {student.email && (
+                          <a href={`mailto:${student.email}`} className="block text-blue-600 hover:underline">{student.email}</a>
+                        )}
+                        {!student.phone && !student.parentPhone && !student.email && <span className="text-gray-300">—</span>}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {formatDate(student.enrollmentDate)}
+                      <TableCell className="text-sm">
+                        <p className="font-medium text-gray-900">{formatCurrency(student.monthlyFee)}<span className="font-normal text-gray-400"> / 4 sem.</span></p>
+                        <p className="text-xs text-gray-500">
+                          {student.lessonsPerWeek ? `${student.lessonsPerWeek}×/sem` : "—"}
+                          {` · ${formatDuration(student.duration)}`}
+                          {student.hourlyRate ? ` · ${formatCurrency(student.hourlyRate)}/h` : ""}
+                        </p>
                       </TableCell>
                       <TableCell>
                         <Badge variant={cfg?.variant ?? "secondary"}>{cfg?.label ?? student.status}</Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(student)} title="Modifier">
+                          <Button variant="ghost" size="icon" onClick={() => { setEdit(student); setDialogOpen(true) }} title="Modifier">
                             <Edit className="h-4 w-4" />
                           </Button>
                           {student.status !== "ARCHIVED" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleArchive(student.id)}
-                              title="Archiver"
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => handleArchive(student.id)} title="Archiver">
                               <Archive className="h-4 w-4" />
                             </Button>
                           )}
@@ -220,12 +389,7 @@ export function StudentsClient({
         </CardContent>
       </Card>
 
-      <StudentDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        student={editStudent}
-        groups={groups}
-      />
+      <StudentDialog open={dialogOpen} onClose={() => setDialogOpen(false)} student={editStudent} groups={groups} teachers={teachers} />
     </div>
   )
 }

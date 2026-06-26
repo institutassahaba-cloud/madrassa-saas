@@ -9,6 +9,7 @@ interface RevenueChartProps {
 }
 
 export function RevenueChart({ tenantId }: RevenueChartProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [data, setData] = useState<any[]>([])
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function RevenueChart({ tenantId }: RevenueChartProps) {
             <XAxis dataKey="month" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
             <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(value: any) => [`${value} €`, "Revenus"]}
               contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
             />

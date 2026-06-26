@@ -6,7 +6,7 @@ import { SettingsClient } from "./settings-client"
 export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")
-  const user = session.user as any
+  const user = session.user
   if (user.role !== "DIRECTOR") redirect("/dashboard")
 
   const [users, tenant] = await Promise.all([
@@ -21,5 +21,6 @@ export default async function SettingsPage() {
     }),
   ])
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return <SettingsClient users={users} tenant={tenant as any} currentUserId={user.id} />
 }

@@ -1,0 +1,26 @@
+[
+ {
+  "day": 2,
+  "start": "09:00",
+  "end": "09:30",
+  "name": "Aminata Oum Mohamed"
+ },
+ {
+  "day": 0,
+  "start": "09:30",
+  "end": "10:00",
+  "name": "Myriem"
+ },
+ {
+  "day": 0,
+  "start": "11:00",
+  "end": "11:30",
+  "name": "Ouidati"
+ },
+ {
+  "day": 3,
+  "start": "13:30",
+  "end": "14:00",
+  "name": "Omaya"
+ }
+]
