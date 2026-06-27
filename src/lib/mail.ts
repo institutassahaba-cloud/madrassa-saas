@@ -41,10 +41,14 @@ export async function sendEmail({
 
 function getComptaTransporter() {
   const user = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? DEFAULT_COMPTA_EMAIL
+  const host = process.env.COMPTA_SMTP_HOST ?? (user.endsWith("@gmail.com") ? "smtp.gmail.com" : "smtp.hostinger.com")
+  const port = Number(process.env.COMPTA_SMTP_PORT ?? "465")
+  const secure = (process.env.COMPTA_SMTP_SECURE ?? "true") !== "false"
+
   return nodemailer.createTransport({
-    host: "smtp.hostinger.com",
-    port: 465,
-    secure: true,
+    host,
+    port,
+    secure,
     auth: {
       user,
       pass: process.env.COMPTA_EMAIL_PASSWORD,
