@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUser } from "@/lib/view-as"
 import { DocumentsClient } from "./documents-client"
 
 export default async function DocumentsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
   if (!["DIRECTOR", "SECRETARY"].includes(user.role)) redirect("/dashboard")
 
   const [teachers, contracts, salaries] = await Promise.all([

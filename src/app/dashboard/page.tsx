@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { getEffectiveUser } from "@/lib/view-as"
 import { formatCurrency, getMonthName } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -81,10 +81,10 @@ async function getStats(tenantId: string) {
 }
 
 export default async function DashboardPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const tenantId = (session.user).tenantId
-  const role = (session.user).role
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
+  const tenantId = user.tenantId
+  const role = user.role
 
   // Un professeur n'a jamais accès aux chiffres (revenus, paiements…) :
   // il voit son propre accueil (cours du jour, raccourcis).
@@ -92,8 +92,8 @@ export default async function DashboardPage() {
     return (
       <TeacherHome
         tenantId={tenantId}
-        teacherId={(session.user).id}
-        teacherName={(session.user).name ?? "Professeur"}
+        teacherId={user.id}
+        teacherName={user.name ?? "Professeur"}
       />
     )
   }

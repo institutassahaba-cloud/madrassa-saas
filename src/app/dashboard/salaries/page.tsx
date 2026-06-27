@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { getEffectiveUser } from "@/lib/view-as"
 import { SalariesClient } from "./salaries-client"
 
 export default async function SalariesPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
   if (!["DIRECTOR", "SECRETARY"].includes(user.role)) redirect("/dashboard")
 
   const now = new Date()

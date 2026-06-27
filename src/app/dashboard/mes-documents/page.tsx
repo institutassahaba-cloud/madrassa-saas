@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUser } from "@/lib/view-as"
 import { MesDocumentsClient } from "./mes-documents-client"
 
 export default async function MesDocumentsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
   if (user.role !== "TEACHER") redirect("/dashboard")
 
   const salaries = await prisma.teacherSalary.findMany({

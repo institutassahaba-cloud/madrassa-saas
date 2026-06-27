@@ -1,13 +1,12 @@
-import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUser } from "@/lib/view-as"
 import { ScheduleClient } from "./schedule-client"
 
 export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { week } = await searchParams
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
 
   const [slots, groups, teachers, currentUser] = await Promise.all([
     prisma.timeSlot.findMany({

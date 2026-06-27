@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { getEffectiveUser } from "@/lib/view-as"
 import { AttendanceClient } from "./attendance-client"
 
 export default async function AttendancePage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
 
   const groups = await prisma.group.findMany({
     where: {

@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { getEffectiveUser } from "@/lib/view-as"
 import { GroupsClient } from "./groups-client"
 
 export default async function GroupsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
 
   const [groups, teachers] = await Promise.all([
     prisma.group.findMany({

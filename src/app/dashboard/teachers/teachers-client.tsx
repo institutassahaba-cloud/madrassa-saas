@@ -5,7 +5,7 @@ import type React from "react"
 import {
   Users, BookOpen, UserCheck, ChevronDown, ChevronUp, Mail, Phone,
   Calendar, MessageCircle, Plus, Check, Clock, X, CheckCircle2,
-  AlertCircle, Search, Bell,
+  AlertCircle, Search, Bell, Eye,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { GROUP_RATES, rateForSize } from "@/lib/group-rates"
@@ -697,6 +697,23 @@ function TeacherCard({
 
       {expanded && (
         <div className="border-t border-gray-100 p-5 space-y-4">
+          {/* Voir comme ce professeur (directeur uniquement) */}
+          {currentRole === "DIRECTOR" && (
+            <button
+              onClick={async () => {
+                await fetch("/api/view-as", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ teacherId: teacher.id }),
+                })
+                window.location.href = "/dashboard"
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100"
+            >
+              <Eye className="h-4 w-4" /> Voir comme ce professeur
+            </button>
+          )}
+
           {/* Tarifs horaires (directeur uniquement) */}
           {currentRole === "DIRECTOR" && (
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">

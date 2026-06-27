@@ -1,13 +1,12 @@
-import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { getEffectiveUser } from "@/lib/view-as"
 import { CahierClient } from "./cahier-client"
 
 export default async function CahierPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
 
   const [students, lessonSessions, payments] = await Promise.all([
     prisma.student.findMany({

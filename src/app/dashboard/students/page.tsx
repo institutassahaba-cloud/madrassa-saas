@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { getEffectiveUser } from "@/lib/view-as"
 import { StudentsClient } from "./students-client"
 
 export default async function StudentsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
 
   const [students, groups, teachers] = await Promise.all([

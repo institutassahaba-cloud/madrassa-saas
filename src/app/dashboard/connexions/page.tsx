@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { getEffectiveUser } from "@/lib/view-as"
 import { ConnexionsClient } from "./connexions-client"
 
 export default async function ConnexionsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const user = session.user
+  const user = await getEffectiveUser()
+  if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
 
   const members = await prisma.user.findMany({
