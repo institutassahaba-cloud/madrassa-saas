@@ -74,12 +74,13 @@
 4. **Lot D — moteur de vérification des paiements** (le gros morceau). Décision : **parsing email Gmail** pour PayPal + Wise (comptes perso), avec **matching à garde-fous stricts** (auto-valide seulement si 100 % univoque : payeur + montant + une seule demande en attente ; sinon file manuelle). Modèles déjà prévus : `PaymentMatch` (verrou `gmailMessageId` unique), `PaymentAllocation` (paiements groupés N-N).
 5. **Bouton « dernier cours fait »** côté prof (server action : marque le dernier cours PRESENT + logique fin de session).
 6. **Export SaaS → Google Sheets** (miroir lecture seule / bouton ou synchro nocturne ; `googleapis` déjà installé). PAS de synchro bidirectionnelle.
-7. Pages au menu encore absentes : `/stats`, `/notifications` ; à créer aussi : Livres.
-8. Commission secrétaire 10 % (modèle `SecretaryCommission` existe, logique à brancher).
+7. **Uploader les cours de l'institut** dans l'onglet **Livres et contrôles** (PDF cours/livres, catégories Langue arabe + Coran).
+8. Pages au menu encore absentes : `/stats`, `/notifications`.
+9. Commission secrétaire 10 % (modèle `SecretaryCommission` existe, logique à brancher).
 
 ### Qualité de données
-9. **Auditer/corriger le cahier de Samia (PR001)** (onglets parasites).
-10. Quelques élèves sans cahier / doublons de fiches à fusionner à la main (voir détail dans la mémoire projet).
+10. **Auditer/corriger le cahier de Samia (PR001)** (onglets parasites).
+11. Quelques élèves sans cahier / doublons de fiches à fusionner à la main (voir détail dans la mémoire projet).
 
 ---
 
