@@ -15,9 +15,12 @@ export default async function MonComptePage() {
 
   return (
     <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Changer mon mot de passe</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Mon compte</h1>
       <p className="text-sm text-gray-500 mb-6">{dbUser?.name} — {dbUser?.email}</p>
-      <MonCompteClient mustChangePassword={dbUser?.mustChangePassword ?? false} />
+      <MonCompteClient
+        mustChangePassword={dbUser?.mustChangePassword ?? false}
+        currentEmail={dbUser?.email ?? ""}
+      />
     </div>
   )
 }

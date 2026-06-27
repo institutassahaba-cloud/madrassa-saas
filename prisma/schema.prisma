@@ -77,6 +77,8 @@ model User {
   phone         String?
   timezone      String    @default("Europe/Paris")
   mustChangePassword Boolean @default(false)
+  contactEmail  String?
+  hasOnboarded  Boolean   @default(false)
   individualRate Float?
   binomeRate     Float?
   groupRate      Float?

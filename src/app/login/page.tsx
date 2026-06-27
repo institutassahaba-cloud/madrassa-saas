@@ -2,10 +2,11 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { GraduationCap, Loader2 } from "lucide-react"
+import { GraduationCap, Loader2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function LoginPage() {
@@ -14,23 +15,11 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [form, setForm] = useState({ email: "", password: "" })
 
-  const DEMO_ROLES = [
-    { label: "Directeur",  email: "directeur@assahaba.com",                icon: "🎓" },
-    { label: "Secrétaire", email: "secretaire@assahaba.com",               icon: "📋" },
-    { label: "Professeur", email: "samia.umm.abderrahmen@assahaba.com",    icon: "📖" },
-  ]
-
-  async function quickDemo(email: string) {
-    setLoading(true)
-    setError("")
-    const result = await signIn("credentials", {
-      email,
-      password: "admin1234",
-      redirect: false,
-    })
-    if (result?.error) { setError("Erreur de connexion rapide."); setLoading(false) }
-    else router.push("/dashboard")
-  }
+  // Mot de passe oublié
+  const [forgotOpen, setForgotOpen] = useState(false)
+  const [forgotId, setForgotId] = useState("")
+  const [forgotMsg, setForgotMsg] = useState("")
+  const [forgotLoading, setForgotLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -50,6 +39,20 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault()
+    setForgotLoading(true)
+    setForgotMsg("")
+    const res = await fetch("/api/auth/forgot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: forgotId }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setForgotMsg(data.message || "Si un compte correspond, un email a été envoyé.")
+    setForgotLoading(false)
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 to-gray-100 p-4">
       <div className="w-full max-w-md space-y-8">
@@ -63,68 +66,98 @@ export default function LoginPage() {
         </div>
 
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle>Connexion</CardTitle>
-            <CardDescription>Entrez vos identifiants pour accéder à votre espace</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="directeur@example.com"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Mot de passe</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  required
-                />
-              </div>
-
-              {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Se connecter
-              </Button>
-
-              {process.env.NODE_ENV === "development" && (
-                <div className="space-y-2 pt-1">
-                  <p className="text-center text-xs text-gray-400">⚡ Accès démo rapide</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {DEMO_ROLES.map((r) => (
-                      <button
-                        key={r.email}
-                        type="button"
-                        onClick={() => quickDemo(r.email)}
-                        disabled={loading}
-                        className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-emerald-200 bg-emerald-50 py-3 text-xs font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-colors disabled:opacity-50"
-                      >
-                        <span className="text-xl">{r.icon}</span>
-                        {r.label}
-                      </button>
-                    ))}
+          {forgotOpen ? (
+            <>
+              <CardHeader>
+                <CardTitle>Mot de passe oublié</CardTitle>
+                <CardDescription>Entrez votre identifiant. Un nouveau mot de passe sera envoyé à votre adresse email.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleForgot} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgotId">Identifiant</Label>
+                    <Input
+                      id="forgotId"
+                      type="text"
+                      placeholder="prenom00"
+                      value={forgotId}
+                      onChange={(e) => setForgotId(e.target.value)}
+                      required
+                    />
                   </div>
-                </div>
-              )}
-            </form>
-          </CardContent>
+
+                  {forgotMsg && (
+                    <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{forgotMsg}</div>
+                  )}
+
+                  <Button type="submit" className="w-full" disabled={forgotLoading}>
+                    {forgotLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Envoyer un nouveau mot de passe
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setForgotOpen(false); setForgotMsg("") }}
+                    className="flex w-full items-center justify-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Retour à la connexion
+                  </button>
+                </form>
+              </CardContent>
+            </>
+          ) : (
+            <>
+              <CardHeader>
+                <CardTitle>Connexion</CardTitle>
+                <CardDescription>Entrez vos identifiants pour accéder à votre espace</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email">Identifiant</Label>
+                    <Input
+                      id="email"
+                      type="text"
+                      placeholder="prenom00"
+                      value={form.email}
+                      onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password">Mot de passe</Label>
+                    <PasswordInput
+                      id="password"
+                      placeholder="••••••••"
+                      value={form.password}
+                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Se connecter
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(true)}
+                    className="block w-full text-center text-sm text-emerald-600 hover:text-emerald-700"
+                  >
+                    Mot de passe oublié&nbsp;?
+                  </button>
+                </form>
+              </CardContent>
+            </>
+          )}
         </Card>
 
         <p className="text-center text-xs text-gray-400">

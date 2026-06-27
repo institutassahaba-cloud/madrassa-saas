@@ -18,7 +18,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         const parsed = z.object({
-          email: z.string().email(),
+          email: z.string().min(1),
           password: z.string().min(6),
         }).safeParse(credentials)
 
@@ -27,7 +27,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { email, password } = parsed.data
 
         const user = await prisma.user.findFirst({
-          where: { email, isActive: true },
+          where: { email: email.trim().toLowerCase(), isActive: true },
           include: { tenant: { select: { name: true, isActive: true } } },
         })
         if (!user || !user.password || !user.tenant?.isActive) return null
@@ -45,6 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
           mustChangePassword: user.mustChangePassword,
+          hasOnboarded: user.hasOnboarded,
         }
       },
     }),

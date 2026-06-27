@@ -9,6 +9,7 @@ declare module "next-auth" {
       tenantId: string
       tenantName: string
       mustChangePassword: boolean
+      hasOnboarded: boolean
     } & DefaultSession["user"]
   }
 
@@ -17,6 +18,7 @@ declare module "next-auth" {
     tenantId: string
     tenantName: string
     mustChangePassword: boolean
+    hasOnboarded: boolean
   }
 }
 
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
     tenantId?: string
     tenantName?: string
     mustChangePassword?: boolean
+    hasOnboarded?: boolean
   }
 }

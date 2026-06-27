@@ -1,15 +1,50 @@
 "use client"
 
 import { useState } from "react"
-import { Lock, CheckCircle2 } from "lucide-react"
+import { Lock, CheckCircle2, Mail } from "lucide-react"
+import { PasswordInput } from "@/components/ui/password-input"
 
-export function MonCompteClient({ mustChangePassword }: { mustChangePassword: boolean }) {
+export function MonCompteClient({
+  mustChangePassword,
+  currentEmail,
+}: {
+  mustChangePassword: boolean
+  currentEmail: string
+}) {
   const [currentPassword, setCurrent] = useState("")
   const [newPassword, setNew] = useState("")
   const [confirm, setConfirm] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+
+  // — Changement d'email —
+  const [email, setEmail] = useState(currentEmail)
+  const [emailPassword, setEmailPassword] = useState("")
+  const [emailLoading, setEmailLoading] = useState(false)
+  const [emailError, setEmailError] = useState("")
+  const [emailSuccess, setEmailSuccess] = useState(false)
+
+  async function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setEmailError("")
+    setEmailSuccess(false)
+    setEmailLoading(true)
+    const res = await fetch("/api/users/email", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: emailPassword, newEmail: email }),
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      setEmailError(data.error || "Erreur")
+      setEmailLoading(false)
+      return
+    }
+    setEmailSuccess(true)
+    setEmailPassword("")
+    setEmailLoading(false)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -51,42 +86,79 @@ export function MonCompteClient({ mustChangePassword }: { mustChangePassword: bo
         </div>
       )}
 
+      {!mustChangePassword && (
+        <form onSubmit={handleEmailSubmit} className="mb-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+          <h2 className="flex items-center gap-2 font-semibold text-gray-900">
+            <Mail className="h-4 w-4" /> Changer l'adresse email
+          </h2>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">Nouvelle adresse email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">Mot de passe actuel</label>
+            <PasswordInput
+              required
+              value={emailPassword}
+              onChange={(e) => setEmailPassword(e.target.value)}
+            />
+          </div>
+
+          {emailError && <p className="text-sm text-red-600">{emailError}</p>}
+          {emailSuccess && (
+            <p className="flex items-center gap-1.5 text-sm text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" /> Adresse email modifiée ! Utilisez-la à la prochaine connexion.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={emailLoading}
+            className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {emailLoading ? "Enregistrement…" : "Changer l'email"}
+          </button>
+        </form>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="font-semibold text-gray-900">Changer le mot de passe</h2>
 
         {!mustChangePassword && (
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">Mot de passe actuel</label>
-            <input
-              type="password"
+            <PasswordInput
               required
               value={currentPassword}
               onChange={(e) => setCurrent(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
             />
           </div>
         )}
 
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">Nouveau mot de passe</label>
-          <input
-            type="password"
+          <PasswordInput
             required
             minLength={6}
             value={newPassword}
             onChange={(e) => setNew(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
           />
         </div>
 
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">Confirmer</label>
-          <input
-            type="password"
+          <PasswordInput
             required
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
           />
         </div>
 
