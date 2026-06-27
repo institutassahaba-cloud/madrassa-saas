@@ -3,6 +3,7 @@ import nodemailer from "nodemailer"
 const BREVO_API_KEY = process.env.BREVO_API_KEY ?? ""
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "contact@institut-assahaba.com"
 const FROM_NAME = process.env.FROM_NAME ?? "Institut As-Sahaba"
+const DEFAULT_COMPTA_EMAIL = "comptabilite.institutassahaba@gmail.com"
 
 export async function sendEmail({
   to,
@@ -39,19 +40,20 @@ export async function sendEmail({
 // ─── SMTP Hostinger (compta) ──────────────────────────────────────────────────
 
 function getComptaTransporter() {
+  const user = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? DEFAULT_COMPTA_EMAIL
   return nodemailer.createTransport({
     host: "smtp.hostinger.com",
     port: 465,
     secure: true,
     auth: {
-      user: process.env.COMPTA_EMAIL,
+      user,
       pass: process.env.COMPTA_EMAIL_PASSWORD,
     },
   })
 }
 
 export async function sendComptaMail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  const user = process.env.COMPTA_EMAIL
+  const user = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? DEFAULT_COMPTA_EMAIL
   if (!user || !process.env.COMPTA_EMAIL_PASSWORD) {
     console.warn("[mail] COMPTA_EMAIL not configured — email not sent to", to)
     return { ok: false, reason: "no_compta_config" }
