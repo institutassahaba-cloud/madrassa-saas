@@ -8,7 +8,7 @@ export default async function StudentsPage() {
   if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
 
-  const [students, groups, teachers] = await Promise.all([
+  const [students, groups, teachers, slots] = await Promise.all([
     prisma.student.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -32,7 +32,18 @@ export default async function StudentsPage() {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.timeSlot.findMany({
+      where: { tenantId: user.tenantId, groupId: { not: null } },
+      select: { groupId: true, dayOfWeek: true, startTime: true, endTime: true },
+      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+    }),
   ])
+
+  const scheduleByGroup: Record<string, { day: number; start: string; end: string }[]> = {}
+  for (const s of slots) {
+    if (!s.groupId) continue
+    ;(scheduleByGroup[s.groupId] ||= []).push({ day: s.dayOfWeek, start: s.startTime, end: s.endTime })
+  }
 
   // Type de cours (Individuel/Binôme/Groupe) = nombre d'élèves ACTIFS partageant le groupe.
   const activePerGroup: Record<string, number> = {}
@@ -45,6 +56,7 @@ export default async function StudentsPage() {
     ...s,
     teacherName: s.group?.teacher?.name ?? null,
     groupSize: s.groupId ? (activePerGroup[s.groupId] ?? 0) : 0,
+    schedule: s.groupId ? (scheduleByGroup[s.groupId] ?? []) : [],
   }))
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

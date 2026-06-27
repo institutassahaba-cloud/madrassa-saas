@@ -1,6 +1,6 @@
 "use client"
 import { useState, useRef } from "react"
-import { Plus, Search, Upload, Edit, Archive, X, MessageCircle } from "lucide-react"
+import { Plus, Search, Upload, Edit, Archive, X, MessageCircle, Clock } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,13 @@ interface Student {
   teacherName: string | null
   groupSize: number
   level: string | null
+  schedule: Slot[]
+}
+
+interface Slot {
+  day: number
+  start: string
+  end: string
 }
 
 // "Individuel" (1 élève) / "Binôme" (2) / "Groupe" (3+) — déduit du nb d'élèves actifs du groupe.
@@ -66,6 +73,19 @@ function formatDuration(d: string | null): string {
   if (!isFinite(hours) || hours <= 0) return "—"
   const mins = Math.round(hours * 60)
   return mins % 60 === 0 ? `${mins / 60}h` : `${mins} min`
+}
+
+const DAYS_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
+
+function formatTime(time: string): string {
+  const [hours, minutes] = time.split(":")
+  if (!hours || !minutes) return time
+  return minutes === "00" ? `${Number(hours)}h` : `${Number(hours)}h${minutes}`
+}
+
+function formatSchedule(slots: Slot[]): string | null {
+  if (slots.length === 0) return null
+  return slots.map((s) => `${DAYS_SHORT[s.day]} ${formatTime(s.start)}`).join(" · ")
 }
 
 interface Group {
@@ -310,6 +330,7 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                   const cfg = STATUS_CONFIG[student.status as keyof typeof STATUS_CONFIG]
                   const subjectColor = student.subject ? (SUBJECT_COLORS[student.subject] ?? "bg-gray-100 text-gray-600") : ""
                   const type = courseType(student.groupSize)
+                  const schedule = formatSchedule(student.schedule)
                   return (
                     <TableRow key={student.id} className={student.status === "ARCHIVED" ? "opacity-60" : ""}>
                       <TableCell>
@@ -364,6 +385,12 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                           {` · ${formatDuration(student.duration)}`}
                           {student.hourlyRate ? ` · ${formatCurrency(student.hourlyRate)}/h` : ""}
                         </p>
+                        {schedule && (
+                          <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-gray-600">
+                            <Clock className="h-3 w-3 text-emerald-600" />
+                            {schedule}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={cfg?.variant ?? "secondary"}>{cfg?.label ?? student.status}</Badge>

@@ -83,9 +83,15 @@ function formatForfait(lessonsPerWeek: number | null, duration: string | null): 
   return `${lessonsPerWeek} cours de ${dur} par semaine`
 }
 
+function formatTime(time: string): string {
+  const [hours, minutes] = time.split(":")
+  if (!hours || !minutes) return time
+  return minutes === "00" ? `${Number(hours)}h` : `${Number(hours)}h${minutes}`
+}
+
 function formatSchedule(slots: Slot[] | undefined): string | null {
   if (!slots || slots.length === 0) return null
-  return slots.map((s) => `${DAYS_SHORT[s.day]} ${s.start}`).join(" · ")
+  return slots.map((s) => `${DAYS_SHORT[s.day]} ${formatTime(s.start)}`).join(" · ")
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -494,9 +500,14 @@ function StudentCahier({
             {student.group?.name ?? "Aucun groupe"}
             {student.subject && ` · ${student.subject}`}
           </p>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-            {planning && <span className="text-gray-600">🗓 {planning}</span>}
-            {forfait && <span className="text-gray-500">{forfait}</span>}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            {forfait && <span className="font-medium text-gray-600">{forfait}</span>}
+            {planning && (
+              <span className="inline-flex items-center gap-1 text-gray-600">
+                <Clock className="h-3 w-3 text-emerald-600" />
+                {planning}
+              </span>
+            )}
           </div>
         </div>
         {sessions.length === 0 && (
