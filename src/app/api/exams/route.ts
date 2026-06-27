@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { writeFile } from "fs/promises"
+import { mkdir, writeFile } from "fs/promises"
 import path from "path"
 
 export async function GET() {
@@ -30,6 +30,9 @@ export async function POST(req: Request) {
   if (!file || !title || !level) {
     return NextResponse.json({ error: "Fichier, titre et niveau requis" }, { status: 400 })
   }
+  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    return NextResponse.json({ error: "Seuls les fichiers PDF sont acceptés" }, { status: 400 })
+  }
 
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
@@ -39,6 +42,7 @@ export async function POST(req: Request) {
   const uploadDir = path.join(process.cwd(), "public", "uploads", "exams")
   const filePath = path.join(uploadDir, safeName)
 
+  await mkdir(uploadDir, { recursive: true })
   await writeFile(filePath, buffer)
 
   const examFile = await prisma.examFile.create({

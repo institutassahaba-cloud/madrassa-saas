@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
   { label: "Professeurs", href: "/dashboard/teachers", icon: GraduationCap, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Mes élèves", href: "/dashboard/cahier", icon: BookOpen, roles: ["TEACHER"] },
   { label: "Mes documents", href: "/dashboard/mes-documents", icon: FileText, roles: ["TEACHER"] },
-  { label: "Contrôles", href: "/dashboard/assessments", icon: BookOpen, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
+  { label: "Livres et contrôles", href: "/dashboard/assessments", icon: BookOpen, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
   { label: "Paiements", href: "/dashboard/payments", icon: CreditCard, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Récap des paies", href: "/dashboard/recap-paiements", icon: Banknote, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Planning", href: "/dashboard/schedule", icon: Calendar, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
