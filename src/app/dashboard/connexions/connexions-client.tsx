@@ -53,6 +53,7 @@ function ConnectionState({ connected }: { connected: boolean }) {
 export function ConnexionsClient({ members: initial, userRole, mailStatus }: { members: Member[]; userRole: string; mailStatus: MailStatus }) {
   const [members, setMembers] = useState(initial)
   const [loading, setLoading] = useState<string | null>(null)
+  const [testLoading, setTestLoading] = useState(false)
 
   async function toggleActive(id: string, isActive: boolean) {
     if (isActive && !confirm("Désactiver ce compte ? Le membre ne pourra plus se connecter.")) return
@@ -67,6 +68,27 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
       setMembers((prev) => prev.map((m) => m.id === id ? { ...m, isActive: !isActive } : m))
     } finally {
       setLoading(null)
+    }
+  }
+
+  async function sendComptaTest() {
+    const to = prompt("Adresse email où envoyer le test compta :")
+    if (to === null) return
+    setTestLoading(true)
+    try {
+      const res = await fetch("/api/connexions/test-compta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error || "L'envoi du test a échoué.")
+        return
+      }
+      alert(`Mail de test envoyé à ${data.to}.`)
+    } finally {
+      setTestLoading(false)
     }
   }
 
@@ -133,21 +155,28 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
               </p>
             </div>
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-              <p className="text-[11px] font-medium uppercase text-gray-400">Configuration</p>
-              {userRole === "DIRECTOR" ? (
-                <button
-                  type="button"
-                  onClick={() => { window.location.href = "/dashboard/settings" }}
-                  className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-emerald-700"
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                  Ouvrir
-                </button>
-              ) : (
-                <p className="mt-1 text-xs font-semibold text-gray-500">Directeur uniquement</p>
-              )}
+              <p className="text-[11px] font-medium uppercase text-gray-400">Test</p>
+              <button
+                type="button"
+                onClick={sendComptaTest}
+                disabled={testLoading}
+                className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Send className="h-3.5 w-3.5" />
+                {testLoading ? "Envoi..." : "Envoyer un test"}
+              </button>
             </div>
           </div>
+          {userRole === "DIRECTOR" && (
+            <button
+              type="button"
+              onClick={() => { window.location.href = "/dashboard/settings" }}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-emerald-700"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Paramètres
+            </button>
+          )}
         </div>
       </section>
 
