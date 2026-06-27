@@ -209,6 +209,7 @@ function OccurrenceBlock({
 function SlotForm({
   date,
   slot,
+  placement = "column",
   groups,
   teachers,
   role,
@@ -218,6 +219,7 @@ function SlotForm({
 }: {
   date: Date
   slot?: TimeSlot
+  placement?: "corner" | "column"
   groups: { id: string; name: string; teacherId: string | null }[]
   teachers: { id: string; name: string; timezone: string }[]
   role: string
@@ -252,7 +254,12 @@ function SlotForm({
   }
 
   return (
-    <div className="absolute inset-x-0 top-0 z-30 rounded-xl border border-emerald-300 bg-white p-3 shadow-xl space-y-2">
+    <div className={
+      "z-30 rounded-xl border border-emerald-300 bg-white p-3 shadow-xl space-y-2 " +
+      (placement === "corner"
+        ? "absolute left-0 top-full mt-2 w-72"
+        : "absolute inset-x-0 top-0")
+    }>
       <p className="text-xs font-semibold text-gray-700">{slot ? "Modifier l'événement" : "Ajouter un événement"}</p>
       <div>
         <label className="text-xs text-gray-500">Date</label>
@@ -316,6 +323,11 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   const [addingDate, setAddingDate] = useState<Date | null>(null)
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null)
   const [savingTz, setSavingTz] = useState(false)
+  const activeTeacherId = role === "TEACHER"
+    ? currentUser.id
+    : filterTeacher !== "ALL"
+      ? filterTeacher
+      : null
 
   // Week navigation
   const initialMonday = initialWeek ? getMonday(new Date(initialWeek)) : getMonday(new Date())
@@ -503,22 +515,38 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
           <div className="min-w-[700px]">
             {/* Day headers with real dates */}
             <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
-              <div className="border-r border-gray-100" />
+              <div className="relative border-r border-gray-100">
+                <button
+                  onClick={() => {
+                    if (!activeTeacherId) return
+                    setAddingDate(weekDates[0])
+                    setEditingSlot(null)
+                  }}
+                  disabled={!activeTeacherId}
+                  className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                  title={activeTeacherId ? "Ajouter un événement" : "Choisir un professeur avant d'ajouter"}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                {addingDate && activeTeacherId && (
+                  <SlotForm
+                    date={addingDate}
+                    placement="corner"
+                    groups={groups}
+                    teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
+                    role="TEACHER"
+                    currentUserId={activeTeacherId}
+                    onSave={handleSaveSlot}
+                    onClose={() => setAddingDate(null)}
+                  />
+                )}
+              </div>
               {displayOrder.map(i => {
                 const d = weekDates[i]
                 const isToday = isSameDay(d, today)
                 return (
                   <div key={i} className={`border-r border-gray-100 last:border-0 px-2 py-2 text-center ${isToday ? "bg-emerald-50" : ""}`}>
-                    <div className="flex items-center justify-center gap-1.5">
-                      <p className="text-xs font-semibold text-gray-700">{DAYS_SHORT[d.getDay()]}</p>
-                      <button
-                        onClick={() => { setAddingDate(d); setEditingSlot(null) }}
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-emerald-100 hover:text-emerald-700"
-                        title={`Ajouter un événement le ${DAYS[d.getDay()]}`}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
-                    </div>
+                    <p className="text-xs font-semibold text-gray-700">{DAYS_SHORT[d.getDay()]}</p>
                     <p className={`text-lg font-bold ${isToday ? "text-emerald-600" : "text-gray-400"}`}>{d.getDate()}</p>
                   </div>
                 )
@@ -541,11 +569,6 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                 const d = weekDates[i]
                 const daySlots = getOccurrences(d)
                 const isToday = isSameDay(d, today)
-                const formTeacherId = role === "TEACHER"
-                  ? currentUser.id
-                  : filterTeacher !== "ALL"
-                    ? filterTeacher
-                    : (teachers[0]?.id ?? currentUser.id)
                 return (
                   <div
                     key={i}
@@ -573,26 +596,14 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                       />
                     ))}
 
-                    {addingDate && isSameDay(addingDate, d) && (
-                      <SlotForm
-                        date={d}
-                        groups={groups}
-                        teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
-                        role={role}
-                        currentUserId={formTeacherId}
-                        onSave={handleSaveSlot}
-                        onClose={() => setAddingDate(null)}
-                      />
-                    )}
-
                     {editingSlot && editingSlot.dayOfWeek === d.getDay() && (
                       <SlotForm
                         date={d}
                         slot={editingSlot}
                         groups={groups}
                         teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
-                        role={role}
-                        currentUserId={formTeacherId}
+                        role="TEACHER"
+                        currentUserId={editingSlot.teacher.id}
                         onSave={handleSaveSlot}
                         onClose={() => setEditingSlot(null)}
                       />
