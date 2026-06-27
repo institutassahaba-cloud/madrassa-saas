@@ -1,0 +1,102 @@
+{
+  "updatedAt": "2026-06-27",
+  "mode": "transition-read-only",
+  "purpose": "Sources Google Sheets professeurs pendant la transition avant utilisation complète du SaaS.",
+  "safetyRules": [
+    "Ne pas synchroniser automatiquement dans les deux sens.",
+    "Lire les Sheets professeur par professeur.",
+    "Afficher un aperçu des différences avant toute écriture dans la base SaaS.",
+    "Ne jamais supprimer ou écraser les données déjà créées dans le SaaS sans validation explicite.",
+    "Importer seulement les champs autorisés pour la transition, par exemple emploi du temps, cahier et informations de cours."
+  ],
+  "teachers": [
+    {
+      "code": "PR001",
+      "name": "Samia Umm Abderrahmen",
+      "emoji": "🍀",
+      "sheetId": "1tPLGSDihl1JBSY56_8QOvomlpIEsDglI_bhesb0dYQM",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1tPLGSDihl1JBSY56_8QOvomlpIEsDglI_bhesb0dYQM/edit",
+      "localScheduleFile": "prisma/data/edt-PR001.json"
+    },
+    {
+      "code": "PR002",
+      "name": "Samia umm Haroun",
+      "emoji": "🌷",
+      "sheetId": "1vMK2OlLaFsfF3v33sMdpTcJJgQMelyd_a-LnFRbPAAo",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1vMK2OlLaFsfF3v33sMdpTcJJgQMelyd_a-LnFRbPAAo/edit",
+      "localScheduleFile": "prisma/data/edt-samia.umm.haroun.json"
+    },
+    {
+      "code": "PR003",
+      "name": "Asma",
+      "displayName": "Professeur Asma",
+      "emoji": "📔",
+      "sheetId": "1DAKBKgNjx3hV0rKjEvjUPGPrTOaGWNOB6skxRD61Ww0",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1DAKBKgNjx3hV0rKjEvjUPGPrTOaGWNOB6skxRD61Ww0/edit",
+      "localScheduleFile": "prisma/data/edt-asma.json"
+    },
+    {
+      "code": "PR004",
+      "name": "Fatima Oum abdirrahmane",
+      "displayName": "Professeur Fatima Oum abdirrahmane",
+      "emoji": "📒",
+      "sheetId": "1h4Keqgqml4N9r-YgMiVnTFg0Xll2ScmNVyG3butrL6o",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1h4Keqgqml4N9r-YgMiVnTFg0Xll2ScmNVyG3butrL6o/edit",
+      "localScheduleFile": "prisma/data/edt-fatima.oum.abderrahmane.json"
+    },
+    {
+      "code": "PR005",
+      "name": "Lilia",
+      "displayName": "Professeur Lilia",
+      "emoji": "📘",
+      "sheetId": "1anNxJOj2cQ1vuXE0qqKb92SDuLomLUd2Fd5kmzDOSvc",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1anNxJOj2cQ1vuXE0qqKb92SDuLomLUd2Fd5kmzDOSvc/edit",
+      "localScheduleFile": "prisma/data/edt-lilia.json"
+    },
+    {
+      "code": "PR006",
+      "name": "Maria",
+      "displayName": "Professeur Maria",
+      "emoji": "🌻",
+      "sheetId": "1_OOtaEtap5CAsFQYmYltlyzicQgVC3Cv5oSRWhWouoo",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1_OOtaEtap5CAsFQYmYltlyzicQgVC3Cv5oSRWhWouoo/edit",
+      "localScheduleFile": "prisma/data/edt-maria.json"
+    },
+    {
+      "code": "PR007",
+      "name": "Sarah Lamari",
+      "displayName": "Professeur Sarah Lamari",
+      "emoji": "🌸",
+      "sheetId": "1Yiuc7S45M-DSrOGOk7jmMyZ0clu6pTZWSxFSLHAr4AM",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1Yiuc7S45M-DSrOGOk7jmMyZ0clu6pTZWSxFSLHAr4AM/edit",
+      "localScheduleFile": "prisma/data/edt-sarah.lamari.json"
+    },
+    {
+      "code": "PR008",
+      "name": "Sirine",
+      "displayName": "Professeur Sirine",
+      "emoji": "📓",
+      "sheetId": "1sdCFefDuwk4wHr49lT8cyiFL3JoxQxj0Yc3bqQhvqJw",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1sdCFefDuwk4wHr49lT8cyiFL3JoxQxj0Yc3bqQhvqJw/edit",
+      "localScheduleFile": "prisma/data/edt-sirine.json"
+    },
+    {
+      "code": "PR009",
+      "name": "Rahma Housni",
+      "displayName": "Professeur Rahma Housni",
+      "emoji": "🥀",
+      "sheetId": "1slucibwAtogfjQGQbEmY5moYy-tyvqr5_IQBD9WQRhk",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1slucibwAtogfjQGQbEmY5moYy-tyvqr5_IQBD9WQRhk/edit",
+      "localScheduleFile": "prisma/data/edt-rahma.housni.json"
+    },
+    {
+      "code": "PR010",
+      "name": "Djouher",
+      "displayName": "Professeur Djouher",
+      "emoji": "🪶",
+      "sheetId": "1ZB65Db9MzcQ2bv5i9MI-y8l8epM81xxjInbz6oQe9Dg",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1ZB65Db9MzcQ2bv5i9MI-y8l8epM81xxjInbz6oQe9Dg/edit",
+      "localScheduleFile": null
+    }
+  ]
+}
