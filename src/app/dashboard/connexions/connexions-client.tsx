@@ -15,8 +15,6 @@ interface Member {
 
 interface MailStatus {
   paymentInbox: { email: string; connected: boolean }
-  paypal: { email: string; connected: boolean }
-  wise: { connected: boolean }
   compta: { email: string; connected: boolean }
 }
 
@@ -74,7 +72,6 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
 
   const active = members.filter((m) => m.isActive)
   const inactive = members.filter((m) => !m.isActive)
-  const paymentReady = mailStatus.paymentInbox.connected && (mailStatus.paypal.connected || mailStatus.wise.connected)
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -95,9 +92,9 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
                 <p className="mt-0.5 text-xs text-gray-500">{mailStatus.paymentInbox.email || "Adresse non renseignée"}</p>
               </div>
             </div>
-            <ConnectionState connected={paymentReady} />
+            <ConnectionState connected={mailStatus.paymentInbox.connected} />
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
               <p className="text-[11px] font-medium uppercase text-gray-400">Boîte mail</p>
               <p className={`mt-1 text-xs font-semibold ${mailStatus.paymentInbox.connected ? "text-emerald-700" : "text-amber-700"}`}>
@@ -105,15 +102,10 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
               </p>
             </div>
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-              <p className="text-[11px] font-medium uppercase text-gray-400">PayPal</p>
-              <p className={`mt-1 text-xs font-semibold ${mailStatus.paypal.connected ? "text-emerald-700" : "text-amber-700"}`}>
-                {mailStatus.paypal.connected ? "API prête" : "Clés manquantes"}
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-              <p className="text-[11px] font-medium uppercase text-gray-400">Wise</p>
-              <p className={`mt-1 text-xs font-semibold ${mailStatus.wise.connected ? "text-emerald-700" : "text-amber-700"}`}>
-                {mailStatus.wise.connected ? "API prête" : "Token manquant"}
+              <p className="text-[11px] font-medium uppercase text-gray-400">Détection</p>
+              <p className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${mailStatus.paymentInbox.connected ? "text-emerald-700" : "text-amber-700"}`}>
+                <MailCheck className="h-3.5 w-3.5" />
+                {mailStatus.paymentInbox.connected ? "Emails PayPal/Wise lisibles" : "En attente de connexion"}
               </p>
             </div>
           </div>

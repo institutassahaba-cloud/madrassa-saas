@@ -19,9 +19,6 @@ export default async function ConnexionsPage() {
   const settings = await prisma.tenantSettings.findUnique({
     where: { tenantId: user.tenantId },
     select: {
-      wiseMerchantToken: true,
-      paypalClientId: true,
-      paypalClientSecret: true,
       gmailRefreshToken: true,
       smtpUser: true,
       smtpPassword: true,
@@ -45,13 +42,6 @@ export default async function ConnexionsPage() {
     paymentInbox: {
       email: paymentEmail,
       connected: Boolean((process.env.PAYMENT_EMAIL_PASSWORD || process.env.GMAIL_PAYMENT_REFRESH_TOKEN || settings?.gmailRefreshToken) && paymentEmail),
-    },
-    paypal: {
-      email: process.env.PAYPAL_EMAIL ?? "",
-      connected: Boolean(settings?.paypalClientId && settings?.paypalClientSecret),
-    },
-    wise: {
-      connected: Boolean(settings?.wiseMerchantToken),
     },
     compta: {
       email: comptaEmail,
