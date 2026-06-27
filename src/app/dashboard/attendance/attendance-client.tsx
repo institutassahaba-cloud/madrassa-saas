@@ -81,7 +81,7 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Présences</h2>
           <p className="text-sm text-gray-500">Faire l&apos;appel et enregistrer les présences</p>
@@ -91,11 +91,11 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
       {/* Controls */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="space-y-1 min-w-48">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+            <div className="space-y-1 lg:min-w-48">
               <p className="text-xs font-medium text-gray-500">Groupe</p>
               <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full lg:w-48">
                   <SelectValue placeholder="Sélectionner un groupe" />
                 </SelectTrigger>
                 <SelectContent>
@@ -108,10 +108,10 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
 
             <div className="space-y-1">
               <p className="text-xs font-medium text-gray-500">Date</p>
-              <Input type="date" value={date} onChange={(e) => { setDate(e.target.value); setSaved(false) }} className="w-40" />
+              <Input type="date" value={date} onChange={(e) => { setDate(e.target.value); setSaved(false) }} className="w-full lg:w-40" />
             </div>
 
-            <div className="flex gap-2 ml-auto">
+            <div className="grid gap-2 sm:grid-cols-3 lg:ml-auto lg:flex">
               <Button variant="outline" size="sm" onClick={() => markAll("PRESENT")}>
                 <Check className="h-3.5 w-3.5" />
                 Tous présents
@@ -131,7 +131,7 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
 
       {/* Summary */}
       {group && (
-        <div className="flex gap-3 text-sm">
+        <div className="flex flex-wrap gap-2 text-sm sm:gap-3">
           <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
             {presentCount} présent(s)
           </span>
@@ -163,7 +163,7 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
                 {group.students.map((student, idx) => {
                   const current = statuses[student.id]
                   return (
-                    <div key={student.id} className="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                    <div key={student.id} className="flex flex-col gap-3 px-4 py-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-gray-400 w-6">{idx + 1}</span>
                         <div>
@@ -175,7 +175,7 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="grid grid-cols-2 gap-1.5 sm:flex">
                         {(Object.keys(STATUS_CONFIG) as Status[]).map((status) => {
                           const cfg = STATUS_CONFIG[status]
                           return (

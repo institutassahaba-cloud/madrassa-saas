@@ -20,9 +20,9 @@ function formatCurrency(v: number) {
 
 export function MesDocumentsClient({ salaries, teacherName }: { salaries: Salary[]; teacherName: string }) {
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Mes documents administratifs</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Mes documents administratifs</h1>
         <p className="text-sm text-gray-500 mt-0.5">Contrat et fiches de paie</p>
       </div>
 
@@ -51,7 +51,7 @@ export function MesDocumentsClient({ salaries, teacherName }: { salaries: Salary
         ) : (
           <ul className="divide-y divide-gray-50">
             {salaries.map((s) => (
-              <li key={s.id} className="flex items-center gap-4 p-4">
+              <li key={s.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
                   <FileText className="h-5 w-5 text-emerald-600" />
                 </div>
@@ -67,7 +67,7 @@ export function MesDocumentsClient({ salaries, teacherName }: { salaries: Salary
                     )}
                   </p>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.totalAmount)}</p>
+                <p className="text-sm font-semibold text-gray-900 sm:text-right">{formatCurrency(s.totalAmount)}</p>
               </li>
             ))}
           </ul>

@@ -163,17 +163,17 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
   const totalYear = salaries.filter((s) => s.year === Number(selectedYear)).reduce((sum, s) => sum + s.totalAmount, 0)
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Récap des paies</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Récap des paies</h1>
         <p className="text-sm text-gray-500 mt-0.5">Historique des salaires versés aux professeurs et secrétaires</p>
       </div>
 
       {/* Bouton Calculer la paie (directeur uniquement) */}
       {isDirector && (
         <div className="rounded-xl border border-blue-100 bg-blue-50 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
               <Calculator className="h-5 w-5 text-blue-600" />
               <span className="font-semibold text-blue-900">Calculer la paie des professeurs</span>
             </div>
@@ -186,7 +186,7 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
             <div className="space-y-4">
               {/* Option prime */}
               <div className="rounded-lg border border-blue-200 bg-white p-4">
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2">
                     <Gift className="h-4 w-4 text-amber-500" />
                     <span className="text-sm font-medium text-gray-700">Ajouter une prime (optionnel)</span>
@@ -199,21 +199,21 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
                       for (const t of teacherStaff) next[t.id] = !allSelected
                       setBonusTeachers(next)
                     }}
-                    className="text-xs text-blue-600 hover:underline"
+                    className="text-left text-xs text-blue-600 hover:underline sm:text-right"
                   >
                     {teacherStaff.every((t) => bonusTeachers[t.id]) ? "Tout désélectionner" : "Sélectionner tout"}
                   </button>
                 </div>
                 <div className="space-y-2">
                   {teacherStaff.map((t) => (
-                    <div key={t.id} className="flex items-center gap-3">
-                      <label className="flex items-center gap-2 min-w-[180px]">
+                    <div key={t.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                      <label className="flex items-center gap-2 sm:min-w-[180px]">
                         <input type="checkbox" checked={!!bonusTeachers[t.id]} onChange={(e) => setBonusTeachers((prev) => ({ ...prev, [t.id]: e.target.checked }))} className="rounded border-gray-300" />
                         <span className="text-sm text-gray-700">{t.name}</span>
                       </label>
                       {bonusTeachers[t.id] && (
                         <div className="flex items-center gap-1">
-                          <input type="number" min="0" step="1" placeholder="Montant" value={bonusAmounts[t.id] || ""} onChange={(e) => setBonusAmounts((prev) => ({ ...prev, [t.id]: e.target.value }))} className="w-24 rounded border border-gray-200 px-2 py-1 text-sm" />
+                          <input type="number" min="0" step="1" placeholder="Montant" value={bonusAmounts[t.id] || ""} onChange={(e) => setBonusAmounts((prev) => ({ ...prev, [t.id]: e.target.value }))} className="w-full rounded border border-gray-200 px-2 py-1 text-sm sm:w-24" />
                           <span className="text-xs text-gray-500">€</span>
                         </div>
                       )}
@@ -232,7 +232,7 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
                   <p className="text-sm font-semibold text-gray-700">Résultat du calcul</p>
                   {calcResults.map((r) => (
                     <div key={r.teacherId} className="rounded-lg border border-gray-200 bg-white p-4">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span className="font-medium text-gray-900">{r.teacherName}</span>
                         <span className="text-lg font-bold text-gray-900">{formatCurrency(r.grandTotal)}</span>
                       </div>
@@ -240,7 +240,8 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
                         Période : {new Date(r.periodStart).toLocaleDateString("fr-FR")} → {new Date(r.periodEnd).toLocaleDateString("fr-FR")}
                       </p>
                       {r.details.length > 0 ? (
-                        <table className="w-full text-xs mb-2">
+                        <div className="mb-2 overflow-x-auto">
+                        <table className="w-full min-w-[520px] text-xs">
                           <thead><tr className="text-gray-500"><th className="text-left py-1">Type</th><th className="text-right py-1">Cours</th><th className="text-right py-1">Heures</th><th className="text-right py-1">Taux</th><th className="text-right py-1">Sous-total</th></tr></thead>
                           <tbody>
                             {r.details.map((d) => (
@@ -248,18 +249,19 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       ) : (
                         <p className="text-xs text-gray-400 mb-2">Aucun cours donné sur cette période</p>
                       )}
                       {r.bonus > 0 && <p className="text-xs text-amber-600 font-medium">+ Prime : {formatCurrency(r.bonus)}</p>}
                     </div>
                   ))}
-                  <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 p-4">
+                  <div className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <span className="font-semibold text-gray-700">Total général</span>
                     <span className="text-xl font-bold text-gray-900">{formatCurrency(calcResults.reduce((s, r) => s + r.grandTotal, 0))}</span>
                   </div>
                   {!confirmed ? (
-                    <button onClick={handleConfirm} disabled={calculating} className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+                    <button onClick={handleConfirm} disabled={calculating} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 sm:w-auto">
                       {calculating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       Confirmer et enregistrer les fiches de paie
                     </button>
@@ -274,14 +276,14 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
       )}
 
       {/* Filtre année + total */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <Select value={selectedYear} onValueChange={setSelectedYear}>
           <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
             {years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Banknote className="h-4 w-4 text-amber-500" />
           <span className="text-sm text-gray-500">Total {selectedYear} :</span>
           <span className="font-bold text-gray-900">{formatCurrency(totalYear)}</span>
@@ -302,13 +304,11 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
             return (
               <PersonSalaryCard
                 key={personId}
-                personId={personId}
                 name={name}
                 role={role}
                 member={member}
                 salaries={personSalaries}
                 total={personTotal}
-                isDirector={isDirector}
                 onSavePaymentInfo={handleSavePaymentInfo}
               />
             )
@@ -319,14 +319,12 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
   )
 }
 
-function PersonSalaryCard({ personId, name, role, member, salaries, total, isDirector, onSavePaymentInfo }: {
-  personId: string
+function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentInfo }: {
   name: string
   role: string
   member: StaffMember | undefined
   salaries: Salary[]
   total: number
-  isDirector: boolean
   onSavePaymentInfo: (id: string, info: string) => void
 }) {
   const [expanded, setExpanded] = useState(true)
@@ -336,12 +334,12 @@ function PersonSalaryCard({ personId, name, role, member, salaries, total, isDir
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="flex w-full items-center gap-4 p-4 text-left hover:bg-gray-50">
+      <button onClick={() => setExpanded(!expanded)} className="flex w-full items-start gap-3 p-4 text-left hover:bg-gray-50 sm:items-center sm:gap-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-600">
           {name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-gray-900">{name}</span>
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${roleColor}`}>{roleLabel}</span>
           </div>
@@ -351,7 +349,7 @@ function PersonSalaryCard({ personId, name, role, member, salaries, total, isDir
             </div>
           )}
         </div>
-        <div className="text-right">
+        <div className="shrink-0 text-right">
           <p className="text-lg font-bold text-gray-900">{formatCurrency(total)}</p>
           <p className="text-xs text-gray-400">{sorted.length} fiche{sorted.length > 1 ? "s" : ""}</p>
         </div>
@@ -360,7 +358,8 @@ function PersonSalaryCard({ personId, name, role, member, salaries, total, isDir
 
       {expanded && (
         <div className="border-t border-gray-100">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
                 <th className="py-2 pl-4 text-left text-xs font-medium">Période</th>
@@ -395,6 +394,7 @@ function PersonSalaryCard({ personId, name, role, member, salaries, total, isDir
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

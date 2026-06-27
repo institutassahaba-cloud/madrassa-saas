@@ -337,7 +337,7 @@ function SessionCard({
             )}
           </div>
           {!session.isComplete && (
-            <div className="flex items-center justify-between rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+            <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 text-xs text-amber-700"><Bell className="h-3.5 w-3.5" />Terminer la session et envoyer le récap à l&apos;élève</div>
               <Button size="sm" className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3" onClick={() => onCloseSession(session.id)}>Fin de session</Button>
             </div>
@@ -518,12 +518,12 @@ function AddMemberForm({ onAdded, canAddSecretary }: { onAdded: () => void; canA
 
   if (!open) {
     return (
-      <div className="flex gap-2">
-        <button onClick={() => { setRole("TEACHER"); setOpen(true) }} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+      <div className="grid gap-2 sm:flex">
+        <button onClick={() => { setRole("TEACHER"); setOpen(true) }} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 sm:justify-start">
           + Ajouter un professeur
         </button>
         {canAddSecretary && (
-          <button onClick={() => { setRole("SECRETARY"); setOpen(true) }} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <button onClick={() => { setRole("SECRETARY"); setOpen(true) }} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:justify-start">
             + Ajouter une secrétaire
           </button>
         )}
@@ -536,7 +536,7 @@ function AddMemberForm({ onAdded, canAddSecretary }: { onAdded: () => void; canA
   return (
     <form onSubmit={handleSubmit} className={`rounded-2xl border p-5 space-y-3 ${isSecretary ? "border-blue-200 bg-blue-50" : "border-emerald-200 bg-emerald-50"}`}>
       <h3 className="font-semibold text-gray-900">{isSecretary ? "Nouvelle secrétaire" : "Nouveau professeur"}</h3>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Nom complet *</label>
           <input required className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
@@ -555,7 +555,7 @@ function AddMemberForm({ onAdded, canAddSecretary }: { onAdded: () => void; canA
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {successMsg && <p className="text-sm text-emerald-700 bg-emerald-100 rounded-lg px-3 py-2">{successMsg}</p>}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex">
         {!successMsg ? (
           <>
             <button type="submit" disabled={saving} className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${isSecretary ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>
@@ -746,7 +746,7 @@ function TeacherCard({
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div>
                   <label className="text-xs text-gray-500">Individuel</label>
                   {editingRates ? (
@@ -952,10 +952,10 @@ export function TeachersClient({
   const teachersList = teachers.map(t => ({ id: t.id, name: t.name }))
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6 flex items-start justify-between">
+    <div className="mx-auto max-w-4xl">
+      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Professeurs</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Professeurs</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {teachers.length} professeur{teachers.length > 1 ? "s" : ""} · {totalStudents} élèves au total
           </p>
@@ -963,7 +963,7 @@ export function TeachersClient({
       </div>
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-3 gap-4">
+      <div className="mb-5 grid gap-3 sm:mb-6 sm:grid-cols-3 sm:gap-4">
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <Users className="h-4 w-4 text-emerald-500" />

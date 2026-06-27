@@ -70,7 +70,7 @@ export function MonCompteClient({
 
   if (success) {
     return (
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center sm:p-6">
         <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600 mb-3" />
         <p className="font-medium text-emerald-800">Mot de passe modifié avec succès !</p>
       </div>
@@ -87,9 +87,9 @@ export function MonCompteClient({
       )}
 
       {!mustChangePassword && (
-        <form onSubmit={handleEmailSubmit} className="mb-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+        <form onSubmit={handleEmailSubmit} className="mb-6 space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
           <h2 className="flex items-center gap-2 font-semibold text-gray-900">
-            <Mail className="h-4 w-4" /> Changer l'adresse email
+            <Mail className="h-4 w-4" /> Changer l&apos;adresse email
           </h2>
 
           <div className="space-y-1.5">
@@ -124,12 +124,12 @@ export function MonCompteClient({
             disabled={emailLoading}
             className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            {emailLoading ? "Enregistrement…" : "Changer l'email"}
+            {emailLoading ? "Enregistrement…" : <>Changer l&apos;email</>}
           </button>
         </form>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
         <h2 className="font-semibold text-gray-900">Changer le mot de passe</h2>
 
         {!mustChangePassword && (

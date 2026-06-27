@@ -47,16 +47,16 @@ export async function TeacherHome({
   const firstName = teacherName.split(" ")[0]
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Assalâmu ʿalaykum, {firstName}</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Assalâmu ʿalaykum, {firstName}</h1>
         <p className="text-sm text-gray-500 mt-0.5 capitalize">
           {DAYS[today]} · {new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
         </p>
       </div>
 
       {/* Hadith du moment */}
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-5">
+      <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-4 sm:rounded-2xl sm:p-5">
         <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Hadith du moment</p>
         <p className="mt-2 text-sm text-gray-400 italic">Bientôt — les hadiths ajoutés régulièrement s&apos;afficheront ici.</p>
       </div>
@@ -85,7 +85,7 @@ export async function TeacherHome({
                 <Link
                   key={s.id}
                   href={`/dashboard/cahier?q=${encodeURIComponent(name)}`}
-                  className="group relative overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+            className="group relative overflow-hidden rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow sm:rounded-2xl"
                 >
                   {/* Color accent bar */}
                   <div className={`h-1.5 bg-gradient-to-r ${color}`} />

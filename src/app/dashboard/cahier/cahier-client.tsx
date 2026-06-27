@@ -3,7 +3,7 @@
 import { useState } from "react"
 import {
   BookOpen, Plus, ChevronDown, ChevronUp, Check, Clock,
-  X, CheckCircle2, AlertCircle, Search, Bell, MessageCircle,
+  X, CheckCircle2, Search, Bell, MessageCircle,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { Button } from "@/components/ui/button"
@@ -177,7 +177,7 @@ function LessonRow({
     <div className={`flex items-start gap-3 rounded-lg border p-3 ${statusBg(lesson.status)}`}>
       <button
         onClick={cycleStatus}
-        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-white shadow-sm hover:shadow transition-shadow"
+        className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow sm:h-7 sm:w-7"
         title="Changer le statut"
       >
         {statusIcon(lesson.status)}
@@ -204,7 +204,7 @@ function LessonRow({
           )}
           <button
             onClick={() => { if (confirm(`Supprimer le Cours ${lesson.number} ?`)) onDelete(lesson.id) }}
-            className="ml-auto text-gray-300 hover:text-red-500"
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
             title="Supprimer ce cours"
           >
             <X className="h-3.5 w-3.5" />
@@ -224,21 +224,21 @@ function LessonRow({
 
         {editing ? (
           <div className="mt-2 space-y-2">
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="h-7 text-xs flex-1"
+                className="h-9 flex-1 text-xs sm:h-7"
               />
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 sm:w-auto">
                 <Input
                   type="number"
                   min="5"
                   step="5"
                   value={durationMin}
                   onChange={(e) => setDurationMin(e.target.value)}
-                  className="h-7 text-xs w-20"
+                  className="h-9 w-full text-xs sm:h-7 sm:w-20"
                   placeholder={expectedMin ? String(expectedMin) : "min"}
                 />
                 <span className="text-xs text-gray-400">min</span>
@@ -248,7 +248,7 @@ function LessonRow({
               placeholder="Contenu du cours (ex: révision jusqu'à Annasr…)"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="h-7 text-xs"
+              className="h-9 text-xs sm:h-7"
               onKeyDown={(e) => e.key === "Enter" && saveContent()}
               autoFocus
             />
@@ -272,15 +272,15 @@ function LessonRow({
                 )}
               </div>
             )}
-            <div className="flex gap-2">
-              <Button size="sm" className="h-6 text-xs px-2" onClick={saveContent}>Enregistrer</Button>
-              <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditing(false)}>Annuler</Button>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <Button size="sm" className="h-8 text-xs sm:h-6 sm:px-2" onClick={saveContent}>Enregistrer</Button>
+              <Button size="sm" variant="outline" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => setEditing(false)}>Annuler</Button>
             </div>
           </div>
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="mt-0.5 block w-full text-left text-xs text-gray-600 hover:text-gray-900"
+            className="mt-1 block min-h-8 w-full rounded-md text-left text-xs text-gray-600 hover:text-gray-900"
           >
             {lesson.content
               ? <span className="italic">{lesson.content}</span>
@@ -324,13 +324,13 @@ function SessionCard({
       {/* Header */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-3 p-4 text-left"
+        className="flex w-full items-start gap-3 p-3 text-left sm:p-4"
       >
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
           {session.number}
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-gray-900">Session {session.number}</span>
             {session.isComplete && (
               <span className="flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
@@ -343,7 +343,7 @@ function SessionCard({
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex gap-3 text-xs text-gray-400">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-400">
             {session.duration && <span>{session.duration}</span>}
             {session.frequency && <span>{session.frequency}x/semaine</span>}
             <span>{done}/{total} cours · {present} présence{present > 1 ? "s" : ""}</span>
@@ -365,7 +365,7 @@ function SessionCard({
       </button>
 
       {open && (
-        <div className="border-t border-gray-100 p-4 space-y-3">
+        <div className="space-y-3 border-t border-gray-100 p-3 sm:p-4">
           {session.lessons.map((lesson) => (
             <LessonRow
               key={lesson.id}
@@ -399,8 +399,8 @@ function SessionCard({
                   className="text-xs"
                   autoFocus
                 />
-                <div className="flex gap-2">
-                  <Button size="sm" className="h-6 text-xs px-2" onClick={() => {
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  <Button size="sm" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => {
                     fetch(`/api/sessions/${session.id}`, {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
@@ -408,7 +408,7 @@ function SessionCard({
                     })
                     setEditingNotes(false)
                   }}>Enregistrer</Button>
-                  <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditingNotes(false)}>Annuler</Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => setEditingNotes(false)}>Annuler</Button>
                 </div>
               </div>
             ) : (
@@ -420,14 +420,14 @@ function SessionCard({
 
           {/* Close session */}
           {!session.isComplete && (
-            <div className="flex items-center justify-between rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+            <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 text-xs text-amber-700">
                 <Bell className="h-3.5 w-3.5" />
                 Terminer la session et envoyer le récap à l&apos;élève
               </div>
               <Button
                 size="sm"
-                className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3"
+                className="h-8 bg-amber-500 px-3 text-xs text-white hover:bg-amber-600 sm:h-7"
                 onClick={() => onCloseSession(session.id)}
               >
                 Fin de session
@@ -485,13 +485,13 @@ function StudentCahier({
   const planning = formatSchedule(schedule)
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm sm:rounded-2xl">
       {/* Student header */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-4 p-5 text-left"
+        className="flex w-full items-start gap-3 p-4 text-left sm:items-center sm:gap-4 sm:p-5"
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700 sm:h-10 sm:w-10">
           {name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
@@ -517,7 +517,7 @@ function StudentCahier({
       </button>
 
       {(student.phone || student.parentPhone) && (
-        <div className="flex flex-wrap items-center gap-2 px-5 pb-4 -mt-2">
+        <div className="-mt-1 flex flex-wrap items-center gap-2 px-4 pb-4 sm:-mt-2 sm:px-5">
           {[
             { label: "Élève", num: student.phone },
             { label: "Parent", num: student.parentPhone },
@@ -541,7 +541,7 @@ function StudentCahier({
       )}
 
       {open && (
-        <div className="border-t border-gray-100 p-5 space-y-4">
+        <div className="space-y-4 border-t border-gray-100 p-4 sm:p-5">
           {/* Onglets de sessions (de la plus récente à la plus ancienne) */}
           {sortedSessions.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -553,7 +553,7 @@ function StudentCahier({
                     key={s.id}
                     onClick={() => setSelectedId(s.id)}
                     className={
-                      "shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " +
+                      "shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " +
                       (isSel
                         ? "bg-emerald-600 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200")
@@ -603,7 +603,7 @@ function StudentCahier({
                   </SelectContent>
                 </Select>
               )}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 <Button
                   size="sm"
                   disabled={!newSubject}
@@ -636,7 +636,7 @@ function StudentCahier({
 
 // ─── Main CahierClient ────────────────────────────────────────────────────────
 
-export function CahierClient({ students, lessonSessions, paidBySession, scheduleByGroup, teachers, currentUserId, role, initialSearch = "" }: Props) {
+export function CahierClient({ students, lessonSessions, paidBySession, scheduleByGroup, teachers, currentUserId, initialSearch = "" }: Props) {
   const [sessions, setSessions]   = useState<LessonSession[]>(lessonSessions)
   const [search, setSearch]       = useState(initialSearch)
   const [subjectFilter, setSubjectFilter] = useState("ALL")
@@ -714,15 +714,15 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
 
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Cahier de cours</h1>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Cahier de cours</h1>
         <p className="text-sm text-gray-500 mt-0.5">Suivi séance par séance, contenu enseigné et présences</p>
       </div>
 
       {/* Filters */}
-      <div className="mb-4 flex gap-3">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
@@ -734,7 +734,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
         </div>
         {teachers.length > 1 && (
           <Select value={teacherFilter} onValueChange={setTeacherFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Tous les profs" />
             </SelectTrigger>
             <SelectContent>
@@ -745,7 +745,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
         )}
         {allSubjects.length > 1 && (
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-52">
+            <SelectTrigger className="w-full sm:w-52">
               <SelectValue placeholder="Toutes matières" />
             </SelectTrigger>
             <SelectContent>

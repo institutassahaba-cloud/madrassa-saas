@@ -205,7 +205,7 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Élèves</h2>
           <p className="text-sm text-gray-500">
@@ -217,7 +217,7 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
             {archivedCount > 0 && ` · ${archivedCount} ancien${archivedCount > 1 ? "s" : ""}`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
           <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={importing}>
             <Upload className="h-4 w-4" />
@@ -246,13 +246,13 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
       <Card>
         <CardContent className="p-4">
           <div className="space-y-3">
-            <div className="flex gap-3">
-              <div className="relative flex-1 min-w-48">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative min-w-0 flex-1 sm:min-w-48">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input placeholder="Rechercher…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
               <Select value={groupFilter} onValueChange={setGroup}>
-                <SelectTrigger className="w-44">
+                <SelectTrigger className="w-full sm:w-44">
                   <SelectValue placeholder="Classe" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto">

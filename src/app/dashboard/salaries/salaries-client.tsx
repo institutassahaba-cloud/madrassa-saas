@@ -85,14 +85,14 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Salaires</h2>
           <p className="text-sm text-gray-500">
             Total à payer : <span className="font-semibold text-red-600">{formatCurrency(totalPending)}</span>
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           Générer un salaire
         </Button>
@@ -162,7 +162,7 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Mois *</Label>
                 <Select value={form.month} onValueChange={(v) => set("month", v)}>
@@ -180,7 +180,7 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
 
             <div className="rounded-lg bg-gray-50 p-3 space-y-3">
               <p className="text-xs font-semibold text-gray-600 uppercase">Option 1 : Horaire</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Taux horaire (€/h)</Label>
                   <Input type="number" value={form.hourlyRate} onChange={(e) => set("hourlyRate", e.target.value)} placeholder="20" />
@@ -206,7 +206,7 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
               </div>
             )}
 
-            <div className="flex gap-3 justify-end">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={loading || computeTotal() === 0}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}

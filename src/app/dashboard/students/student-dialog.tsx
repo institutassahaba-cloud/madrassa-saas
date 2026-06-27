@@ -220,7 +220,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
               {studentCount > 1 && (
                 <p className="text-sm font-semibold text-gray-700">Élève {idx + 1}</p>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Prénom *</Label>
                   <Input value={identity.firstName} onChange={(e) => setIdentity(idx, "firstName", e.target.value)} required />
@@ -258,7 +258,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
               </div>
 
               {/* Infos parentales par élève */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="grid gap-4 pt-2 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-gray-500">Nom du parent/tuteur</Label>
                   <Input value={identity.parentName} onChange={(e) => setIdentity(idx, "parentName", e.target.value)} />
@@ -268,7 +268,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                   <Input value={identity.parentPhone} onChange={(e) => setIdentity(idx, "parentPhone", e.target.value)} />
                 </div>
                 {studentCount === 1 && (
-                  <div className="space-y-1.5 col-span-2">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <Label className="text-xs text-gray-500">Email parent</Label>
                     <Input type="email" value={identity.parentEmail} onChange={(e) => setIdentity(idx, "parentEmail", e.target.value)} />
                   </div>
@@ -280,7 +280,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
           {/* Infos communes (adresse, forfait, prof) */}
           <div className="border-t pt-4">
             <p className="mb-3 text-sm font-medium text-gray-700">{studentCount > 1 ? "Informations communes" : "Informations complémentaires"}</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Adresse</Label>
                 <Input value={shared.address} onChange={(e) => setSharedField("address", e.target.value)} />
@@ -298,7 +298,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
 
             {/* Nouvelle classe vs intégrer classe existante */}
             {!student && (
-              <div className="flex gap-2 mb-4">
+              <div className="mb-4 grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => { setJoinExisting(false); setSharedField("groupId", ""); setSharedField("startSession", "1") }}
@@ -316,7 +316,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Professeur</Label>
                 <Select value={teacherId} onValueChange={(v) => { setTeacherId(v); setSharedField("groupId", "") }}>
@@ -419,7 +419,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
               {multiProf && (
                 <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
                   <p className="text-sm font-medium text-blue-700">2e inscription</p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label>Professeur</Label>
                       <Select value={extraTeacherId} onValueChange={(v) => { setExtraTeacherId(v); setEx("groupId", "") }}>
@@ -484,7 +484,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
           {student && (
             <div className="border-t pt-4">
               <p className="mb-3 text-sm font-medium text-gray-700">Statut de l&apos;élève</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Statut</Label>
                   <Select value={shared.status} onValueChange={(v) => setSharedField("status", v)}>
@@ -509,7 +509,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
 
           {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-          <div className="flex gap-3 justify-end pt-2">
+          <div className="grid grid-cols-2 gap-3 pt-2 sm:flex sm:justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}

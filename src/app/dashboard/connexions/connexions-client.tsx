@@ -96,9 +96,9 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
   const inactive = members.filter((m) => !m.isActive)
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Connexions</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Connexions</h1>
         <p className="text-sm text-gray-500 mt-0.5">Dernières connexions de l&apos;équipe</p>
       </div>
 
@@ -191,7 +191,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
             {active.map((m) => {
               const status = statusColor(m.lastLoginAt, m.isActive)
               return (
-                <div key={m.id} className={`flex items-center gap-4 rounded-xl border border-gray-100 ${status.bg} p-4`}>
+                <div key={m.id} className={`flex flex-col gap-3 rounded-xl border border-gray-100 ${status.bg} p-4 sm:flex-row sm:items-center sm:gap-4`}>
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-700 shadow-sm">
                     {m.name.charAt(0).toUpperCase()}
                   </div>
@@ -204,13 +204,13 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
                     </div>
                     <p className="text-xs text-gray-500">{m.email}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right shrink-0">
-                      <div className="flex items-center gap-1.5 justify-end">
+                  <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <div className="shrink-0 text-left sm:text-right">
+                      <div className="flex items-center gap-1.5 sm:justify-end">
                         <div className={`h-2 w-2 rounded-full ${status.dot}`} />
                         <span className="text-xs font-medium text-gray-600">{status.label}</span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 justify-end">
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400 sm:justify-end">
                         <Clock className="h-3 w-3" />
                         {m.lastLoginAt ? timeAgo(m.lastLoginAt) : "—"}
                       </p>
@@ -238,7 +238,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
               <p className="text-sm font-medium text-gray-500 mb-3">Comptes désactivés ({inactive.length})</p>
               <div className="space-y-3">
                 {inactive.map((m) => (
-                  <div key={m.id} className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 opacity-70">
+                  <div key={m.id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 opacity-70 sm:flex-row sm:items-center sm:gap-4">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-500">
                       {m.name.charAt(0).toUpperCase()}
                     </div>

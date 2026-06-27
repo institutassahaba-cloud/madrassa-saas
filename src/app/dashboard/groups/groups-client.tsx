@@ -94,13 +94,13 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Groupes / Classes</h2>
           <p className="text-sm text-gray-500">{groups.length} groupes</p>
         </div>
         {role !== "TEACHER" && (
-          <Button onClick={openCreate}>
+          <Button className="w-full sm:w-auto" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Créer un groupe
           </Button>
@@ -166,8 +166,8 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
             <DialogTitle>{editGroup ? "Modifier le groupe" : "Créer un groupe"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Nom du groupe *</Label>
                 <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
               </div>
@@ -179,7 +179,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
                 <Label>Capacité max</Label>
                 <Input type="number" min="1" value={form.maxStudents} onChange={(e) => setForm((f) => ({ ...f, maxStudents: e.target.value }))} />
               </div>
-              <div className="space-y-1.5 col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Professeur</Label>
                 <Select value={form.teacherId} onValueChange={(v) => setForm((f) => ({ ...f, teacherId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
@@ -211,7 +211,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Heure de début</Label>
                 <Input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} />
@@ -222,7 +222,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end pt-2">
+            <div className="grid grid-cols-2 gap-3 pt-2 sm:flex sm:justify-end">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={loading}>{editGroup ? "Enregistrer" : "Créer"}</Button>
             </div>

@@ -3,7 +3,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Users, BookOpen, CreditCard,
-  Calendar, BarChart3, Settings, GraduationCap, Banknote,
+  Calendar, Settings, GraduationCap, Banknote,
   Bell, ChevronRight, UserCircle, FileText, UserCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -37,16 +37,17 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   role: string
   tenantName: string
+  onNavigate?: () => void
 }
 
-export function Sidebar({ role, tenantName }: SidebarProps) {
+export function Sidebar({ role, tenantName, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const filtered = navItems.filter((item) => item.roles.includes(role as Role))
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-gray-100 bg-white">
+    <aside className="flex h-full w-full flex-col border-r border-gray-100 bg-white md:h-screen md:w-64">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-6">
+      <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-5 pr-14 md:px-6 md:pr-6">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600">
           <GraduationCap className="h-5 w-5 text-white" />
         </div>
@@ -64,8 +65,9 @@ export function Sidebar({ role, tenantName }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 active
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"

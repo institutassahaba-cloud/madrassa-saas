@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 const DAYS_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
 const MONTHS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
 
@@ -163,7 +162,7 @@ function OccurrenceBlock({
           </p>
           <p className="opacity-80 text-[10px]">{start} – {end}</p>
         </div>
-        <div className="flex gap-0.5 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-0.5 flex shrink-0 gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <button onClick={(e) => { e.stopPropagation(); setShowPalette(!showPalette) }} title="Couleur">
             <div className="h-3 w-3 rounded-full border border-white/60" style={{ backgroundColor: slot.color ?? "#10b981" }} />
           </button>
@@ -257,7 +256,7 @@ function SlotForm({
     <div className={
       "z-30 rounded-xl border border-emerald-300 bg-white p-3 shadow-xl space-y-2 " +
       (placement === "corner"
-        ? "absolute left-0 top-full mt-2 w-72"
+        ? "fixed inset-x-3 top-24 sm:absolute sm:left-0 sm:top-full sm:mt-2 sm:w-72"
         : "absolute inset-x-0 top-0")
     }>
       <p className="text-xs font-semibold text-gray-700">{slot ? "Modifier l'événement" : "Ajouter un événement"}</p>
@@ -445,28 +444,28 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   const today = new Date()
 
   return (
-    <div className="p-4 max-w-full">
+    <div className="max-w-full">
       {/* Header */}
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Planning</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Planning</h1>
           <p className="text-sm text-gray-500">Vue semaine — calendrier annuel</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           {/* Week navigation */}
-          <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-1 py-1">
-            <button onClick={prevWeek} className="rounded p-1 hover:bg-gray-100"><ChevronLeft className="h-4 w-4" /></button>
-            <button onClick={goToday} className="rounded px-2 py-1 text-xs font-medium hover:bg-gray-100">Aujourd&apos;hui</button>
-            <button onClick={nextWeek} className="rounded p-1 hover:bg-gray-100"><ChevronRight className="h-4 w-4" /></button>
+          <div className="flex w-full items-center justify-between gap-1 rounded-lg border border-gray-200 bg-white px-1 py-1 sm:w-auto sm:justify-start">
+            <button onClick={prevWeek} className="flex h-9 w-9 items-center justify-center rounded hover:bg-gray-100" aria-label="Semaine précédente"><ChevronLeft className="h-4 w-4" /></button>
+            <button onClick={goToday} className="h-9 rounded px-3 text-xs font-medium hover:bg-gray-100">Aujourd&apos;hui</button>
+            <button onClick={nextWeek} className="flex h-9 w-9 items-center justify-center rounded hover:bg-gray-100" aria-label="Semaine suivante"><ChevronRight className="h-4 w-4" /></button>
           </div>
-          <span className="text-sm font-medium text-gray-700 min-w-48">{weekLabel}</span>
+          <span className="text-sm font-medium text-gray-700 sm:min-w-48">{weekLabel}</span>
 
           {/* Timezone */}
-          <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5">
+          <div className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 sm:w-auto">
             <Globe className="h-4 w-4 text-emerald-600 shrink-0" />
             <Select value={viewTz} onValueChange={handleSaveTimezone}>
-              <SelectTrigger className="h-6 border-0 p-0 text-xs font-medium text-gray-700 shadow-none focus:ring-0 w-56">
+              <SelectTrigger className="h-8 flex-1 border-0 p-0 text-xs font-medium text-gray-700 shadow-none focus:ring-0 sm:w-56 sm:flex-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -483,14 +482,15 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
       </div>
 
       {/* Layout: sidebar + grid */}
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row">
         {/* Teacher sidebar */}
         {role !== "TEACHER" && teachers.length > 0 && (
-          <div className="w-44 shrink-0 space-y-1">
-            <p className="text-xs font-medium text-gray-400 mb-2 px-1">Professeurs</p>
+          <div className="shrink-0 lg:w-44">
+            <p className="mb-2 px-1 text-xs font-medium text-gray-400">Professeurs</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
             <button
               onClick={() => setFilter("ALL")}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${filterTeacher === "ALL" ? "bg-emerald-50 text-emerald-700 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
+              className={`min-h-10 shrink-0 rounded-lg px-3 py-2 text-left text-sm transition-colors lg:w-full ${filterTeacher === "ALL" ? "bg-emerald-50 text-emerald-700 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
             >
               Tous
             </button>
@@ -500,18 +500,19 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                 <button
                   key={t.id}
                   onClick={() => setFilter(t.id)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${filterTeacher === t.id ? "bg-emerald-50 text-emerald-700 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
+                  className={`min-h-10 w-40 shrink-0 rounded-lg px-3 py-2 text-left text-sm transition-colors lg:w-full ${filterTeacher === t.id ? "bg-emerald-50 text-emerald-700 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
                 >
                   <span className="block truncate">{t.name}</span>
                   <span className="text-xs text-gray-400">{count} créneaux</span>
                 </button>
               )
             })}
+            </div>
           </div>
         )}
 
         {/* Grid */}
-        <div className="flex-1 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="min-w-0 flex-1 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="min-w-[700px]">
             {/* Day headers with real dates */}
             <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>

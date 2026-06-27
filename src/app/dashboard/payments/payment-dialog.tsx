@@ -100,7 +100,7 @@ export function PaymentDialog({ open, onClose, payment, students, currentMonth, 
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Mois *</Label>
               <Select value={form.month} onValueChange={(v) => set("month", v)}>
@@ -157,7 +157,7 @@ export function PaymentDialog({ open, onClose, payment, students, currentMonth, 
 
           {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-          <div className="flex gap-3 justify-end pt-2">
+          <div className="grid grid-cols-2 gap-3 pt-2 sm:flex sm:justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}

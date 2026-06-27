@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import {
   FileText, ScrollText, Plus, Upload, ExternalLink, ChevronDown, ChevronUp,
-  Users, Loader2, X, Trash2,
+  Users, Loader2, Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -77,7 +77,7 @@ function TeacherDocSection({
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-4 p-5 text-left"
+        className="flex w-full items-start gap-3 p-4 text-left sm:items-center sm:gap-4 sm:p-5"
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
           {teacher.name.charAt(0).toUpperCase()}
@@ -94,16 +94,16 @@ function TeacherDocSection({
       </button>
 
       {expanded && (
-        <div className="border-t border-gray-100 p-5 space-y-5">
+        <div className="space-y-5 border-t border-gray-100 p-4 sm:p-5">
           {/* Contrats */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <ScrollText className="h-4 w-4 text-blue-600" />
                 Contrats
               </p>
               {role === "DIRECTOR" && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowUpload(!showUpload)}>
+                <Button size="sm" variant="outline" className="h-8 w-full text-xs sm:h-7 sm:w-auto" onClick={() => setShowUpload(!showUpload)}>
                   <Plus className="h-3 w-3" /> Ajouter
                 </Button>
               )}
@@ -118,7 +118,7 @@ function TeacherDocSection({
                   className="bg-white"
                 />
                 <input ref={fileRef} type="file" accept=".pdf" className="block text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-blue-700 hover:file:bg-blue-200" />
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Button size="sm" disabled={uploading || !uploadTitle.trim()} onClick={handleUpload}>
                     {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                     Envoyer sur Drive
@@ -133,7 +133,7 @@ function TeacherDocSection({
             ) : (
               <div className="space-y-2">
                 {contracts.map((c) => (
-                  <div key={c.id} className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <div key={c.id} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3 sm:items-center">
                     <FileText className="h-5 w-5 text-blue-500 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{c.title}</p>
@@ -145,7 +145,7 @@ function TeacherDocSection({
                       <ExternalLink className="h-4 w-4" />
                     </a>
                     {role === "DIRECTOR" && (
-                      <button onClick={() => { if (confirm("Supprimer ce contrat ?")) onDeleteContract(c.id) }} className="text-gray-300 hover:text-red-500">
+                      <button onClick={() => { if (confirm("Supprimer ce contrat ?")) onDeleteContract(c.id) }} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-auto sm:w-auto">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
@@ -165,7 +165,8 @@ function TeacherDocSection({
               <p className="text-sm text-gray-400 italic">Aucune fiche de paie</p>
             ) : (
               <div className="overflow-hidden rounded-lg border border-gray-100">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50 text-gray-500">
                       <th className="py-2 pl-3 text-left text-xs font-medium">Période</th>
@@ -199,6 +200,7 @@ function TeacherDocSection({
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -232,9 +234,9 @@ export function DocumentsClient({
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Documents</h1>
         <p className="text-sm text-gray-500 mt-0.5">Contrats et fiches de paie des professeurs</p>
       </div>
 
@@ -242,7 +244,7 @@ export function DocumentsClient({
       {teachers.length > 1 && (
         <div className="flex gap-3">
           <Select value={teacherFilter} onValueChange={setTeacherFilter}>
-            <SelectTrigger className="w-56">
+            <SelectTrigger className="w-full sm:w-56">
               <SelectValue placeholder="Tous les professeurs" />
             </SelectTrigger>
             <SelectContent>

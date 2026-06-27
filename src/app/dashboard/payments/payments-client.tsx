@@ -73,12 +73,12 @@ export function PaymentsClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Paiements</h2>
           <p className="text-sm text-gray-500">{payments.length} paiements enregistrés</p>
         </div>
-        <Button onClick={() => { setEditPayment(null); setDialogOpen(true) }}>
+        <Button className="w-full sm:w-auto" onClick={() => { setEditPayment(null); setDialogOpen(true) }}>
           <Plus className="h-4 w-4" />
           Enregistrer un paiement
         </Button>
@@ -121,13 +121,13 @@ export function PaymentsClient({
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-48">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_9rem_7rem]">
+            <div className="relative min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input placeholder="Rechercher..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40"><SelectValue placeholder="Statut" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Statut" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tous statuts</SelectItem>
                 <SelectItem value="PAID">Payé</SelectItem>
@@ -137,14 +137,14 @@ export function PaymentsClient({
               </SelectContent>
             </Select>
             <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-36"><SelectValue placeholder="Mois" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Mois" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tous mois</SelectItem>
                 {MONTHS_FR.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger className="w-28"><SelectValue placeholder="Année" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Année" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Toutes</SelectItem>
                 <SelectItem value={String(currentYear)}>{currentYear}</SelectItem>

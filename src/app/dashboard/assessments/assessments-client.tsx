@@ -176,16 +176,16 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Livres et contrôles</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Livres et contrôles</h1>
           <p className="mt-0.5 text-sm text-gray-500">
             {exams.length} fichier{exams.length !== 1 ? "s" : ""} classé{exams.length !== 1 ? "s" : ""} par catégorie et niveau
           </p>
         </div>
         {canManage && (
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
             <Upload className="h-4 w-4" />
             Uploader un PDF
           </Button>
@@ -216,9 +216,9 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
                   <div key={key} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                     <button
                       onClick={() => toggleLevel(key)}
-                      className="flex w-full items-center justify-between p-4 text-left hover:bg-gray-50"
+                      className="flex w-full items-start justify-between gap-3 p-4 text-left hover:bg-gray-50 sm:items-center"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
                         <span className="font-semibold text-gray-900">{lv.label}</span>
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
                           {total} fichier{total !== 1 ? "s" : ""}
@@ -315,7 +315,7 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
                 required
               />
             </div>
-            <div className="flex justify-end gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={uploading || !file || !title || !level || !category || !resourceType}>
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}

@@ -134,7 +134,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-1 w-fit">
+      <div className="flex w-full gap-1 overflow-x-auto rounded-lg bg-gray-100 p-1 sm:w-fit">
         {[
           { key: "users", label: "Utilisateurs", icon: UserPlus },
           { key: "institute", label: "Institut", icon: Settings2 },
@@ -144,7 +144,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
             key={key}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick={() => setTab(key as any)}
-            className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               tab === key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -157,8 +157,8 @@ export function SettingsClient({ users, tenant, currentUserId }: {
       {/* Users tab */}
       {tab === "users" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => { setUserForm(USER_EMPTY); setUserDialog(true) }}>
+          <div className="flex sm:justify-end">
+            <Button className="w-full sm:w-auto" onClick={() => { setUserForm(USER_EMPTY); setUserDialog(true) }}>
               <Plus className="h-4 w-4" />
               Ajouter un utilisateur
             </Button>
@@ -218,8 +218,8 @@ export function SettingsClient({ users, tenant, currentUserId }: {
           <CardHeader><CardTitle className="text-base">Informations de l&apos;institut</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={saveTenant} className="space-y-4 max-w-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5 col-span-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label>Nom de l&apos;institut</Label>
                   <Input value={tenantForm.name} onChange={(e) => setTenantForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
@@ -231,7 +231,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
                   <Label>Téléphone</Label>
                   <Input value={tenantForm.phone} onChange={(e) => setTenantForm((f) => ({ ...f, phone: e.target.value }))} />
                 </div>
-                <div className="space-y-1.5 col-span-2">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label>Adresse</Label>
                   <Input value={tenantForm.address} onChange={(e) => setTenantForm((f) => ({ ...f, address: e.target.value }))} />
                 </div>
@@ -263,7 +263,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
               <p className="text-xs text-gray-500">Détection automatique des virements</p>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2">
+              <div className="grid gap-2 sm:flex">
                 <Input
                   type="password"
                   placeholder="Token API Wise"
@@ -282,7 +282,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
               <p className="text-xs text-gray-500">Synchronisation des paiements PayPal</p>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex gap-2">
+              <div className="grid gap-2 sm:flex">
                 <Input
                   type="password"
                   placeholder="Client ID PayPal"
@@ -293,7 +293,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
                   {integrations.paypalClientId && tenant?.settings?.paypalClientId ? "Modifier" : "Connecter"}
                 </Button>
               </div>
-              <div className="flex gap-2">
+              <div className="grid gap-2 sm:flex">
                 <Input
                   type="password"
                   placeholder="Client Secret PayPal"
@@ -312,7 +312,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
               <p className="text-xs text-gray-500">Envoi de rappels WhatsApp</p>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2">
+              <div className="grid gap-2 sm:flex">
                 <Input
                   type="password"
                   placeholder="Clé API WhatsApp"
@@ -345,7 +345,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
               <Label>Mot de passe *</Label>
               <Input type="password" value={userForm.password} onChange={(e) => setUF("password", e.target.value)} required minLength={6} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Rôle *</Label>
                 <Select value={userForm.role} onValueChange={(v) => setUF("role", v)}>
@@ -362,7 +362,7 @@ export function SettingsClient({ users, tenant, currentUserId }: {
                 <Input value={userForm.phone} onChange={(e) => setUF("phone", e.target.value)} />
               </div>
             </div>
-            <div className="flex gap-3 justify-end">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
               <Button type="button" variant="outline" onClick={() => setUserDialog(false)}>Annuler</Button>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
