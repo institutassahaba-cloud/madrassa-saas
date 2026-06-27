@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { Plus, X, Globe, ChevronLeft, ChevronRight, Palette } from "lucide-react"
+import { useState } from "react"
+import { Plus, X, Globe, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -108,7 +108,7 @@ interface TimeSlot {
 
 interface Props {
   slots: TimeSlot[]
-  groups: { id: string; name: string }[]
+  groups: { id: string; name: string; teacherId: string | null }[]
   teachers: { id: string; name: string; timezone: string }[]
   currentUser: { id: string; name: string; timezone: string }
   role: string
@@ -121,13 +121,17 @@ function OccurrenceBlock({
   slot,
   date,
   viewTz,
+  onEdit,
   onCancel,
+  onDeleteSlot,
   onColorChange,
 }: {
   slot: TimeSlot
   date: Date
   viewTz: string
+  onEdit: (slot: TimeSlot) => void
   onCancel: (slotId: string, date: Date) => void
+  onDeleteSlot: (slotId: string) => void
   onColorChange: (slotId: string, color: string) => void
 }) {
   const [showPalette, setShowPalette] = useState(false)
@@ -163,14 +167,24 @@ function OccurrenceBlock({
           <button onClick={(e) => { e.stopPropagation(); setShowPalette(!showPalette) }} title="Couleur">
             <div className="h-3 w-3 rounded-full border border-white/60" style={{ backgroundColor: slot.color ?? "#10b981" }} />
           </button>
+          <button onClick={(e) => { e.stopPropagation(); onEdit(slot) }} title="Modifier le créneau">
+            <Pencil className="h-3 w-3" />
+          </button>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               if (confirm(`Annuler ce cours du ${date.toLocaleDateString("fr-FR")} ?\nLes semaines suivantes ne seront pas affectées.`))
                 onCancel(slot.id, date)
             }}
             title="Annuler ce cours (cette semaine uniquement)"
           >
             <X className="h-3 w-3" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDeleteSlot(slot.id) }}
+            title="Supprimer le créneau récurrent"
+          >
+            <Trash2 className="h-3 w-3" />
           </button>
         </div>
       </div>
@@ -190,42 +204,60 @@ function OccurrenceBlock({
   )
 }
 
-// ─── AddSlotForm ──────────────────────────────────────────────────────────────
+// ─── SlotForm ─────────────────────────────────────────────────────────────────
 
-function AddSlotForm({
-  day,
+function SlotForm({
+  date,
+  slot,
   groups,
   teachers,
   role,
   currentUserId,
-  onAdd,
+  onSave,
   onClose,
 }: {
-  day: number
-  groups: { id: string; name: string }[]
+  date: Date
+  slot?: TimeSlot
+  groups: { id: string; name: string; teacherId: string | null }[]
   teachers: { id: string; name: string; timezone: string }[]
   role: string
   currentUserId: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onAdd: (data: any) => void
+  onSave: (data: any, slotId?: string) => void
   onClose: () => void
 }) {
-  const [startTime, setStart] = useState("09:00")
-  const [endTime,   setEnd]   = useState("09:30")
-  const [label,     setLabel] = useState("")
-  const [color,     setColor] = useState(COLORS[0])
-  const [groupId,   setGroup] = useState("")
-  const [teacherId, setTeacher] = useState(currentUserId)
+  const defaultTeacherId = role === "TEACHER" ? currentUserId : (slot?.teacher.id ?? teachers[0]?.id ?? currentUserId)
+  const [eventDate, setEventDate] = useState(dateKey(date))
+  const [startTime, setStart] = useState(slot?.startTime ?? "09:00")
+  const [endTime,   setEnd]   = useState(slot?.endTime ?? "09:30")
+  const [label,     setLabel] = useState(slot?.label ?? "")
+  const [color,     setColor] = useState(slot?.color ?? COLORS[0])
+  const [groupId,   setGroup] = useState(slot?.group?.id ?? "NONE")
+  const [teacherId, setTeacher] = useState(defaultTeacherId)
+
+  const availableGroups = groups.filter((g) => g.teacherId === teacherId)
 
   function submit() {
     if (!startTime || !endTime) return
-    onAdd({ dayOfWeek: day, startTime, endTime, label, color, groupId: groupId || null, teacherId })
+    onSave({
+      dayOfWeek: new Date(`${eventDate}T00:00:00`).getDay(),
+      startTime,
+      endTime,
+      label,
+      color,
+      groupId: groupId === "NONE" ? null : groupId,
+      teacherId,
+    }, slot?.id)
     onClose()
   }
 
   return (
-    <div className="absolute inset-x-0 top-0 z-20 rounded-xl border border-emerald-300 bg-white shadow-xl p-3 space-y-2">
-      <p className="text-xs font-semibold text-gray-700">{DAYS[day]}</p>
+    <div className="absolute inset-x-0 top-0 z-30 rounded-xl border border-emerald-300 bg-white p-3 shadow-xl space-y-2">
+      <p className="text-xs font-semibold text-gray-700">{slot ? "Modifier l'événement" : "Ajouter un événement"}</p>
+      <div>
+        <label className="text-xs text-gray-500">Date</label>
+        <Input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className="h-7 text-xs" />
+      </div>
       <div className="flex gap-2">
         <div className="flex-1">
           <label className="text-xs text-gray-500">Début</label>
@@ -237,22 +269,25 @@ function AddSlotForm({
         </div>
       </div>
       <Input placeholder="Libellé (ex: Coran débutants)" value={label} onChange={e => setLabel(e.target.value)} className="h-7 text-xs" />
-      {groups.length > 0 && (
-        <Select value={groupId} onValueChange={setGroup}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Groupe (optionnel)" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Aucun groupe</SelectItem>
-            {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
       {role !== "TEACHER" && teachers.length > 0 && (
-        <Select value={teacherId} onValueChange={setTeacher}>
+        <Select value={teacherId} onValueChange={(value) => { setTeacher(value); setGroup("NONE") }}>
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Professeur" /></SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-72 overflow-y-auto">
             {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
           </SelectContent>
         </Select>
+      )}
+      {availableGroups.length > 0 && (
+        <Select value={groupId} onValueChange={setGroup}>
+          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Groupe (optionnel)" /></SelectTrigger>
+          <SelectContent className="max-h-72 overflow-y-auto">
+            <SelectItem value="NONE">Aucun groupe</SelectItem>
+            {availableGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      )}
+      {availableGroups.length === 0 && (
+        <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">Aucun groupe actif pour ce professeur.</p>
       )}
       <div className="flex gap-1 flex-wrap">
         {COLORS.map(c => (
@@ -265,7 +300,7 @@ function AddSlotForm({
         ))}
       </div>
       <div className="flex gap-2">
-        <Button size="sm" className="h-7 text-xs flex-1" onClick={submit}>Ajouter</Button>
+        <Button size="sm" className="h-7 text-xs flex-1" onClick={submit}>{slot ? "Enregistrer" : "Ajouter"}</Button>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onClose}>Annuler</Button>
       </div>
     </div>
@@ -278,7 +313,8 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   const [slots, setSlots] = useState<TimeSlot[]>(initialSlots)
   const [viewTz, setViewTz] = useState(currentUser.timezone)
   const [filterTeacher, setFilter] = useState("ALL")
-  const [addingDay, setAddingDay] = useState<number | null>(null)
+  const [addingDate, setAddingDate] = useState<Date | null>(null)
+  const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null)
   const [savingTz, setSavingTz] = useState(false)
 
   // Week navigation
@@ -326,6 +362,24 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
       const slot = await res.json()
       slot.exceptions = []
       setSlots(prev => [...prev, slot])
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function handleSaveSlot(data: any, slotId?: string) {
+    if (!slotId) {
+      await handleAdd(data)
+      return
+    }
+
+    const res = await fetch(`/api/schedule/${slotId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setSlots(prev => prev.map(s => s.id === slotId ? updated : s))
     }
   }
 
@@ -454,8 +508,17 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                 const d = weekDates[i]
                 const isToday = isSameDay(d, today)
                 return (
-                  <div key={i} className={`border-r border-gray-100 last:border-0 py-2 text-center ${isToday ? "bg-emerald-50" : ""}`}>
-                    <p className="text-xs font-semibold text-gray-700">{DAYS_SHORT[d.getDay()]}</p>
+                  <div key={i} className={`border-r border-gray-100 last:border-0 px-2 py-2 text-center ${isToday ? "bg-emerald-50" : ""}`}>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <p className="text-xs font-semibold text-gray-700">{DAYS_SHORT[d.getDay()]}</p>
+                      <button
+                        onClick={() => { setAddingDate(d); setEditingSlot(null) }}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-emerald-100 hover:text-emerald-700"
+                        title={`Ajouter un événement le ${DAYS[d.getDay()]}`}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
                     <p className={`text-lg font-bold ${isToday ? "text-emerald-600" : "text-gray-400"}`}>{d.getDate()}</p>
                   </div>
                 )
@@ -478,6 +541,11 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                 const d = weekDates[i]
                 const daySlots = getOccurrences(d)
                 const isToday = isSameDay(d, today)
+                const formTeacherId = role === "TEACHER"
+                  ? currentUser.id
+                  : filterTeacher !== "ALL"
+                    ? filterTeacher
+                    : (teachers[0]?.id ?? currentUser.id)
                 return (
                   <div
                     key={i}
@@ -498,29 +566,36 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                         slot={slot}
                         date={d}
                         viewTz={viewTz}
+                        onEdit={(slotToEdit) => { setEditingSlot(slotToEdit); setAddingDate(null) }}
                         onCancel={handleCancel}
+                        onDeleteSlot={handleDeleteSlot}
                         onColorChange={handleColorChange}
                       />
                     ))}
 
-                    {/* Add button */}
-                    {addingDay === d.getDay() ? (
-                      <AddSlotForm
-                        day={d.getDay()}
+                    {addingDate && isSameDay(addingDate, d) && (
+                      <SlotForm
+                        date={d}
                         groups={groups}
                         teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
                         role={role}
-                        currentUserId={currentUser.id}
-                        onAdd={handleAdd}
-                        onClose={() => setAddingDay(null)}
+                        currentUserId={formTeacherId}
+                        onSave={handleSaveSlot}
+                        onClose={() => setAddingDate(null)}
                       />
-                    ) : (
-                      <button
-                        onClick={() => setAddingDay(d.getDay())}
-                        className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-400 transition-colors"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+                    )}
+
+                    {editingSlot && editingSlot.dayOfWeek === d.getDay() && (
+                      <SlotForm
+                        date={d}
+                        slot={editingSlot}
+                        groups={groups}
+                        teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
+                        role={role}
+                        currentUserId={formTeacherId}
+                        onSave={handleSaveSlot}
+                        onClose={() => setEditingSlot(null)}
+                      />
                     )}
                   </div>
                 )

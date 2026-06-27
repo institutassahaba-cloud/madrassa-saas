@@ -14,6 +14,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (user.role === "TEACHER" && slot.teacherId !== user.id)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
+  const nextTeacherId = user.role === "TEACHER" ? user.id : (body.teacherId ?? slot.teacherId)
+  if (nextTeacherId !== slot.teacherId) {
+    const teacher = await prisma.user.findFirst({
+      where: { id: nextTeacherId, tenantId: user.tenantId, role: "TEACHER", isActive: true },
+      select: { id: true },
+    })
+    if (!teacher) return NextResponse.json({ error: "Professeur introuvable" }, { status: 400 })
+  }
+
+  const nextGroupId = body.groupId !== undefined ? body.groupId : slot.groupId
+  if (nextGroupId) {
+    const group = await prisma.group.findFirst({
+      where: { id: nextGroupId, tenantId: user.tenantId, isActive: true },
+      select: { teacherId: true },
+    })
+    if (!group) return NextResponse.json({ error: "Groupe introuvable" }, { status: 400 })
+    if (group.teacherId !== nextTeacherId) {
+      return NextResponse.json({ error: "Ce groupe n'appartient pas à ce professeur" }, { status: 403 })
+    }
+  }
+
   const updated = await prisma.timeSlot.update({
     where: { id },
     data: {
@@ -22,11 +43,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       endTime:   body.endTime   ?? slot.endTime,
       label:     body.label     ?? slot.label,
       color:     body.color     ?? slot.color,
-      groupId:   body.groupId !== undefined ? body.groupId : slot.groupId,
+      teacherId: nextTeacherId,
+      groupId:   nextGroupId,
     },
     include: {
       teacher: { select: { id: true, name: true, timezone: true } },
       group:   { select: { id: true, name: true } },
+      exceptions: { select: { id: true, date: true, reason: true } },
     },
   })
   return NextResponse.json(updated)

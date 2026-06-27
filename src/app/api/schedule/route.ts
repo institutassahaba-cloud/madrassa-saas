@@ -37,7 +37,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "dayOfWeek, startTime, endTime requis" }, { status: 400 })
   }
 
-  const resolvedTeacherId = user.role === "TEACHER" ? user.id : (teacherId ?? user.id)
+  if (user.role !== "TEACHER" && !teacherId) {
+    return NextResponse.json({ error: "Professeur requis" }, { status: 400 })
+  }
+
+  const resolvedTeacherId = user.role === "TEACHER" ? user.id : teacherId
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: resolvedTeacherId, tenantId: user.tenantId, role: "TEACHER", isActive: true },
+    select: { id: true },
+  })
+  if (!teacher) return NextResponse.json({ error: "Professeur introuvable" }, { status: 400 })
+
+  if (groupId) {
+    const group = await prisma.group.findFirst({
+      where: { id: groupId, tenantId: user.tenantId, isActive: true },
+      select: { teacherId: true },
+    })
+    if (!group) return NextResponse.json({ error: "Groupe introuvable" }, { status: 400 })
+    if (group.teacherId !== resolvedTeacherId) {
+      return NextResponse.json({ error: "Ce groupe n'appartient pas à ce professeur" }, { status: 403 })
+    }
+  }
 
   const slot = await prisma.timeSlot.create({
     data: {
@@ -53,6 +74,7 @@ export async function POST(req: Request) {
     include: {
       teacher: { select: { id: true, name: true, timezone: true } },
       group: { select: { id: true, name: true } },
+      exceptions: { select: { id: true, date: true, reason: true } },
     },
   })
 

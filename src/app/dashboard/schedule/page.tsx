@@ -22,8 +22,12 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
     }),
     prisma.group.findMany({
-      where: { tenantId: user.tenantId, isActive: true },
-      select: { id: true, name: true },
+      where: {
+        tenantId: user.tenantId,
+        isActive: true,
+        ...(user.role === "TEACHER" ? { teacherId: user.id } : {}),
+      },
+      select: { id: true, name: true, teacherId: true },
       orderBy: { name: "asc" },
     }),
     user.role !== "TEACHER"
