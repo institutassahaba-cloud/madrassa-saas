@@ -13,6 +13,18 @@ export default async function ConnexionsPage() {
     select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true },
     orderBy: { lastLoginAt: { sort: "desc", nulls: "last" } },
   })
+  const settings = await prisma.tenantSettings.findUnique({
+    where: { tenantId: user.tenantId },
+    select: {
+      wiseMerchantToken: true,
+      paypalClientId: true,
+      paypalClientSecret: true,
+      gmailRefreshToken: true,
+      smtpUser: true,
+      smtpPassword: true,
+      smtpFrom: true,
+    },
+  })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = members.map((m: any) => ({
@@ -24,5 +36,25 @@ export default async function ConnexionsPage() {
     lastLoginAt: m.lastLoginAt ? new Date(m.lastLoginAt).toISOString() : null,
   }))
 
-  return <ConnexionsClient members={data} userRole={user.role} />
+  const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.PAYPAL_EMAIL ?? ""
+  const comptaEmail = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? settings?.smtpUser ?? settings?.smtpFrom ?? ""
+  const mailStatus = {
+    paymentInbox: {
+      email: paymentEmail,
+      connected: Boolean((process.env.PAYMENT_EMAIL_PASSWORD || process.env.GMAIL_PAYMENT_REFRESH_TOKEN || settings?.gmailRefreshToken) && paymentEmail),
+    },
+    paypal: {
+      email: process.env.PAYPAL_EMAIL ?? "",
+      connected: Boolean(settings?.paypalClientId && settings?.paypalClientSecret),
+    },
+    wise: {
+      connected: Boolean(settings?.wiseMerchantToken),
+    },
+    compta: {
+      email: comptaEmail,
+      connected: Boolean(comptaEmail && (process.env.COMPTA_EMAIL_PASSWORD || settings?.smtpPassword)),
+    },
+  }
+
+  return <ConnexionsClient members={data} userRole={user.role} mailStatus={mailStatus} />
 }
