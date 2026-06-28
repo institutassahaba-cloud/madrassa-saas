@@ -23,6 +23,7 @@ const STATUS_CONFIG = {
 const SUBJECT_COLORS: Record<string, string> = {
   "Coran":        "bg-emerald-100 text-emerald-700",
   "Nouraniya":    "bg-blue-100 text-blue-700",
+  "Nouraniyah":   "bg-blue-100 text-blue-700",
   "Arabe":        "bg-amber-100 text-amber-700",
   "Langue arabe": "bg-amber-100 text-amber-700",
   "Tajwid":       "bg-purple-100 text-purple-700",
@@ -87,6 +88,12 @@ function formatTime(time: string): string {
 function formatSchedule(slots: Slot[]): string | null {
   if (slots.length === 0) return null
   return slots.map((s) => `${DAYS_SHORT[s.day]} ${formatTime(s.start)}`).join(" · ")
+}
+
+function subjectLabel(subject: string): string {
+  if (subject === "Nouraniyah") return "Nouraniya"
+  if (subject === "Langue arabe") return "Arabe"
+  return subject
 }
 
 interface Group {
@@ -158,6 +165,21 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
 
   const activeCount   = students.filter((s) => s.status === "ACTIVE").length
   const archivedCount = students.filter((s) => s.status === "ARCHIVED").length
+  const subjectCounts = Array.from(
+    students
+      .filter((s) => s.status === "ACTIVE")
+      .reduce((map, student) => {
+        const label = subjectLabel(student.subject?.trim() || "Sans matière")
+        map.set(label, (map.get(label) ?? 0) + 1)
+        return map
+      }, new Map<string, number>())
+  ).sort(([a], [b]) => {
+    const order = ["Arabe", "Coran", "Nouraniya", "Tajwid"]
+    const ai = order.indexOf(a)
+    const bi = order.indexOf(b)
+    if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+    return a.localeCompare(b, "fr")
+  })
 
   async function handleArchive(id: string) {
     await fetch(`/api/students/${id}`, {
@@ -217,6 +239,18 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
             {` · ${activeCount} actif${activeCount > 1 ? "s" : ""}`}
             {archivedCount > 0 && ` · ${archivedCount} ancien${archivedCount > 1 ? "s" : ""}`}
           </p>
+          {subjectCounts.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {subjectCounts.map(([subject, count]) => (
+                <span
+                  key={subject}
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${SUBJECT_COLORS[subject] ?? "bg-gray-100 text-gray-600"}`}
+                >
+                  {subject} : {count}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
