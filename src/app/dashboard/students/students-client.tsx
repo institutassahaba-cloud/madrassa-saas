@@ -1,6 +1,7 @@
 "use client"
 import { useState, useRef } from "react"
 import { Plus, Search, Upload, Edit, Archive, X, MessageCircle, Clock } from "lucide-react"
+import { gmailComposeLink } from "@/lib/contact-links"
 import { whatsappLink } from "@/lib/phone"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -373,9 +374,12 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                             </a>
                           ) : <p className="text-gray-400">Parent : {student.parentPhone}</p>
                         })()}
-                        {student.email && (
-                          <a href={`mailto:${student.email}`} className="block text-blue-600 hover:underline">{student.email}</a>
-                        )}
+                        {student.email && (() => {
+                          const mail = gmailComposeLink(student.email)
+                          return mail ? (
+                            <a href={mail} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{student.email}</a>
+                          ) : null
+                        })()}
                         {!student.phone && !student.parentPhone && !student.email && <span className="text-gray-300">—</span>}
                       </TableCell>
                       <TableCell className="text-sm">

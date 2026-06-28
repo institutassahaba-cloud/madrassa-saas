@@ -8,6 +8,7 @@ import {
   AlertCircle, Search, Bell, Eye,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
+import { gmailComposeLink } from "@/lib/contact-links"
 import { GROUP_RATES, rateForSize } from "@/lib/group-rates"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -678,9 +679,14 @@ function TeacherCard({
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900">{teacher.name}</p>
           <div className="flex flex-wrap gap-3 mt-0.5">
-            <a href={`mailto:${teacher.email}`} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
-              <Mail className="h-3 w-3" /> {teacher.email}
-            </a>
+            {(() => {
+              const mail = gmailComposeLink(teacher.email)
+              return mail ? (
+                <a href={mail} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                  <Mail className="h-3 w-3" /> {teacher.email}
+                </a>
+              ) : null
+            })()}
             {teacher.phone && (() => {
               const wa = whatsappLink(teacher.phone)
               return wa ? (
