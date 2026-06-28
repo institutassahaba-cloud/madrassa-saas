@@ -25,9 +25,10 @@ const RESOURCE_TYPES = [
 
 const ARABIC_LEVELS = [
   { value: "DEBUTANT", label: "Débutant" },
-  ...Array.from({ length: 9 }, (_, index) => ({
-    value: `PREPARATOIRE_${index + 1}`,
-    label: `Préparatoire ${index + 1}`,
+  { value: "PREPARATOIRE", label: "Préparatoire" },
+  ...Array.from({ length: 6 }, (_, index) => ({
+    value: `NIVEAU_${index + 1}`,
+    label: `Niveau ${index + 1}`,
   })),
 ]
 
@@ -59,9 +60,16 @@ function parseLevel(value: string): { category: string; level: string; type: Res
     return { category, level, type }
   }
 
-  const legacyLevel = value === "PREPARATOIRE"
-    ? "PREPARATOIRE_1"
-    : value.replace(/^NIVEAU_0?([1-9])$/, "PREPARATOIRE_$1")
+  const legacyLevelMap: Record<string, string> = {
+    PREPARATOIRE_1: "PREPARATOIRE",
+    PREPARATOIRE_2: "NIVEAU_1",
+    PREPARATOIRE_3: "NIVEAU_2",
+    PREPARATOIRE_4: "NIVEAU_3",
+    PREPARATOIRE_5: "NIVEAU_4",
+    PREPARATOIRE_6: "NIVEAU_5",
+    PREPARATOIRE_7: "NIVEAU_6",
+  }
+  const legacyLevel = legacyLevelMap[value] ?? value
   return { category: "LANGUE_ARABE", level: legacyLevel, type: "CONTROL" }
 }
 
@@ -261,7 +269,7 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
           <form onSubmit={handleUpload} className="space-y-4">
             <div className="space-y-1.5">
               <Label>Titre *</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex: Livre débutant ou contrôle préparatoire 1" required />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex: Livre débutant ou contrôle niveau 1" required />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-1.5">
