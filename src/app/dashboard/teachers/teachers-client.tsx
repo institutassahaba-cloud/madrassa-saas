@@ -5,7 +5,7 @@ import type React from "react"
 import {
   Users, BookOpen, UserCheck, ChevronDown, ChevronUp, Mail, Phone,
   MessageCircle, Plus, Check, Clock, X, CheckCircle2,
-  Bell, Eye,
+  Bell, Eye, Video, ExternalLink, Pencil,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { gmailComposeLink } from "@/lib/contact-links"
@@ -69,6 +69,7 @@ interface Teacher {
   name: string
   email: string
   phone: string | null
+  meetingLink: string | null
   individualRate: number | null
   binomeRate: number | null
   groupRate: number | null
@@ -132,6 +133,123 @@ function formatTime(time: string): string {
 function formatSchedule(slots: Slot[] | undefined): string | null {
   if (!slots || slots.length === 0) return null
   return slots.map((s) => `${DAYS_SHORT[s.day]} ${formatTime(s.start)}`).join(" · ")
+}
+
+function normalizeMeetingLink(value: string): string {
+  const clean = value.trim()
+  if (!clean) return ""
+  return /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+}
+
+function MeetingLinkControl({
+  teacherId,
+  link,
+  onSaved,
+}: {
+  teacherId: string
+  link: string | null
+  onSaved: (link: string | null) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(link ?? "")
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    const nextLink = normalizeMeetingLink(value)
+    setSaving(true)
+    const res = await fetch("/api/teachers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, meetingLink: nextLink }),
+    })
+    setSaving(false)
+    if (!res.ok) return
+    onSaved(nextLink || null)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <span className="flex max-w-full flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <Video className="h-3 w-3 text-amber-600" />
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === "Enter") save()
+            if (e.key === "Escape") {
+              setValue(link ?? "")
+              setEditing(false)
+            }
+          }}
+          placeholder="Lien Zoom ou Google Meet"
+          className="h-7 w-56 text-xs"
+          autoFocus
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+          title="Enregistrer le lien visio"
+        >
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setValue(link ?? "")
+            setEditing(false)
+          }}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+          title="Annuler"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </span>
+    )
+  }
+
+  if (link) {
+    return (
+      <span className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs font-medium text-amber-700 hover:underline"
+        >
+          <Video className="h-3 w-3" />
+          Lien visio
+          <ExternalLink className="h-3 w-3" />
+        </a>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="rounded p-0.5 text-gray-300 hover:bg-gray-50 hover:text-amber-700"
+          title="Modifier lien Zoom / Google Meet"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        setEditing(true)
+      }}
+      className="flex items-center gap-1 text-xs font-medium text-amber-700 hover:underline"
+      title="Ajouter lien Zoom / Google Meet"
+    >
+      <Video className="h-3 w-3" />
+      Ajouter lien visio
+    </button>
+  )
 }
 
 // ─── LessonRow ────────────────────────────────────────────────────────────────
@@ -707,6 +825,7 @@ function TeacherCard({
   const [expanded, setExpanded] = useState(false)
   const [classesOpen, setClassesOpen] = useState(false)
   const [editingRates, setEditingRates] = useState(false)
+  const [meetingLink, setMeetingLink] = useState(teacher.meetingLink)
   const [rates, setRates] = useState({
     individualRate: teacher.individualRate ?? "",
     binomeRate: teacher.binomeRate ?? "",
@@ -770,6 +889,7 @@ function TeacherCard({
                 <span className="flex items-center gap-1 text-xs text-gray-500"><Phone className="h-3 w-3" /> {teacher.phone}</span>
               )
             })()}
+            <MeetingLinkControl teacherId={teacher.id} link={meetingLink} onSaved={setMeetingLink} />
           </div>
         </div>
         <div className="flex gap-4 text-center">

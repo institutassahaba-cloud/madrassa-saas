@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { ensureUserMeetingLinkColumn } from "@/lib/user-schema"
 import { getEffectiveUser } from "@/lib/view-as"
 import { TeachersClient } from "./teachers-client"
 
@@ -7,6 +8,7 @@ export default async function TeachersPage() {
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
   if (!["DIRECTOR", "SECRETARY"].includes(user.role)) redirect("/dashboard")
+  await ensureUserMeetingLinkColumn()
 
   const [teachers, students, lessonSessions, payments] = await Promise.all([
     prisma.user.findMany({
@@ -16,6 +18,7 @@ export default async function TeachersPage() {
         name: true,
         email: true,
         phone: true,
+        meetingLink: true,
         individualRate: true,
         binomeRate: true,
         groupRate: true,

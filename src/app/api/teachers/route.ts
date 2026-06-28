@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { ensureUserMeetingLinkColumn } from "@/lib/user-schema"
 
 export async function GET() {
   const session = await auth()
@@ -8,6 +9,7 @@ export async function GET() {
 
   const user = session.user
   if (!["DIRECTOR", "SECRETARY"].includes(user.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  await ensureUserMeetingLinkColumn()
 
   const teachers = await prisma.user.findMany({
     where: { tenantId: user.tenantId, role: "TEACHER", isActive: true },
@@ -16,6 +18,10 @@ export async function GET() {
       name: true,
       email: true,
       phone: true,
+      meetingLink: true,
+      individualRate: true,
+      binomeRate: true,
+      groupRate: true,
       createdAt: true,
       teacherGroups: {
         where: { isActive: true },
@@ -57,11 +63,15 @@ export async function PATCH(req: Request) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
-  if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (!["DIRECTOR", "SECRETARY"].includes(user.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  await ensureUserMeetingLinkColumn()
 
   const body = await req.json()
-  const { teacherId, individualRate, binomeRate, groupRate, paymentInfo } = body
+  const { teacherId, individualRate, binomeRate, groupRate, paymentInfo, meetingLink } = body
   if (!teacherId) return NextResponse.json({ error: "teacherId required" }, { status: 400 })
+  if (user.role !== "DIRECTOR" && (individualRate !== undefined || binomeRate !== undefined || groupRate !== undefined || paymentInfo !== undefined)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const teacher = await prisma.user.findFirst({
     where: { id: teacherId, tenantId: user.tenantId },
@@ -75,8 +85,16 @@ export async function PATCH(req: Request) {
       binomeRate: binomeRate !== undefined ? (binomeRate != null ? Number(binomeRate) : null) : undefined,
       groupRate: groupRate !== undefined ? (groupRate != null ? Number(groupRate) : null) : undefined,
       paymentInfo: paymentInfo !== undefined ? (paymentInfo || null) : undefined,
+      meetingLink: meetingLink !== undefined ? (meetingLink || null) : undefined,
     },
   })
 
-  return NextResponse.json({ id: updated.id, individualRate: updated.individualRate, binomeRate: updated.binomeRate, groupRate: updated.groupRate, paymentInfo: updated.paymentInfo })
+  return NextResponse.json({
+    id: updated.id,
+    individualRate: updated.individualRate,
+    binomeRate: updated.binomeRate,
+    groupRate: updated.groupRate,
+    paymentInfo: updated.paymentInfo,
+    meetingLink: updated.meetingLink,
+  })
 }
