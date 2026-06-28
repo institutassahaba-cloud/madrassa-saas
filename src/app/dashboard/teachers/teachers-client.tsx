@@ -653,6 +653,8 @@ function TeacherCard({
   onUpdateRates: (teacherId: string, rates: { individualRate?: number; binomeRate?: number; groupRate?: number }) => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [classesOpen, setClassesOpen] = useState(false)
+  const [activeStudentsOpen, setActiveStudentsOpen] = useState(false)
   const [editingRates, setEditingRates] = useState(false)
   const [rates, setRates] = useState({
     individualRate: teacher.individualRate ?? "",
@@ -784,44 +786,66 @@ function TeacherCard({
           {/* Classes du professeur (directeur) */}
           {currentRole === "DIRECTOR" && teacher.teacherGroups.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-600" />
-                Classes ({teacher.teacherGroups.length})
-              </p>
-              {teacher.teacherGroups.map((group) => {
-                const activeInGroup = group.students.filter(s => s.status === "ACTIVE")
-                const groupType = activeInGroup.length <= 1 ? "Solo" : activeInGroup.length === 2 ? "Binôme" : `Groupe (${activeInGroup.length})`
-                const rate = rateForSize(activeInGroup.length)
-                return (
-                  <GroupCard key={group.id} group={group} activeStudents={activeInGroup} groupType={groupType} rate={rate} />
-                )
-              })}
+              <button
+                type="button"
+                onClick={() => setClassesOpen((open) => !open)}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-gray-50"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  Classes ({teacher.teacherGroups.length})
+                </span>
+                {classesOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+              </button>
+              {classesOpen && (
+                <div className="space-y-2">
+                  {teacher.teacherGroups.map((group) => {
+                    const activeInGroup = group.students.filter(s => s.status === "ACTIVE")
+                    const groupType = activeInGroup.length <= 1 ? "Solo" : activeInGroup.length === 2 ? "Binôme" : `Groupe (${activeInGroup.length})`
+                    const rate = rateForSize(activeInGroup.length)
+                    return (
+                      <GroupCard key={group.id} group={group} activeStudents={activeInGroup} groupType={groupType} rate={rate} />
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* Élèves actifs avec cahier de cours */}
           {activeStudents.length > 0 && (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-emerald-600" />
-                Élèves actifs ({activeStudents.length})
-              </p>
-              {activeStudents.map((student) => (
-                <StudentCahier
-                  key={student.id}
-                  student={student}
-                  sessions={getStudentSessions(student.id)}
-                  paidBySession={paidBySession}
-                  schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
-                  teachers={teachers}
-                  currentUserId={currentUserId}
-                  onUpdateLesson={onUpdateLesson}
-                  onAddLesson={onAddLesson}
-                  onCloseSession={onCloseSession}
-                  onNewSession={onNewSession}
-                  onDeleteLesson={onDeleteLesson}
-                />
-              ))}
+              <button
+                type="button"
+                onClick={() => setActiveStudentsOpen((open) => !open)}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-gray-50"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <BookOpen className="h-4 w-4 text-emerald-600" />
+                  Élèves actifs ({activeStudents.length})
+                </span>
+                {activeStudentsOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+              </button>
+              {activeStudentsOpen && (
+                <div className="space-y-3">
+                  {activeStudents.map((student) => (
+                    <StudentCahier
+                      key={student.id}
+                      student={student}
+                      sessions={getStudentSessions(student.id)}
+                      paidBySession={paidBySession}
+                      schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
+                      teachers={teachers}
+                      currentUserId={currentUserId}
+                      onUpdateLesson={onUpdateLesson}
+                      onAddLesson={onAddLesson}
+                      onCloseSession={onCloseSession}
+                      onNewSession={onNewSession}
+                      onDeleteLesson={onDeleteLesson}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
