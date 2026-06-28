@@ -40,16 +40,17 @@ export function encodeScheduleLabel(label: string, recurrence: ScheduleRecurrenc
   return `${META_PREFIX}${encodeURIComponent(JSON.stringify(meta))}${META_END}${cleanLabel}` || null
 }
 
-function dateKey(date: Date): string {
-  return date.toISOString().slice(0, 10)
+export function scheduleDateKey(date: Date | string): string {
+  if (date instanceof Date) return date.toISOString().slice(0, 10)
+  return date.slice(0, 10)
 }
 
 export function scheduleSlotOccursOn(
-  slot: { dayOfWeek: number; label: string | null; exceptions?: { date: string }[] },
+  slot: { dayOfWeek: number; label: string | null; exceptions?: { date: Date | string }[] },
   date: Date
 ): boolean {
-  const key = dateKey(date)
-  const cancelled = slot.exceptions?.some((ex) => ex.date.slice(0, 10) === key) ?? false
+  const key = scheduleDateKey(date)
+  const cancelled = slot.exceptions?.some((ex) => scheduleDateKey(ex.date) === key) ?? false
   if (cancelled) return false
 
   const meta = parseScheduleLabel(slot.label)
