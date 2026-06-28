@@ -18,7 +18,7 @@ export function MonCompteClient({
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
 
-  // — Changement d'email —
+  // — Changement d'email de contact —
   const [email, setEmail] = useState(currentEmail)
   const [emailPassword, setEmailPassword] = useState("")
   const [emailLoading, setEmailLoading] = useState(false)
@@ -89,7 +89,7 @@ export function MonCompteClient({
       {!mustChangePassword && (
         <form onSubmit={handleEmailSubmit} className="mb-6 space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
           <h2 className="flex items-center gap-2 font-semibold text-gray-900">
-            <Mail className="h-4 w-4" /> Changer l&apos;adresse email
+            <Mail className="h-4 w-4" /> Changer l&apos;adresse email de contact
           </h2>
 
           <div className="space-y-1.5">
@@ -115,7 +115,7 @@ export function MonCompteClient({
           {emailError && <p className="text-sm text-red-600">{emailError}</p>}
           {emailSuccess && (
             <p className="flex items-center gap-1.5 text-sm text-emerald-700">
-              <CheckCircle2 className="h-4 w-4" /> Adresse email modifiée ! Utilisez-la à la prochaine connexion.
+              <CheckCircle2 className="h-4 w-4" /> Adresse email de contact modifiée.
             </p>
           )}
 
@@ -124,7 +124,7 @@ export function MonCompteClient({
             disabled={emailLoading}
             className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            {emailLoading ? "Enregistrement…" : <>Changer l&apos;email</>}
+            {emailLoading ? "Enregistrement…" : <>Changer l&apos;email de contact</>}
           </button>
         </form>
       )}

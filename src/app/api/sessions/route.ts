@@ -39,6 +39,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "studentId and subject required" }, { status: 400 })
   }
 
+  const student = await prisma.student.findFirst({
+    where: { id: studentId, tenantId: user.tenantId },
+    include: { group: { select: { teacherId: true } } },
+  })
+  if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
+  if (user.role === "TEACHER" && student.group?.teacherId !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const resolvedTeacherId = user.role === "TEACHER" ? user.id : (teacherId ?? student.group?.teacherId)
+  if (!resolvedTeacherId) {
+    return NextResponse.json({ error: "teacherId required" }, { status: 400 })
+  }
+
+  const teacher = await prisma.user.findFirst({
+    where: {
+      id: resolvedTeacherId,
+      tenantId: user.tenantId,
+      role: "TEACHER",
+      isActive: true,
+    },
+    select: { id: true },
+  })
+  if (!teacher) return NextResponse.json({ error: "Teacher not found" }, { status: 404 })
+
   // Auto-increment session number if not provided
   let sessionNumber = number
   if (!sessionNumber) {
@@ -48,8 +73,6 @@ export async function POST(req: Request) {
     })
     sessionNumber = (last?.number ?? 0) + 1
   }
-
-  const resolvedTeacherId = teacherId ?? user.id
 
   const newSession = await prisma.lessonSession.create({
     data: {

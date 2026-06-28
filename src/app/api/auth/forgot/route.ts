@@ -32,12 +32,8 @@ export async function POST(req: Request) {
 
   const newPassword = genPassword()
   const hash = await bcrypt.hash(newPassword, 12)
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { password: hash, mustChangePassword: true },
-  })
 
-  await sendEmail({
+  const sent = await sendEmail({
     to: user.contactEmail,
     subject: "Votre nouveau mot de passe — Institut As-Sahaba",
     html: `
@@ -50,6 +46,18 @@ export async function POST(req: Request) {
         <p style="color:#6b7280; font-size:13px;">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email et prévenez la direction.</p>
         <p>Bârak Allâhu fîkum.</p>
       </div>`,
+  })
+
+  // Ne pas changer le mot de passe si l'email n'est pas réellement parti.
+  // La réponse reste générique pour ne pas révéler l'existence du compte.
+  if (!sent.ok) {
+    console.error("[forgot] Email non envoyé, mot de passe conservé:", sent.error)
+    return generic
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: hash, mustChangePassword: true },
   })
 
   return generic

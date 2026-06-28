@@ -23,19 +23,23 @@ export async function PUT(req: Request) {
   const valid = await bcrypt.compare(currentPassword, dbUser.password)
   if (!valid) return NextResponse.json({ error: "Mot de passe actuel incorrect" }, { status: 403 })
 
-  if (email === dbUser.email.toLowerCase()) {
+  if (email === dbUser.contactEmail?.toLowerCase()) {
     return NextResponse.json({ error: "C'est déjà votre adresse actuelle." }, { status: 400 })
   }
 
-  const existing = await prisma.user.findUnique({
-    where: { tenantId_email: { tenantId: dbUser.tenantId, email } },
+  const existing = await prisma.user.findFirst({
+    where: {
+      tenantId: dbUser.tenantId,
+      contactEmail: email,
+      NOT: { id: dbUser.id },
+    },
     select: { id: true },
   })
   if (existing) {
     return NextResponse.json({ error: "Cette adresse email est déjà utilisée." }, { status: 409 })
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { email } })
+  await prisma.user.update({ where: { id: user.id }, data: { contactEmail: email } })
 
   return NextResponse.json({ ok: true })
 }

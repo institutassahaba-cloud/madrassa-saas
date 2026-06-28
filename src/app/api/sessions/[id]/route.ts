@@ -20,6 +20,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     where: { id, tenantId: user.tenantId },
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (user.role === "TEACHER" && existing.teacherId !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const isClosing = body.isComplete === true && !existing.isComplete
 
@@ -71,6 +74,12 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const user = session.user
   if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   const { id } = await params
+
+  const existing = await prisma.lessonSession.findFirst({
+    where: { id, tenantId: user.tenantId },
+    select: { id: true },
+  })
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   await prisma.lessonSession.delete({ where: { id } })
   return NextResponse.json({ ok: true })

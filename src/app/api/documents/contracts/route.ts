@@ -30,6 +30,20 @@ export async function POST(req: Request) {
   if (!file || !title || !teacherId) {
     return NextResponse.json({ error: "Fichier, titre et professeur requis" }, { status: 400 })
   }
+  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    return NextResponse.json({ error: "Le contrat doit être un PDF." }, { status: 400 })
+  }
+
+  const teacher = await prisma.user.findFirst({
+    where: {
+      id: teacherId,
+      tenantId: user.tenantId,
+      role: "TEACHER",
+      isActive: true,
+    },
+    select: { id: true },
+  })
+  if (!teacher) return NextResponse.json({ error: "Professeur introuvable" }, { status: 404 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const { fileId, url } = await uploadToDrive(buffer, `${title} - ${file.name}`, file.type || "application/pdf")

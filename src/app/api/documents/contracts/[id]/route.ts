@@ -10,7 +10,9 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const user = session.user
   if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Accès refusé" }, { status: 403 })
 
-  const contract = await prisma.teacherContract.findUnique({ where: { id } })
+  const contract = await prisma.teacherContract.findFirst({
+    where: { id, tenantId: user.tenantId },
+  })
   if (contract) {
     await deleteFromDrive(contract.driveFileId)
     await prisma.teacherContract.delete({ where: { id } })

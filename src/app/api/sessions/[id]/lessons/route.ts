@@ -13,6 +13,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     include: { lessons: true },
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (user.role === "TEACHER" && existing.teacherId !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const nextNumber = (existing.lessons.length > 0
     ? Math.max(...existing.lessons.map((l) => l.number))
