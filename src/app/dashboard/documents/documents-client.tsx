@@ -98,10 +98,13 @@ function TeacherDocSection({
           {/* Contrats */}
           <div>
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <ScrollText className="h-4 w-4 text-blue-600" />
-                Contrats
-              </p>
+              <div>
+                <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <ScrollText className="h-4 w-4 text-blue-600" />
+                  Contrats
+                </p>
+                <p className="mt-0.5 text-xs text-gray-400">Ajout manuel des contrats professeurs</p>
+              </div>
               {role === "DIRECTOR" && (
                 <Button size="sm" variant="outline" className="h-8 w-full text-xs sm:h-7 sm:w-auto" onClick={() => setShowUpload(!showUpload)}>
                   <Plus className="h-3 w-3" /> Ajouter
@@ -157,10 +160,13 @@ function TeacherDocSection({
 
           {/* Fiches de paie */}
           <div>
-            <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-              <FileText className="h-4 w-4 text-emerald-600" />
-              Fiches de paie
-            </p>
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-emerald-600" />
+                Fiches de paie
+              </p>
+              <p className="mt-0.5 text-xs text-gray-400">Générées automatiquement après confirmation du calcul des paies</p>
+            </div>
             {salaries.length === 0 ? (
               <p className="text-sm text-gray-400 italic">Aucune fiche de paie</p>
             ) : (
@@ -237,7 +243,7 @@ export function DocumentsClient({
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Documents</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Contrats et fiches de paie des professeurs</p>
+        <p className="text-sm text-gray-500 mt-0.5">Contrats manuels et fiches de paie automatiques des professeurs</p>
       </div>
 
       {/* Filtre prof */}
