@@ -130,7 +130,7 @@ function parseCSV(text: string): ImportRow[] {
 export function StudentsClient({ students, groups, teachers, role }: { students: Student[]; groups: Group[]; teachers: Teacher[]; role: string }) {
   const [search, setSearch]         = useState("")
   const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["ACTIVE"]))
-  const [groupFilter, setGroup]     = useState("ALL")
+  const [teacherFilter, setTeacherFilter] = useState("ALL")
   const [subjectFilters, setSubjectFilters] = useState<Set<string>>(new Set())
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editStudent, setEdit]      = useState<Student | null>(null)
@@ -151,9 +151,9 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
     const matchSearch  = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
                          (s.phone ?? "").includes(search)
     const matchStatus  = statusFilters.size === 0 || statusFilters.has(s.status)
-    const matchGroup   = groupFilter  === "ALL" || s.group?.id === groupFilter
+    const matchTeacher = teacherFilter === "ALL" || groups.some((g) => g.id === s.group?.id && g.teacherId === teacherFilter)
     const matchSubject = subjectFilters.size === 0 || (s.subject != null && subjectFilters.has(s.subject))
-    return matchSearch && matchStatus && matchGroup && matchSubject
+    return matchSearch && matchStatus && matchTeacher && matchSubject
   })
 
   const activeCount   = students.filter((s) => s.status === "ACTIVE").length
@@ -252,13 +252,13 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input placeholder="Rechercher…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
-              <Select value={groupFilter} onValueChange={setGroup}>
-                <SelectTrigger className="w-full sm:w-44">
-                  <SelectValue placeholder="Classe" />
+              <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+                <SelectTrigger className="w-full sm:w-56">
+                  <SelectValue placeholder="Professeur" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto">
-                  <SelectItem value="ALL">Toutes les classes</SelectItem>
-                  {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                  <SelectItem value="ALL">Tous les professeurs</SelectItem>
+                  {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
