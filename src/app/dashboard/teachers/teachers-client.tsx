@@ -4,12 +4,12 @@ import { useState } from "react"
 import type React from "react"
 import {
   Users, BookOpen, UserCheck, ChevronDown, ChevronUp, Mail, Phone,
-  Calendar, MessageCircle, Plus, Check, Clock, X, CheckCircle2,
-  AlertCircle, Search, Bell, Eye,
+  MessageCircle, Plus, Check, Clock, X, CheckCircle2,
+  Bell, Eye,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { gmailComposeLink } from "@/lib/contact-links"
-import { GROUP_RATES, rateForSize } from "@/lib/group-rates"
+import { rateForSize } from "@/lib/group-rates"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -574,11 +574,39 @@ function AddMemberForm({ onAdded, canAddSecretary }: { onAdded: () => void; canA
 
 // ─── TeacherCard ──────────────────────────────────────────────────────────────
 
-function GroupCard({ group, activeStudents, groupType, rate }: {
+function GroupCard({
+  group,
+  activeStudents,
+  groupType,
+  rate,
+  sessions,
+  paidBySession,
+  scheduleByGroup,
+  teachers,
+  currentUserId,
+  canRemoveStudent,
+  onUpdateLesson,
+  onAddLesson,
+  onCloseSession,
+  onNewSession,
+  onDeleteLesson,
+}: {
   group: Group
-  activeStudents: { id: string; firstName: string; lastName: string; status: string }[]
+  activeStudents: Student[]
   groupType: string
   rate: number
+  sessions: LessonSession[]
+  paidBySession: Record<string, string>
+  scheduleByGroup: Record<string, Slot[]>
+  teachers: { id: string; name: string }[]
+  currentUserId: string
+  canRemoveStudent: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onUpdateLesson: (lessonId: string, data: any) => void
+  onAddLesson: (sessionId: string) => void
+  onCloseSession: (sessionId: string) => void
+  onNewSession: (studentId: string, subject: string, teacherId: string) => void
+  onDeleteLesson: (lessonId: string) => void
 }) {
   const [removing, setRemoving] = useState<string | null>(null)
 
@@ -595,11 +623,18 @@ function GroupCard({ group, activeStudents, groupType, rate }: {
     setRemoving(null)
   }
 
+  function getStudentSessions(studentId: string) {
+    return sessions.filter(s => s.student.id === studentId)
+  }
+
   return (
-    <div className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-medium text-gray-800">{group.name}</span>
-        <div className="flex items-center gap-2">
+    <div className="rounded-xl border border-gray-100 bg-white p-3 text-sm">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-medium text-gray-900">{group.name}</p>
+          {group.level && <p className="text-xs text-gray-400">{group.level}</p>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
             activeStudents.length <= 1 ? "bg-blue-50 text-blue-700" :
             activeStudents.length === 2 ? "bg-amber-50 text-amber-700" :
@@ -607,23 +642,40 @@ function GroupCard({ group, activeStudents, groupType, rate }: {
           }`}>
             {groupType} · {rate}€/h
           </span>
+          <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
+            {activeStudents.length} élève{activeStudents.length > 1 ? "s" : ""}
+          </span>
         </div>
       </div>
-      {activeStudents.length > 0 && (
-        <div className="space-y-1">
-          {activeStudents.map((s) => (
-            <div key={s.id} className="flex items-center justify-between rounded px-2 py-1 hover:bg-gray-50">
-              <span className="text-gray-600">{s.firstName} {s.lastName}</span>
-              {activeStudents.length > 1 && (
+      {activeStudents.length === 0 ? (
+        <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-400">Aucun élève actif dans cette classe.</p>
+      ) : (
+        <div className="space-y-2">
+          {activeStudents.map((student) => (
+            <div key={student.id} className="relative">
+              {canRemoveStudent && activeStudents.length > 1 && (
                 <button
-                  onClick={() => handleRemoveStudent(s.id)}
-                  disabled={removing === s.id}
-                  className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+                  onClick={() => handleRemoveStudent(student.id)}
+                  disabled={removing === student.id}
+                  className="absolute right-3 top-4 z-10 rounded-full p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
                   title="Retirer de la classe"
                 >
-                  {removing === s.id ? "..." : <X className="h-3.5 w-3.5" />}
+                  {removing === student.id ? "..." : <X className="h-3.5 w-3.5" />}
                 </button>
               )}
+              <StudentCahier
+                student={student}
+                sessions={getStudentSessions(student.id)}
+                paidBySession={paidBySession}
+                schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
+                teachers={teachers}
+                currentUserId={currentUserId}
+                onUpdateLesson={onUpdateLesson}
+                onAddLesson={onAddLesson}
+                onCloseSession={onCloseSession}
+                onNewSession={onNewSession}
+                onDeleteLesson={onDeleteLesson}
+              />
             </div>
           ))}
         </div>
@@ -654,7 +706,6 @@ function TeacherCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [classesOpen, setClassesOpen] = useState(false)
-  const [activeStudentsOpen, setActiveStudentsOpen] = useState(false)
   const [editingRates, setEditingRates] = useState(false)
   const [rates, setRates] = useState({
     individualRate: teacher.individualRate ?? "",
@@ -672,9 +723,29 @@ function TeacherCard({
     return sessions.filter(s => s.student.id === studentId)
   }
 
+  async function startTeacherView() {
+    await fetch("/api/view-as", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId: teacher.id }),
+    })
+    window.location.href = "/dashboard"
+  }
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <button onClick={() => setExpanded(!expanded)} className="flex w-full items-center gap-4 p-5 text-left">
+      <div
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setExpanded((open) => !open)
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        className="flex w-full cursor-pointer items-center gap-4 p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+      >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-lg font-bold text-emerald-700">
           {teacher.name.charAt(0).toUpperCase()}
         </div>
@@ -684,7 +755,7 @@ function TeacherCard({
             {(() => {
               const mail = gmailComposeLink(teacher.email)
               return mail ? (
-                <a href={mail} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                <a href={mail} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
                   <Mail className="h-3 w-3" /> {teacher.email}
                 </a>
               ) : null
@@ -692,7 +763,7 @@ function TeacherCard({
             {teacher.phone && (() => {
               const wa = whatsappLink(teacher.phone)
               return wa ? (
-                <a href={wa} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-green-700 hover:underline">
+                <a href={wa} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-xs text-green-700 hover:underline">
                   <MessageCircle className="h-3 w-3" /> {teacher.phone}
                 </a>
               ) : (
@@ -710,29 +781,26 @@ function TeacherCard({
             <p className="text-lg font-bold text-blue-600">{totalStudents}</p>
             <p className="text-xs text-gray-400">élèves</p>
           </div>
+          {currentRole === "DIRECTOR" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                startTeacherView()
+              }}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              title="Déclencher le mode prof"
+              aria-label={`Déclencher le mode prof pour ${teacher.name}`}
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {expanded ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />}
-      </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-gray-100 p-5 space-y-4">
-          {/* Voir comme ce professeur (directeur uniquement) */}
-          {currentRole === "DIRECTOR" && (
-            <button
-              onClick={async () => {
-                await fetch("/api/view-as", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ teacherId: teacher.id }),
-                })
-                window.location.href = "/dashboard"
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100"
-            >
-              <Eye className="h-4 w-4" /> Voir comme ce professeur
-            </button>
-          )}
-
           {/* Tarifs horaires (directeur uniquement) */}
           {currentRole === "DIRECTOR" && (
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
@@ -783,8 +851,8 @@ function TeacherCard({
             </div>
           )}
 
-          {/* Classes du professeur (directeur) */}
-          {currentRole === "DIRECTOR" && teacher.teacherGroups.length > 0 && (
+          {/* Classes et élèves actifs */}
+          {teacher.teacherGroups.length > 0 && (
             <div className="space-y-2">
               <button
                 type="button"
@@ -800,50 +868,30 @@ function TeacherCard({
               {classesOpen && (
                 <div className="space-y-2">
                   {teacher.teacherGroups.map((group) => {
-                    const activeInGroup = group.students.filter(s => s.status === "ACTIVE")
+                    const activeInGroup = activeStudents.filter(s => s.groupId === group.id)
                     const groupType = activeInGroup.length <= 1 ? "Solo" : activeInGroup.length === 2 ? "Binôme" : `Groupe (${activeInGroup.length})`
                     const rate = rateForSize(activeInGroup.length)
                     return (
-                      <GroupCard key={group.id} group={group} activeStudents={activeInGroup} groupType={groupType} rate={rate} />
+                      <GroupCard
+                        key={group.id}
+                        group={group}
+                        activeStudents={activeInGroup}
+                        groupType={groupType}
+                        rate={rate}
+                        sessions={sessions}
+                        paidBySession={paidBySession}
+                        scheduleByGroup={scheduleByGroup}
+                        teachers={teachers}
+                        currentUserId={currentUserId}
+                        canRemoveStudent={currentRole === "DIRECTOR"}
+                        onUpdateLesson={onUpdateLesson}
+                        onAddLesson={onAddLesson}
+                        onCloseSession={onCloseSession}
+                        onNewSession={onNewSession}
+                        onDeleteLesson={onDeleteLesson}
+                      />
                     )
                   })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Élèves actifs avec cahier de cours */}
-          {activeStudents.length > 0 && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => setActiveStudentsOpen((open) => !open)}
-                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-gray-50"
-              >
-                <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <BookOpen className="h-4 w-4 text-emerald-600" />
-                  Élèves actifs ({activeStudents.length})
-                </span>
-                {activeStudentsOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
-              </button>
-              {activeStudentsOpen && (
-                <div className="space-y-3">
-                  {activeStudents.map((student) => (
-                    <StudentCahier
-                      key={student.id}
-                      student={student}
-                      sessions={getStudentSessions(student.id)}
-                      paidBySession={paidBySession}
-                      schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
-                      teachers={teachers}
-                      currentUserId={currentUserId}
-                      onUpdateLesson={onUpdateLesson}
-                      onAddLesson={onAddLesson}
-                      onCloseSession={onCloseSession}
-                      onNewSession={onNewSession}
-                      onDeleteLesson={onDeleteLesson}
-                    />
-                  ))}
                 </div>
               )}
             </div>
