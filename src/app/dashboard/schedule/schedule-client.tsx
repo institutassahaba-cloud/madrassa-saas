@@ -316,9 +316,15 @@ function SlotForm({
 // ─── Main ScheduleClient ──────────────────────────────────────────────────────
 
 export function ScheduleClient({ slots: initialSlots, groups, teachers, currentUser, role, initialWeek }: Props) {
+  const sortedTeachers = [...teachers].sort((a, b) => {
+    const aIsSamia = a.name.toLowerCase().includes("samia") ? 0 : 1
+    const bIsSamia = b.name.toLowerCase().includes("samia") ? 0 : 1
+    if (aIsSamia !== bIsSamia) return aIsSamia - bIsSamia
+    return a.name.localeCompare(b.name, "fr")
+  })
   const [slots, setSlots] = useState<TimeSlot[]>(initialSlots)
   const [viewTz, setViewTz] = useState(currentUser.timezone)
-  const [filterTeacher, setFilter] = useState("ALL")
+  const [filterTeacher, setFilter] = useState(role === "TEACHER" ? currentUser.id : (sortedTeachers[0]?.id ?? ""))
   const [addingDate, setAddingDate] = useState<Date | null>(null)
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null)
   const [savingTz, setSavingTz] = useState(false)
@@ -340,16 +346,10 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   function nextWeek() { setWeekStart(addDays(weekStart, 7)) }
   function goToday() { setWeekStart(getMonday(new Date())) }
 
-  const sortedTeachers = [...teachers].sort((a, b) => {
-    const aIsSamia = a.name.toLowerCase().includes("samia") ? 0 : 1
-    const bIsSamia = b.name.toLowerCase().includes("samia") ? 0 : 1
-    if (aIsSamia !== bIsSamia) return aIsSamia - bIsSamia
-    return a.name.localeCompare(b.name, "fr")
-  })
-
   const filteredSlots = slots.filter(s =>
-    filterTeacher === "ALL" || s.teacher.id === filterTeacher
+    role === "TEACHER" || (filterTeacher ? s.teacher.id === filterTeacher : false)
   )
+  const selectedTeacher = sortedTeachers.find((t) => t.id === filterTeacher)
 
   // For a given date, get slots that should appear (matching dayOfWeek, not cancelled)
   function getOccurrences(date: Date) {
@@ -448,11 +448,33 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Planning</h1>
-          <p className="text-sm text-gray-500">Vue semaine — calendrier annuel</p>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+            {role === "TEACHER" ? "Planning" : "Planning des professeurs"}
+          </h1>
+          <p className="text-sm text-gray-500">
+            {role === "TEACHER"
+              ? "Vue semaine — calendrier annuel"
+              : selectedTeacher
+                ? `Planning affiché pour ${selectedTeacher.name}`
+                : "Choisissez un professeur pour afficher et modifier son planning"}
+          </p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          {role !== "TEACHER" && sortedTeachers.length > 0 && (
+            <div className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 sm:w-auto">
+              <span className="text-xs font-medium text-gray-500">Professeur</span>
+              <Select value={filterTeacher} onValueChange={(value) => { setFilter(value); setAddingDate(null); setEditingSlot(null) }}>
+                <SelectTrigger className="h-8 flex-1 border-0 p-0 text-xs font-medium text-gray-700 shadow-none focus:ring-0 sm:w-56 sm:flex-none">
+                  <SelectValue placeholder="Choisir un professeur" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72 overflow-y-auto">
+                  {sortedTeachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Week navigation */}
           <div className="flex w-full items-center justify-between gap-1 rounded-lg border border-gray-200 bg-white px-1 py-1 sm:w-auto sm:justify-start">
             <button onClick={prevWeek} className="flex h-9 w-9 items-center justify-center rounded hover:bg-gray-100" aria-label="Semaine précédente"><ChevronLeft className="h-4 w-4" /></button>
@@ -486,20 +508,14 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
         {/* Teacher sidebar */}
         {role !== "TEACHER" && teachers.length > 0 && (
           <div className="shrink-0 lg:w-44">
-            <p className="mb-2 px-1 text-xs font-medium text-gray-400">Professeurs</p>
+            <p className="mb-2 px-1 text-xs font-medium text-gray-400">Choisir un professeur</p>
             <div className="flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
-            <button
-              onClick={() => setFilter("ALL")}
-              className={`min-h-10 shrink-0 rounded-lg px-3 py-2 text-left text-sm transition-colors lg:w-full ${filterTeacher === "ALL" ? "bg-emerald-50 text-emerald-700 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
-            >
-              Tous
-            </button>
             {sortedTeachers.map(t => {
               const count = slots.filter(s => s.teacher.id === t.id).length
               return (
                 <button
                   key={t.id}
-                  onClick={() => setFilter(t.id)}
+                  onClick={() => { setFilter(t.id); setAddingDate(null); setEditingSlot(null) }}
                   className={`min-h-10 w-40 shrink-0 rounded-lg px-3 py-2 text-left text-sm transition-colors lg:w-full ${filterTeacher === t.id ? "bg-emerald-50 text-emerald-700 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
                 >
                   <span className="block truncate">{t.name}</span>
@@ -525,7 +541,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                   }}
                   disabled={!activeTeacherId}
                   className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
-                  title={activeTeacherId ? "Ajouter un événement" : "Choisir un professeur avant d'ajouter"}
+                  title={activeTeacherId ? `Ajouter un événement${selectedTeacher ? ` pour ${selectedTeacher.name}` : ""}` : "Choisir un professeur avant d'ajouter"}
                 >
                   <Plus className="h-4 w-4" />
                 </button>

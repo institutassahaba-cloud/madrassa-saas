@@ -43,6 +43,10 @@ interface SidebarProps {
 export function Sidebar({ role, tenantName, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const filtered = navItems.filter((item) => item.roles.includes(role as Role))
+  const itemLabel = (item: NavItem) => {
+    if (item.href === "/dashboard/schedule" && role === "DIRECTOR") return "Planning des professeurs"
+    return item.label
+  }
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-gray-100 bg-white md:h-screen md:w-64">
@@ -74,7 +78,7 @@ export function Sidebar({ role, tenantName, onNavigate }: SidebarProps) {
               )}
             >
               <item.icon className={cn("h-4 w-4 shrink-0", active ? "text-emerald-600" : "text-gray-400")} />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{itemLabel(item)}</span>
               {active && <ChevronRight className="h-3 w-3 text-emerald-500" />}
             </Link>
           )
