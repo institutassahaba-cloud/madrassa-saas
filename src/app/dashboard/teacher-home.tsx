@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
-import { Calendar, Clock, ChevronRight, BookOpen, Users } from "lucide-react"
+import { Calendar, Clock, ChevronRight, Users } from "lucide-react"
+import { parseScheduleLabel, scheduleSlotOccursOn } from "@/lib/schedule-meta"
 
 const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
@@ -25,9 +26,10 @@ export async function TeacherHome({
   const today = new Date().getDay()
 
   const slots = await prisma.timeSlot.findMany({
-    where: { tenantId, teacherId, dayOfWeek: today },
+    where: { tenantId, teacherId },
     select: {
       id: true,
+      dayOfWeek: true,
       startTime: true,
       endTime: true,
       label: true,
@@ -43,6 +45,8 @@ export async function TeacherHome({
     },
     orderBy: { startTime: "asc" },
   })
+  const todayDate = new Date()
+  const todaySlots = slots.filter((slot) => scheduleSlotOccursOn(slot, todayDate))
 
   const firstName = teacherName.split(" ")[0]
 
@@ -66,10 +70,10 @@ export async function TeacherHome({
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="h-5 w-5 text-emerald-600" />
           <h2 className="text-lg font-semibold text-gray-900">Cours du jour</h2>
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{slots.length}</span>
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{todaySlots.length}</span>
         </div>
 
-        {slots.length === 0 ? (
+        {todaySlots.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-200 p-10 text-center">
             <Calendar className="mx-auto h-8 w-8 text-gray-300 mb-2" />
             <p className="text-sm text-gray-400">Aucun cours prévu aujourd&apos;hui</p>
@@ -77,8 +81,8 @@ export async function TeacherHome({
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {slots.map((s, i) => {
-              const name = s.label || s.group?.name || "Cours"
+            {todaySlots.map((s, i) => {
+              const name = parseScheduleLabel(s.label).label || s.group?.name || "Cours"
               const studentCount = s.group?.students.length ?? 0
               const color = SLOT_COLORS[i % SLOT_COLORS.length]
               return (

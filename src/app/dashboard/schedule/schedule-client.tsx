@@ -5,6 +5,7 @@ import { Plus, X, Globe, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucid
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { encodeScheduleLabel, parseScheduleLabel, scheduleSlotOccursOn, type ScheduleRecurrence } from "@/lib/schedule-meta"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,11 @@ const COLORS = [
   "#10b981", "#3b82f6", "#8b5cf6", "#f59e0b",
   "#ef4444", "#06b6d4", "#ec4899", "#84cc16",
 ]
+const RECURRENCE_LABELS: Record<ScheduleRecurrence, string> = {
+  NONE: "Une seule fois",
+  WEEKLY: "Chaque semaine",
+  MONTHLY: "Chaque mois",
+}
 
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 7) // 7h → 21h
 
@@ -85,6 +91,10 @@ function isSameDay(a: Date, b: Date): boolean {
   return dateKey(a) === dateKey(b)
 }
 
+function slotTitle(slot: TimeSlot): string {
+  return parseScheduleLabel(slot.label).label ?? slot.group?.name ?? slot.teacher.name
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SlotException {
@@ -134,6 +144,7 @@ function OccurrenceBlock({
   onColorChange: (slotId: string, color: string) => void
 }) {
   const [showPalette, setShowPalette] = useState(false)
+  const recurrence = parseScheduleLabel(slot.label).recurrence
 
   const start = convertTime(slot.startTime, slot.teacher.timezone, viewTz)
   const end   = convertTime(slot.endTime,   slot.teacher.timezone, viewTz)
@@ -158,9 +169,10 @@ function OccurrenceBlock({
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
           <p className="font-semibold truncate leading-tight">
-            {slot.label ?? slot.group?.name ?? slot.teacher.name}
+            {slotTitle(slot)}
           </p>
           <p className="opacity-80 text-[10px]">{start} – {end}</p>
+          <p className="truncate text-[9px] opacity-70">{RECURRENCE_LABELS[recurrence]}</p>
         </div>
         <div className="mt-0.5 flex shrink-0 gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <button onClick={(e) => { e.stopPropagation(); setShowPalette(!showPalette) }} title="Couleur">
@@ -172,7 +184,7 @@ function OccurrenceBlock({
           <button
             onClick={(e) => {
               e.stopPropagation()
-              if (confirm(`Annuler ce cours du ${date.toLocaleDateString("fr-FR")} ?\nLes semaines suivantes ne seront pas affectées.`))
+              if (confirm(`Annuler ce cours du ${date.toLocaleDateString("fr-FR")} ?\nLes autres occurrences ne seront pas affectées.`))
                 onCancel(slot.id, date)
             }}
             title="Annuler ce cours (cette semaine uniquement)"
@@ -228,13 +240,18 @@ function SlotForm({
   onClose: () => void
 }) {
   const defaultTeacherId = role === "TEACHER" ? currentUserId : (slot?.teacher.id ?? teachers[0]?.id ?? currentUserId)
+  const slotMeta = parseScheduleLabel(slot?.label)
   const [eventDate, setEventDate] = useState(dateKey(date))
   const [startTime, setStart] = useState(slot?.startTime ?? "09:00")
   const [endTime,   setEnd]   = useState(slot?.endTime ?? "09:30")
-  const [label,     setLabel] = useState(slot?.label ?? "")
+  const [label,     setLabel] = useState(slotMeta.label ?? "")
   const [color,     setColor] = useState(slot?.color ?? COLORS[0])
   const [groupId,   setGroup] = useState(slot?.group?.id ?? "NONE")
   const [teacherId, setTeacher] = useState(defaultTeacherId)
+  const [hasRecurrence, setHasRecurrence] = useState(slotMeta.recurrence !== "NONE")
+  const [recurrence, setRecurrence] = useState<Exclude<ScheduleRecurrence, "NONE">>(
+    slotMeta.recurrence === "MONTHLY" ? "MONTHLY" : "WEEKLY"
+  )
 
   const availableGroups = groups.filter((g) => g.teacherId === teacherId)
 
@@ -244,7 +261,7 @@ function SlotForm({
       dayOfWeek: new Date(`${eventDate}T00:00:00`).getDay(),
       startTime,
       endTime,
-      label,
+      label: encodeScheduleLabel(label, hasRecurrence ? recurrence : "NONE", eventDate),
       color,
       groupId: groupId === "NONE" ? null : groupId,
       teacherId,
@@ -275,6 +292,28 @@ function SlotForm({
         </div>
       </div>
       <Input placeholder="Libellé (ex: Coran débutants)" value={label} onChange={e => setLabel(e.target.value)} className="h-7 text-xs" />
+      <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+        <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={hasRecurrence}
+            onChange={(e) => setHasRecurrence(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Récurrence
+        </label>
+        {hasRecurrence ? (
+          <Select value={recurrence} onValueChange={(value) => setRecurrence(value as Exclude<ScheduleRecurrence, "NONE">)}>
+            <SelectTrigger className="mt-2 h-7 bg-white text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="WEEKLY">Chaque semaine</SelectItem>
+              <SelectItem value="MONTHLY">Chaque mois</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <p className="mt-1 text-xs text-gray-400">L&apos;événement apparaîtra uniquement à cette date.</p>
+        )}
+      </div>
       {role !== "TEACHER" && teachers.length > 0 && (
         <Select value={teacherId} onValueChange={(value) => { setTeacher(value); setGroup("NONE") }}>
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Professeur" /></SelectTrigger>
@@ -351,15 +390,9 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   )
   const selectedTeacher = sortedTeachers.find((t) => t.id === filterTeacher)
 
-  // For a given date, get slots that should appear (matching dayOfWeek, not cancelled)
+  // For a given date, get slots that should appear (single, weekly, or monthly)
   function getOccurrences(date: Date) {
-    const dow = date.getDay()
-    const dk = dateKey(date)
-    return filteredSlots.filter(s => {
-      if (s.dayOfWeek !== dow) return false
-      const cancelled = s.exceptions.some(ex => ex.date.slice(0, 10) === dk)
-      return !cancelled
-    })
+    return filteredSlots.filter(s => scheduleSlotOccursOn(s, date))
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -419,7 +452,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   }
 
   async function handleDeleteSlot(slotId: string) {
-    if (!confirm("Supprimer ce créneau récurrent ? (toutes les semaines)")) return
+    if (!confirm("Supprimer ce créneau et toutes ses occurrences ?")) return
     await fetch(`/api/schedule/${slotId}`, { method: "DELETE" })
     setSlots(prev => prev.filter(s => s.id !== slotId))
   }
@@ -634,7 +667,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
       </div>
 
       <p className="mt-2 text-xs text-gray-400">
-        Les créneaux se répètent chaque semaine. Annuler un cours (×) ne supprime que l&apos;occurrence de cette semaine.
+        Choisissez une récurrence lors de l&apos;ajout : une seule fois, chaque semaine ou chaque mois. Annuler un cours (×) ne supprime que l&apos;occurrence affichée.
       </p>
     </div>
   )
