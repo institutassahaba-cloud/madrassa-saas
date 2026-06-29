@@ -12,6 +12,7 @@ interface DashboardShellProps {
   tenantName: string
   userName: string
   userEmail: string
+  unreadNotifications?: number
   impersonating?: boolean
 }
 
@@ -21,6 +22,7 @@ export function DashboardShell({
   tenantName,
   userName,
   userEmail,
+  unreadNotifications = 0,
   impersonating = false,
 }: DashboardShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -59,6 +61,7 @@ export function DashboardShell({
           userName={userName}
           userEmail={userEmail}
           title="MadrassaApp"
+          unreadNotifications={unreadNotifications}
           onMenuClick={() => setMenuOpen(true)}
         />
         <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">

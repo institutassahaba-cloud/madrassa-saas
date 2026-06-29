@@ -28,7 +28,7 @@ const navItems: NavItem[] = [
   { label: "Récap des paies", href: "/dashboard/recap-paiements", icon: Banknote, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Planning", href: "/dashboard/schedule", icon: Calendar, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
   { label: "Connexions", href: "/dashboard/connexions", icon: UserCheck, roles: ["DIRECTOR", "SECRETARY"] },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell, roles: ["DIRECTOR", "SECRETARY"] },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
   { label: "Documents", href: "/dashboard/documents", icon: FileText, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Paramètres", href: "/dashboard/settings", icon: Settings, roles: ["DIRECTOR"] },
   { label: "Changer mon mot de passe", href: "/dashboard/mon-compte", icon: UserCircle, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },

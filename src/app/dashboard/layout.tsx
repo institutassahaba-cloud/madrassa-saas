@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getEffectiveUser } from "@/lib/view-as"
+import { notificationVisibilityWhere } from "@/lib/notifications"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Utilisateur effectif : si le directeur a activé "Voir comme", le menu et
   // l'entête reflètent l'espace du professeur consulté.
   const user = (await getEffectiveUser())!
+  const unreadNotifications = await prisma.notification.count({
+    where: {
+      ...notificationVisibilityWhere(user),
+      status: { not: "READ" },
+    },
+  })
 
   return (
     <DashboardShell
@@ -25,6 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       tenantName={user.tenantName}
       userName={user.name}
       userEmail={user.email}
+      unreadNotifications={unreadNotifications}
       impersonating={user.impersonating}
     >
       {children}
