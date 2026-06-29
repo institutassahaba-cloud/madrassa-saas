@@ -15,7 +15,7 @@ interface Member {
 
 interface MailStatus {
   paymentInbox: { email: string; connected: boolean }
-  compta: { email: string; connected: boolean }
+  facturation: { email: string; connected: boolean }
 }
 
 function timeAgo(dateStr: string): string {
@@ -54,6 +54,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
   const [members, setMembers] = useState(initial)
   const [loading, setLoading] = useState<string | null>(null)
   const [testLoading, setTestLoading] = useState(false)
+  const [scanLoading, setScanLoading] = useState(false)
 
   async function toggleActive(id: string, isActive: boolean) {
     if (isActive && !confirm("Désactiver ce compte ? Le membre ne pourra plus se connecter.")) return
@@ -72,7 +73,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
   }
 
   async function sendComptaTest() {
-    const to = prompt("Adresse email où envoyer le test compta :")
+    const to = prompt("Adresse email où envoyer le test facturation :")
     if (to === null) return
     setTestLoading(true)
     try {
@@ -86,9 +87,25 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
         alert(data.error || "L'envoi du test a échoué.")
         return
       }
-      alert(`Mail de test envoyé à ${data.to}.`)
+      alert(`Mail de test facturation envoyé à ${data.to}.`)
     } finally {
       setTestLoading(false)
+    }
+  }
+
+  async function scanFacturationInbox() {
+    setScanLoading(true)
+    try {
+      const res = await fetch("/api/connexions/gmail/scan", { method: "POST" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error || "Lecture de la boîte facturation impossible.")
+        return
+      }
+      alert(`${data.created ?? 0} nouveau(x) paiement(s) détecté(s). ${data.skipped ?? 0} email(s) ignoré(s).`)
+      window.location.href = "/dashboard/payments"
+    } finally {
+      setScanLoading(false)
     }
   }
 
@@ -110,7 +127,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
                 <CreditCard className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">Adresse paiement</h2>
+                <h2 className="text-sm font-semibold text-gray-900">Adresse facturation</h2>
                 <p className="mt-0.5 text-xs text-gray-500">{mailStatus.paymentInbox.email || "Adresse non renseignée"}</p>
               </div>
             </div>
@@ -131,6 +148,16 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
               </p>
             </div>
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => { window.location.href = "/api/connexions/gmail/auth" }}>
+              <MailCheck className="h-3.5 w-3.5" />
+              Connecter Gmail
+            </Button>
+            <Button size="sm" onClick={scanFacturationInbox} disabled={!mailStatus.paymentInbox.connected || scanLoading}>
+              <CreditCard className="h-3.5 w-3.5" />
+              {scanLoading ? "Scan..." : "Scanner les paiements"}
+            </Button>
+          </div>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -140,18 +167,18 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
                 <Send className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">Adresse compta</h2>
-                <p className="mt-0.5 text-xs text-gray-500">{mailStatus.compta.email || "Adresse non renseignée"}</p>
+                <h2 className="text-sm font-semibold text-gray-900">Envoi facturation</h2>
+                <p className="mt-0.5 text-xs text-gray-500">{mailStatus.facturation.email || "Adresse non renseignée"}</p>
               </div>
             </div>
-            <ConnectionState connected={mailStatus.compta.connected} />
+            <ConnectionState connected={mailStatus.facturation.connected} />
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
               <p className="text-[11px] font-medium uppercase text-gray-400">Renouvellements</p>
-              <p className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${mailStatus.compta.connected ? "text-emerald-700" : "text-amber-700"}`}>
+              <p className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${mailStatus.facturation.connected ? "text-emerald-700" : "text-amber-700"}`}>
                 <MailCheck className="h-3.5 w-3.5" />
-                {mailStatus.compta.connected ? "Envoi possible" : "Envoi bloqué"}
+                {mailStatus.facturation.connected ? "Envoi possible" : "Envoi bloqué"}
               </p>
             </div>
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
