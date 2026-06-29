@@ -171,9 +171,9 @@ export function PaymentsClient({
           <CardContent className="space-y-3 p-4">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="font-semibold text-amber-900">Paiements détectés à vérifier</h3>
+                <h3 className="font-semibold text-amber-900">Paiements non traités</h3>
                 <p className="text-sm text-amber-700">
-                  PayPal/Wise reçus par email, à répartir sur une ou plusieurs sessions.
+                  Paiements reçus sans concordance automatique, à associer à un ou plusieurs élèves, professeurs ou sessions.
                 </p>
               </div>
               <Badge variant="warning">{paymentMatches.length} à traiter</Badge>
@@ -194,11 +194,11 @@ export function PaymentsClient({
                         : "Aucun élève pressenti"}
                       {match.reason ? ` · ${match.reason}` : ""}
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-400">Référence unique : {match.gmailMessageId}</p>
+                    <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
                   </div>
                   <Button size="sm" onClick={() => setSelectedMatch(match)}>
                     <SplitSquareHorizontal className="h-4 w-4" />
-                    Validation manuelle
+                    Associer un élève
                   </Button>
                 </div>
               ))}
@@ -424,11 +424,11 @@ function PaymentMatchDialog({
       <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4 sm:p-5">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Validation manuelle du paiement</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Associer un paiement non traité</h3>
             <p className="mt-1 text-sm text-gray-500">
               {match.source === "PAYPAL" ? "PayPal" : "Wise"} · {formatCurrency(match.receivedAmount)} · {match.detectedPayerName || "Payeur non détecté"}
             </p>
-            <p className="mt-0.5 text-xs text-gray-400">Référence unique : {match.gmailMessageId}</p>
+            <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
           </div>
           <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose} aria-label="Fermer">
             <X className="h-5 w-5" />
@@ -475,7 +475,7 @@ function PaymentMatchDialog({
               return (
                 <div key={row.id} className="rounded-xl border border-gray-200 p-3">
                   <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-700">Validation {index + 1}</p>
+                    <p className="text-sm font-semibold text-gray-700">Association {index + 1}</p>
                     {rows.length > 1 && (
                       <button type="button" className="text-xs font-medium text-red-600" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}>
                         Retirer
