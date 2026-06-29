@@ -10,19 +10,13 @@ import {
   FileText,
   Link as LinkIcon,
   Loader2,
+  Plus,
   Trash2,
-  Upload,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-
-const RESOURCE_TYPES = [
-  { value: "BOOK", label: "PDF de cours / livre" },
-  { value: "CONTROL", label: "Contrôle" },
-] as const
 
 const ARABIC_LEVELS = [
   { value: "DEBUTANT", label: "Débutant" },
@@ -39,7 +33,12 @@ const CATEGORIES = [
 ]
 
 type ResourceType = "BOOK" | "CONTROL"
-type DialogMode = "file" | "link"
+type AddContext = {
+  category: string
+  categoryLabel: string
+  level: string
+  levelLabel: string
+}
 
 interface ExamFile {
   id: string
@@ -85,19 +84,16 @@ function formatSize(bytes: number | null): string {
 export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFile[]; role: string }) {
   const [exams, setExams] = useState(initialExams)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<DialogMode>("file")
+  const [addContext, setAddContext] = useState<AddContext | null>(null)
   const [uploading, setUploading] = useState(false)
   const [title, setTitle] = useState("")
-  const [category, setCategory] = useState("LANGUE_ARABE")
-  const [level, setLevel] = useState("")
   const [resourceType, setResourceType] = useState<ResourceType>("BOOK")
-  const [file, setFile] = useState<File | null>(null)
   const [driveUrl, setDriveUrl] = useState("")
   const [expandedLevels, setExpandedLevels] = useState<Record<string, boolean>>({})
   const [uploadError, setUploadError] = useState("")
+  const [uploadSuccess, setUploadSuccess] = useState("")
 
   const canManage = ["DIRECTOR", "SECRETARY"].includes(role)
-  const selectedCategory = CATEGORIES.find((c) => c.value === category) ?? CATEGORIES[0]
 
   function toggleLevel(key: string) {
     setExpandedLevels((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -105,43 +101,38 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
 
   function resetUploadForm() {
     setTitle("")
-    setCategory("LANGUE_ARABE")
-    setLevel("")
     setResourceType("BOOK")
-    setFile(null)
     setDriveUrl("")
     setUploadError("")
+    setUploadSuccess("")
   }
 
-  function openDialog(mode: DialogMode) {
+  function openAddDialog(context: AddContext) {
     resetUploadForm()
-    setDialogMode(mode)
+    setAddContext(context)
+    setExpandedLevels((prev) => ({ ...prev, [`${context.category}:${context.level}`]: true }))
     setDialogOpen(true)
   }
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault()
-    if (!title || !level || !category || !resourceType) return
-    if (dialogMode === "file" && !file) return
-    if (dialogMode === "link" && !driveUrl) return
+    if (!addContext || !title || !driveUrl || !resourceType) return
 
     setUploadError("")
+    setUploadSuccess("")
     setUploading(true)
     const formData = new FormData()
     formData.append("title", title)
-    formData.append("level", encodeLevel(category, level, resourceType))
-    if (dialogMode === "file" && file) {
-      formData.append("file", file)
-    } else {
-      formData.append("fileUrl", driveUrl)
-    }
+    formData.append("level", encodeLevel(addContext.category, addContext.level, resourceType))
+    formData.append("fileUrl", driveUrl)
 
     const res = await fetch("/api/exams", { method: "POST", body: formData })
     if (res.ok) {
       const newExam = await res.json()
       setExams((prev) => [newExam, ...prev])
-      setDialogOpen(false)
-      resetUploadForm()
+      setTitle("")
+      setDriveUrl("")
+      setUploadSuccess("PDF ajouté. Vous pouvez en ajouter un autre ou fermer la fenêtre.")
     } else {
       const data = await res.json().catch(() => null)
       setUploadError(data?.error || "Upload impossible pour le moment.")
@@ -217,18 +208,6 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
             {exams.length} fichier{exams.length !== 1 ? "s" : ""} classé{exams.length !== 1 ? "s" : ""} par catégorie et niveau
           </p>
         </div>
-        {canManage && (
-          <div className="grid gap-2 sm:flex sm:justify-end">
-            <Button className="w-full sm:w-auto" variant="outline" onClick={() => openDialog("link")}>
-              <LinkIcon className="h-4 w-4" />
-              Ajouter un lien Drive
-            </Button>
-            <Button className="w-full sm:w-auto" onClick={() => openDialog("file")}>
-              <Upload className="h-4 w-4" />
-              Uploader un PDF
-            </Button>
-          </div>
-        )}
       </div>
 
       <div className="space-y-6">
@@ -250,21 +229,40 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
                 const books = filesFor(cat.value, lv.value, "BOOK")
                 const controls = filesFor(cat.value, lv.value, "CONTROL")
                 const total = books.length + controls.length
+                const context = {
+                  category: cat.value,
+                  categoryLabel: cat.label,
+                  level: lv.value,
+                  levelLabel: lv.label,
+                }
 
                 return (
                   <div key={key} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                    <button
-                      onClick={() => toggleLevel(key)}
-                      className="flex w-full items-start justify-between gap-3 p-4 text-left hover:bg-gray-50 sm:items-center"
-                    >
-                      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-                        <span className="font-semibold text-gray-900">{lv.label}</span>
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                          {total} fichier{total !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      {isOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
-                    </button>
+                    <div className="flex flex-col gap-2 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        onClick={() => toggleLevel(key)}
+                        className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left sm:items-center"
+                      >
+                        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+                          <span className="font-semibold text-gray-900">{lv.label}</span>
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                            {total} fichier{total !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        {isOpen ? <ChevronUp className="h-4 w-4 shrink-0 text-gray-400" /> : <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />}
+                      </button>
+                      {canManage && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 w-full shrink-0 sm:w-auto"
+                          onClick={() => openAddDialog(context)}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Rajouter un PDF
+                        </Button>
+                      )}
+                    </div>
 
                     {isOpen && (
                       <div className="grid gap-4 border-t border-gray-100 p-4 md:grid-cols-2">
@@ -293,79 +291,59 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent onInteractOutside={(event) => event.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>{dialogMode === "file" ? "Uploader un PDF" : "Ajouter un lien Drive"}</DialogTitle>
+            <DialogTitle>Rajouter un PDF</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpload} className="space-y-4">
+            {addContext && (
+              <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {addContext.categoryLabel} · {addContext.levelLabel}
+              </div>
+            )}
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setResourceType("BOOK")}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium ${resourceType === "BOOK" ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
+              >
+                <BookOpen className="h-4 w-4" />
+                Livre de cours
+              </button>
+              <button
+                type="button"
+                onClick={() => setResourceType("CONTROL")}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium ${resourceType === "CONTROL" ? "border-blue-500 bg-blue-50 text-blue-800" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
+              >
+                <ClipboardCheck className="h-4 w-4" />
+                Contrôle
+              </button>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Titre *</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex: Livre débutant ou contrôle niveau 1" required />
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Catégorie *</Label>
-                <Select
-                  value={category}
-                  onValueChange={(value) => {
-                    setCategory(value)
-                    const nextCategory = CATEGORIES.find((c) => c.value === value) ?? CATEGORIES[0]
-                    setLevel(nextCategory.levels[0]?.value ?? "")
-                  }}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir la catégorie..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Type *</Label>
-                <Select value={resourceType} onValueChange={(value) => setResourceType(value as ResourceType)} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir le type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RESOURCE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+
             <div className="space-y-1.5">
-              <Label>Niveau *</Label>
-              <Select value={level} onValueChange={setLevel} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir le niveau..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectedCategory.levels.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Lien Google Drive *</Label>
+              <Input
+                type="url"
+                value={driveUrl}
+                onChange={(e) => {
+                  setDriveUrl(e.target.value)
+                  setUploadSuccess("")
+                }}
+                placeholder="https://drive.google.com/..."
+                required
+              />
             </div>
-            {dialogMode === "file" ? (
-              <div className="space-y-1.5">
-                <Label>Fichier PDF *</Label>
-                <Input
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  required
-                />
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label>Lien Google Drive *</Label>
-                <Input
-                  type="url"
-                  value={driveUrl}
-                  onChange={(e) => setDriveUrl(e.target.value)}
-                  placeholder="https://drive.google.com/..."
-                  required
-                />
-              </div>
+
+            {uploadSuccess && (
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {uploadSuccess}
+              </p>
             )}
             {uploadError && (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -376,10 +354,10 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
               <Button
                 type="submit"
-                disabled={uploading || !title || !level || !category || !resourceType || (dialogMode === "file" ? !file : !driveUrl)}
+                disabled={uploading || !addContext || !title || !driveUrl || !resourceType}
               >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : dialogMode === "file" ? <Upload className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
-                {dialogMode === "file" ? "Uploader" : "Ajouter le lien"}
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
+                Ajouter le lien
               </Button>
             </div>
           </form>
