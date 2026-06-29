@@ -554,11 +554,9 @@ function StudentCahier({
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {sortedSessions.map((s) => {
                 const isSel = selected?.id === s.id
-                const paid = paidBySession[`${student.id}:${s.number}`]
                 return (
                   <button key={s.id} onClick={() => setSelectedId(s.id)} className={"shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " + (isSel ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
                     Session {s.number}
-                    {paid && <span className={isSel ? "ml-1 text-emerald-100" : "ml-1 text-emerald-600"}>•</span>}
                   </button>
                 )
               })}

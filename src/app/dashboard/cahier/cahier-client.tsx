@@ -547,7 +547,6 @@ function StudentCahier({
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {sortedSessions.map((s) => {
                 const isSel = selected?.id === s.id
-                const paid = paidBySession[`${student.id}:${s.number}`]
                 return (
                   <button
                     key={s.id}
@@ -561,7 +560,6 @@ function StudentCahier({
                     title={s.isComplete ? "Session terminée" : "Session en cours"}
                   >
                     Session {s.number}
-                    {paid && <span className={isSel ? "ml-1 text-emerald-100" : "ml-1 text-emerald-600"}>•</span>}
                   </button>
                 )
               })}
