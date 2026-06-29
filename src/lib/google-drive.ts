@@ -3,10 +3,25 @@ import path from "path"
 import { Readable } from "stream"
 
 function getAuth() {
+  const scopes = ["https://www.googleapis.com/auth/drive.file"]
+  const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  const credentialsJsonBase64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64
+
+  if (credentialsJson || credentialsJsonBase64) {
+    const raw = credentialsJsonBase64
+      ? Buffer.from(credentialsJsonBase64, "base64").toString("utf8")
+      : credentialsJson
+
+    return new google.auth.GoogleAuth({
+      credentials: JSON.parse(raw!),
+      scopes,
+    })
+  }
+
   const credPath = path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "./google-drive-credentials.json")
   return new google.auth.GoogleAuth({
     keyFile: credPath,
-    scopes: ["https://www.googleapis.com/auth/drive.file"],
+    scopes,
   })
 }
 

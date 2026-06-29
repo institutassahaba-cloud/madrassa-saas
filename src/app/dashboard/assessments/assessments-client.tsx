@@ -90,6 +90,7 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
   const [resourceType, setResourceType] = useState<ResourceType>("BOOK")
   const [file, setFile] = useState<File | null>(null)
   const [expandedLevels, setExpandedLevels] = useState<Record<string, boolean>>({})
+  const [uploadError, setUploadError] = useState("")
 
   const canManage = ["DIRECTOR", "SECRETARY"].includes(role)
   const selectedCategory = CATEGORIES.find((c) => c.value === category) ?? CATEGORIES[0]
@@ -110,6 +111,7 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
     e.preventDefault()
     if (!file || !title || !level || !category || !resourceType) return
 
+    setUploadError("")
     setUploading(true)
     const formData = new FormData()
     formData.append("file", file)
@@ -122,14 +124,19 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
       setExams((prev) => [newExam, ...prev])
       setDialogOpen(false)
       resetUploadForm()
+    } else {
+      const data = await res.json().catch(() => null)
+      setUploadError(data?.error || "Upload impossible pour le moment.")
     }
     setUploading(false)
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Supprimer ce fichier ?")) return
-    await fetch(`/api/exams/${id}`, { method: "DELETE" })
-    setExams((prev) => prev.filter((e) => e.id !== id))
+    const res = await fetch(`/api/exams/${id}`, { method: "DELETE" })
+    if (res.ok) {
+      setExams((prev) => prev.filter((e) => e.id !== id))
+    }
   }
 
   function filesFor(categoryValue: string, levelValue: string, type: ResourceType) {
@@ -323,6 +330,11 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
                 required
               />
             </div>
+            {uploadError && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {uploadError}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={uploading || !file || !title || !level || !category || !resourceType}>

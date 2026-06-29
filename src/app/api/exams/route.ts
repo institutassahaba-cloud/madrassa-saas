@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { mkdir, writeFile } from "fs/promises"
-import path from "path"
+import { uploadToDrive } from "@/lib/google-drive"
+
+const MAX_PDF_SIZE = 25 * 1024 * 1024
 
 export async function GET() {
   const session = await auth()
@@ -33,17 +34,27 @@ export async function POST(req: Request) {
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
     return NextResponse.json({ error: "Seuls les fichiers PDF sont acceptés" }, { status: 400 })
   }
+  if (file.size > MAX_PDF_SIZE) {
+    return NextResponse.json({ error: "Le PDF ne doit pas dépasser 25 Mo." }, { status: 400 })
+  }
 
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
-  const ext = path.extname(file.name) || ".pdf"
-  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "exams")
-  const filePath = path.join(uploadDir, safeName)
-
-  await mkdir(uploadDir, { recursive: true })
-  await writeFile(filePath, buffer)
+  let uploaded: { url: string }
+  try {
+    uploaded = await uploadToDrive(
+      buffer,
+      `Livres et contrôles - ${title} - ${file.name}`,
+      file.type || "application/pdf"
+    )
+  } catch (error) {
+    console.error("[exams] Upload Google Drive impossible:", error)
+    return NextResponse.json(
+      { error: "Upload Google Drive impossible. Vérifiez la configuration Drive." },
+      { status: 500 }
+    )
+  }
 
   const examFile = await prisma.examFile.create({
     data: {
@@ -51,7 +62,7 @@ export async function POST(req: Request) {
       title,
       level,
       fileName: file.name,
-      fileUrl: `/uploads/exams/${safeName}`,
+      fileUrl: uploaded.url,
       fileSize: buffer.length,
       uploadedBy: user.name ?? user.email,
     },
