@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { sendComptaMail, sessionEndEmailHtml } from "@/lib/mail"
 
 const PAYPAL_LINK = process.env.PAYPAL_LINK ?? ""
-const PAYPAL_EMAIL = process.env.PAYPAL_EMAIL ?? "facturation.institutassahaba@gmail.com"
+const PAYPAL_EMAIL = process.env.PAYPAL_EMAIL ?? process.env.PAYMENT_EMAIL ?? process.env.FACTURATION_EMAIL ?? "facturation.institutassahaba@gmail.com"
 const WHATSAPP_LINK = process.env.WHATSAPP_LINK ?? ""
 const COMPTA_EMAIL = process.env.GMAIL_COMPTA_USER ?? "comptabilite.institutassahaba@gmail.com"
 

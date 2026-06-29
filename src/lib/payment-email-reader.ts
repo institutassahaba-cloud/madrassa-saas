@@ -2,7 +2,7 @@ import { google } from "googleapis"
 import { prisma } from "@/lib/prisma"
 
 const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-const DEFAULT_PAYMENT_EMAIL = "facturation.institutassahaba@gmail.com"
+const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
 
 function getBaseUrl() {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL
@@ -120,7 +120,7 @@ function extractLabel(subject: string, text: string) {
 
 export async function scanPaymentEmails(tenantId: string) {
   const gmail = await getGmailClient(tenantId)
-  const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.PAYPAL_EMAIL ?? DEFAULT_PAYMENT_EMAIL
+  const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.FACTURATION_EMAIL ?? DEFAULT_FACTURATION_EMAIL
   const query = [
     "newer_than:45d",
     "(paypal OR wise OR transferwise OR virement OR paiement OR payment)",

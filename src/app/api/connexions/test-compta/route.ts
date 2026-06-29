@@ -30,24 +30,24 @@ export async function POST(req: Request) {
   try {
     const result = await sendComptaMail({
       to: recipient,
-      subject: "Test facturation - Institut As-Sahaba",
+      subject: "Test compta - Institut As-Sahaba",
       html: `
         <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1f2937;">
-          <h2 style="margin:0 0 12px;color:#0f766e;">Test email facturation</h2>
+          <h2 style="margin:0 0 12px;color:#0f766e;">Test email compta</h2>
           <p>Assalâmu ʿalaykum ${dbUser.name},</p>
-          <p>Ce message confirme que l'adresse facturation du SaaS peut envoyer des emails.</p>
+          <p>Ce message confirme que l'adresse compta du SaaS peut envoyer des emails.</p>
           <p style="margin-top:24px;font-size:12px;color:#6b7280;">Institut As-Sahaba - Madrassa SaaS</p>
         </div>
       `,
     })
 
     if (!result.ok) {
-      return NextResponse.json({ error: "Adresse facturation non configurée." }, { status: 400 })
+      return NextResponse.json({ error: "Adresse compta non configurée." }, { status: 400 })
     }
 
     return NextResponse.json({ ok: true, to: recipient })
   } catch (error) {
-    console.error("[connexions] Test email facturation failed:", error)
+    console.error("[connexions] Test email compta failed:", error)
     return NextResponse.json({ error: "L'envoi du test a échoué." }, { status: 500 })
   }
 }

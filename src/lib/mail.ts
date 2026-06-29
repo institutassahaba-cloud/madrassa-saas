@@ -3,7 +3,7 @@ import nodemailer from "nodemailer"
 const BREVO_API_KEY = process.env.BREVO_API_KEY ?? ""
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "contact@institut-assahaba.com"
 const FROM_NAME = process.env.FROM_NAME ?? "Institut As-Sahaba"
-const DEFAULT_COMPTA_EMAIL = "facturation.institutassahaba@gmail.com"
+const DEFAULT_COMPTA_EMAIL = "comptabilite.institutassahaba@gmail.com"
 
 export async function sendEmail({
   to,
@@ -40,7 +40,7 @@ export async function sendEmail({
 // ─── SMTP Hostinger (compta) ──────────────────────────────────────────────────
 
 function getComptaTransporter() {
-  const user = process.env.FACTURATION_EMAIL ?? process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? DEFAULT_COMPTA_EMAIL
+  const user = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? DEFAULT_COMPTA_EMAIL
   const host = process.env.COMPTA_SMTP_HOST ?? (user.endsWith("@gmail.com") ? "smtp.gmail.com" : "smtp.hostinger.com")
   const port = Number(process.env.COMPTA_SMTP_PORT ?? "465")
   const secure = (process.env.COMPTA_SMTP_SECURE ?? "true") !== "false"
@@ -57,14 +57,14 @@ function getComptaTransporter() {
 }
 
 export async function sendComptaMail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  const user = process.env.FACTURATION_EMAIL ?? process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? DEFAULT_COMPTA_EMAIL
+  const user = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? DEFAULT_COMPTA_EMAIL
   if (!user || !process.env.COMPTA_EMAIL_PASSWORD) {
     console.warn("[mail] COMPTA_EMAIL not configured — email not sent to", to)
     return { ok: false, reason: "no_compta_config" }
   }
   const transporter = getComptaTransporter()
   await transporter.sendMail({
-    from: `"Institut As-Sahaba — Facturation" <${user}>`,
+    from: `"Institut As-Sahaba — Comptabilité" <${user}>`,
     to,
     cc: user,
     subject,

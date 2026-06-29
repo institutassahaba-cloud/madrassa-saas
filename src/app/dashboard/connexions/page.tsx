@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
 import { ConnexionsClient } from "./connexions-client"
 
-const DEFAULT_PAYMENT_EMAIL = "facturation.institutassahaba@gmail.com"
+const DEFAULT_COMPTA_EMAIL = "comptabilite.institutassahaba@gmail.com"
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
 
 export default async function ConnexionsPage() {
@@ -36,16 +36,16 @@ export default async function ConnexionsPage() {
     lastLoginAt: m.lastLoginAt ? new Date(m.lastLoginAt).toISOString() : null,
   }))
 
-  const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.PAYPAL_EMAIL ?? DEFAULT_PAYMENT_EMAIL
-  const facturationEmail = process.env.FACTURATION_EMAIL ?? process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? settings?.smtpUser ?? settings?.smtpFrom ?? DEFAULT_FACTURATION_EMAIL
+  const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.FACTURATION_EMAIL ?? DEFAULT_FACTURATION_EMAIL
+  const comptaEmail = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? settings?.smtpUser ?? settings?.smtpFrom ?? DEFAULT_COMPTA_EMAIL
   const mailStatus = {
     paymentInbox: {
       email: paymentEmail,
       connected: Boolean((process.env.GMAIL_PAYMENT_REFRESH_TOKEN || settings?.gmailRefreshToken) && paymentEmail),
     },
-    facturation: {
-      email: facturationEmail,
-      connected: Boolean(facturationEmail && (process.env.COMPTA_EMAIL_PASSWORD || settings?.smtpPassword)),
+    compta: {
+      email: comptaEmail,
+      connected: Boolean(comptaEmail && (process.env.COMPTA_EMAIL_PASSWORD || settings?.smtpPassword)),
     },
   }
 
