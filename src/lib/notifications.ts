@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma"
 
+export const PSEUDO_REQUEST_SEPARATOR = "\n\n---\n"
+
 type NotificationUser = {
   id: string
   role: string
@@ -69,6 +71,30 @@ export async function createMonthlyTeacherTableReminder(date = new Date()) {
   }
 
   return { created, skippedTenants: skipped }
+}
+
+export function pseudoRequestBody(currentName: string, requestedName: string, userId: string) {
+  return [
+    `${currentName} demande à changer de pseudo pour : ${requestedName}.`,
+    `${PSEUDO_REQUEST_SEPARATOR}userId=${userId}\nrequestedName=${requestedName}`,
+  ].join("")
+}
+
+export function visibleNotificationBody(body: string) {
+  return body.split(PSEUDO_REQUEST_SEPARATOR)[0]
+}
+
+export function parsePseudoRequest(body: string) {
+  const [, metadata] = body.split(PSEUDO_REQUEST_SEPARATOR)
+  if (!metadata) return null
+  const entries = Object.fromEntries(
+    metadata.split("\n").map((line) => {
+      const [key, ...value] = line.split("=")
+      return [key, value.join("=")]
+    })
+  )
+  if (!entries.userId || !entries.requestedName) return null
+  return { userId: entries.userId, requestedName: entries.requestedName }
 }
 
 function dayInTimeZone(date: Date, timeZone: string) {

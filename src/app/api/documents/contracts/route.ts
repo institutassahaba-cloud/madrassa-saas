@@ -26,33 +26,37 @@ export async function POST(req: Request) {
   const file = formData.get("file") as File | null
   const title = formData.get("title") as string
   const teacherId = formData.get("teacherId") as string
+  const documentType = String(formData.get("documentType") || "CONTRACT")
 
   if (!file || !title || !teacherId) {
-    return NextResponse.json({ error: "Fichier, titre et professeur requis" }, { status: 400 })
+    return NextResponse.json({ error: "Fichier, titre et membre requis" }, { status: 400 })
   }
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    return NextResponse.json({ error: "Le contrat doit être un PDF." }, { status: 400 })
+    return NextResponse.json({ error: "Le document doit être un PDF." }, { status: 400 })
   }
 
   const teacher = await prisma.user.findFirst({
     where: {
       id: teacherId,
       tenantId: user.tenantId,
-      role: "TEACHER",
+      role: { in: ["TEACHER", "SECRETARY"] },
       isActive: true,
     },
     select: { id: true },
   })
-  if (!teacher) return NextResponse.json({ error: "Professeur introuvable" }, { status: 404 })
+  if (!teacher) return NextResponse.json({ error: "Membre introuvable" }, { status: 404 })
+
+  const prefix = documentType === "PAYSLIP" ? "[FICHE_PAIE] " : documentType === "OTHER" ? "[AUTRE] " : ""
+  const storedTitle = `${prefix}${title.trim()}`
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  const { fileId, url } = await uploadToDrive(buffer, `${title} - ${file.name}`, file.type || "application/pdf")
+  const { fileId, url } = await uploadToDrive(buffer, `${storedTitle} - ${file.name}`, file.type || "application/pdf")
 
   const contract = await prisma.teacherContract.create({
     data: {
       tenantId: user.tenantId,
       teacherId,
-      title,
+      title: storedTitle,
       driveFileId: fileId,
       driveUrl: url,
     },

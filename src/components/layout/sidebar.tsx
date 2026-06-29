@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Users, BookOpen, CreditCard,
   Calendar, Settings, GraduationCap, Banknote,
-  Bell, ChevronRight, UserCircle, FileText, UserCheck,
+  Bell, ChevronRight, FileText, UserCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 type Role = "DIRECTOR" | "SECRETARY" | "TEACHER"
@@ -30,8 +30,7 @@ const navItems: NavItem[] = [
   { label: "Connexions", href: "/dashboard/connexions", icon: UserCheck, roles: ["DIRECTOR", "SECRETARY"] },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
   { label: "Documents", href: "/dashboard/documents", icon: FileText, roles: ["DIRECTOR", "SECRETARY"] },
-  { label: "Paramètres", href: "/dashboard/settings", icon: Settings, roles: ["DIRECTOR"] },
-  { label: "Changer mon mot de passe", href: "/dashboard/mon-compte", icon: UserCircle, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
+  { label: "Paramètres", href: "/dashboard/settings", icon: Settings, roles: ["DIRECTOR", "SECRETARY", "TEACHER"] },
 ]
 
 interface SidebarProps {

@@ -3,14 +3,19 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
+const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/
+
 export async function PUT(req: Request) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
 
-  const { currentPassword, newPassword } = await req.json()
-  if (!newPassword || newPassword.length < 6) {
-    return NextResponse.json({ error: "Le nouveau mot de passe doit faire au moins 6 caractères." }, { status: 400 })
+  const { currentPassword, newPassword, confirmPassword } = await req.json()
+  if (newPassword !== confirmPassword) {
+    return NextResponse.json({ error: "La confirmation du mot de passe ne correspond pas." }, { status: 400 })
+  }
+  if (!PASSWORD_RE.test(newPassword || "")) {
+    return NextResponse.json({ error: "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial." }, { status: 400 })
   }
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } })

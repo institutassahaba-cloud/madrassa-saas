@@ -25,8 +25,8 @@ export const authConfig: NextAuthConfig = {
         if (!auth?.user?.hasOnboarded) {
           return Response.redirect(new URL("/bienvenue", nextUrl))
         }
-        if (auth?.user?.mustChangePassword && !nextUrl.pathname.startsWith("/dashboard/mon-compte")) {
-          return Response.redirect(new URL("/dashboard/mon-compte", nextUrl))
+        if (auth?.user?.mustChangePassword && !nextUrl.pathname.startsWith("/dashboard/settings")) {
+          return Response.redirect(new URL("/dashboard/settings", nextUrl))
         }
         return true
       }

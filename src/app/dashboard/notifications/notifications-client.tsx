@@ -5,6 +5,12 @@ import { Bell, Check, Clock, Inbox, Mail, ShieldAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
+const PSEUDO_REQUEST_SEPARATOR = "\n\n---\n"
+
+function visibleNotificationBody(body: string) {
+  return body.split(PSEUDO_REQUEST_SEPARATOR)[0]
+}
+
 type NotificationItem = {
   id: string
   type: string
@@ -26,6 +32,11 @@ const typeStyles: Record<string, { label: string; icon: typeof Bell; badge: "def
     label: "Activité",
     icon: ShieldAlert,
     badge: "info",
+  },
+  PSEUDO_CHANGE_REQUEST: {
+    label: "Pseudo",
+    icon: ShieldAlert,
+    badge: "warning",
   },
 }
 
@@ -100,7 +111,7 @@ export function NotificationsClient({ notifications: initialNotifications }: { n
                         <Badge variant={style.badge}>{style.label}</Badge>
                         {unread && <span className="h-2 w-2 rounded-full bg-emerald-500" aria-label="Non lue" />}
                       </div>
-                      <p className="mt-1 text-sm leading-6 text-gray-600">{notification.body}</p>
+                      <p className="mt-1 text-sm leading-6 text-gray-600">{visibleNotificationBody(notification.body)}</p>
                       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-400">
                         <span className="inline-flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
