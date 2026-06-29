@@ -406,7 +406,7 @@ model PaymentMatch {
   tenantId          String
   tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   source            String // PAYPAL | WISE
-  gmailMessageId    String // verrou : un email ne peut être consommé qu'une fois
+  gmailMessageId    String // verrou unique : transaction PayPal / transfert Wise / référence bancaire
   receivedAmount    Float
   detectedPayerName String?
   paymentDate       DateTime?

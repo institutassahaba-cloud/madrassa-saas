@@ -12,7 +12,7 @@ export default async function PaymentsPage() {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [payments, students, teachers, lessonSessions] = await Promise.all([
+  const [payments, students, teachers, lessonSessions, paymentMatches] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -29,6 +29,8 @@ export default async function PaymentsPage() {
         firstName: true,
         lastName: true,
         monthlyFee: true,
+        payerName: true,
+        paymentType: true,
         group: { select: { teacherId: true, name: true } },
       },
       orderBy: { lastName: "asc" },
@@ -43,6 +45,14 @@ export default async function PaymentsPage() {
       select: { id: true, studentId: true, teacherId: true, subject: true, number: true, isComplete: true },
       orderBy: [{ teacher: { name: "asc" } }, { student: { lastName: "asc" } }, { number: "asc" }],
     }),
+    prisma.paymentMatch.findMany({
+      where: { tenantId: user.tenantId, status: "TO_VERIFY" },
+      include: {
+        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
   ])
 
   return (
@@ -53,6 +63,8 @@ export default async function PaymentsPage() {
       students={students as any}
       teachers={teachers}
       lessonSessions={lessonSessions}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      paymentMatches={paymentMatches as any}
       currentMonth={month}
       currentYear={year}
       isDirector={user.role === "DIRECTOR"}

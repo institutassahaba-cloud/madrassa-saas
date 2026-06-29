@@ -1,6 +1,6 @@
 "use client"
-import { useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2 } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +37,8 @@ interface Student {
   firstName: string
   lastName: string
   monthlyFee: number
+  payerName: string | null
+  paymentType: string | null
   group: { teacherId: string | null; name: string } | null
 }
 
@@ -54,11 +56,33 @@ interface LessonSessionOption {
   isComplete: boolean
 }
 
+interface PaymentMatch {
+  id: string
+  source: string
+  gmailMessageId: string
+  receivedAmount: number
+  detectedPayerName: string | null
+  paymentDate: Date | string | null
+  status: string
+  reason: string | null
+  rawSubject: string | null
+  createdAt: Date | string
+  student: {
+    id: string
+    firstName: string
+    lastName: string
+    monthlyFee: number
+    payerName: string | null
+    paymentType: string | null
+  } | null
+}
+
 export function PaymentsClient({
   payments,
   students,
   teachers,
   lessonSessions,
+  paymentMatches,
   currentMonth,
   currentYear,
   isDirector,
@@ -67,6 +91,7 @@ export function PaymentsClient({
   students: Student[]
   teachers: Teacher[]
   lessonSessions: LessonSessionOption[]
+  paymentMatches: PaymentMatch[]
   currentMonth: number
   currentYear: number
   isDirector: boolean
@@ -77,6 +102,7 @@ export function PaymentsClient({
   const [yearFilter, setYearFilter] = useState(String(currentYear))
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
+  const [selectedMatch, setSelectedMatch] = useState<PaymentMatch | null>(null)
 
   const filtered = payments.filter((p) => {
     const name = `${p.student.firstName} ${p.student.lastName}`.toLowerCase()
@@ -139,6 +165,47 @@ export function PaymentsClient({
 
       {/* Calcul paie secrétaire (directeur) */}
       {isDirector && <SecretaryPayBlock />}
+
+      {paymentMatches.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="space-y-3 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-semibold text-amber-900">Paiements détectés à vérifier</h3>
+                <p className="text-sm text-amber-700">
+                  PayPal/Wise reçus par email, à répartir sur une ou plusieurs sessions.
+                </p>
+              </div>
+              <Badge variant="warning">{paymentMatches.length} à traiter</Badge>
+            </div>
+
+            <div className="space-y-2">
+              {paymentMatches.map((match) => (
+                <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {match.student
+                        ? `Élève pressenti : ${match.student.firstName} ${match.student.lastName}`
+                        : "Aucun élève pressenti"}
+                      {match.reason ? ` · ${match.reason}` : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence unique : {match.gmailMessageId}</p>
+                  </div>
+                  <Button size="sm" onClick={() => setSelectedMatch(match)}>
+                    <SplitSquareHorizontal className="h-4 w-4" />
+                    Validation manuelle
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
@@ -245,6 +312,246 @@ export function PaymentsClient({
         currentMonth={currentMonth}
         currentYear={currentYear}
       />
+      {selectedMatch && (
+        <PaymentMatchDialog
+          match={selectedMatch}
+          students={students}
+          teachers={teachers}
+          lessonSessions={lessonSessions}
+          onClose={() => setSelectedMatch(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+type AllocationRow = {
+  id: string
+  teacherId: string
+  studentId: string
+  lessonSessionId: string
+  amount: string
+}
+
+function newAllocationRow(student?: Student | null): AllocationRow {
+  return {
+    id: Math.random().toString(36).slice(2),
+    teacherId: student?.group?.teacherId ?? "",
+    studentId: student?.id ?? "",
+    lessonSessionId: "",
+    amount: student?.monthlyFee ? String(student.monthlyFee) : "",
+  }
+}
+
+function PaymentMatchDialog({
+  match,
+  students,
+  teachers,
+  lessonSessions,
+  onClose,
+}: {
+  match: PaymentMatch
+  students: Student[]
+  teachers: Teacher[]
+  lessonSessions: LessonSessionOption[]
+  onClose: () => void
+}) {
+  const hintedStudent = students.find((student) => student.id === match.student?.id) ?? null
+  const [mode, setMode] = useState<"sessions" | "students">("sessions")
+  const [rows, setRows] = useState<AllocationRow[]>(() => [newAllocationRow(hintedStudent)])
+  const [note, setNote] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const allocated = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+  const remaining = match.receivedAmount - allocated
+
+  const studentsByTeacher = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const session of lessonSessions) {
+      const set = map.get(session.teacherId) ?? new Set<string>()
+      set.add(session.studentId)
+      map.set(session.teacherId, set)
+    }
+    return map
+  }, [lessonSessions])
+
+  function updateRow(id: string, patch: Partial<AllocationRow>) {
+    setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row))
+  }
+
+  function onTeacherChange(row: AllocationRow, teacherId: string) {
+    updateRow(row.id, { teacherId, studentId: "", lessonSessionId: "", amount: "" })
+  }
+
+  function onStudentChange(row: AllocationRow, studentId: string) {
+    const student = students.find((item) => item.id === studentId)
+    updateRow(row.id, { studentId, lessonSessionId: "", amount: student ? String(student.monthlyFee) : "" })
+  }
+
+  async function submit() {
+    setLoading(true)
+    setError("")
+    try {
+      const payload = {
+        note,
+        mode,
+        allocations: rows.map((row) => ({
+          teacherId: row.teacherId,
+          studentId: row.studentId,
+          lessonSessionId: row.lessonSessionId,
+          amount: Number(row.amount),
+        })),
+      }
+      const res = await fetch(`/api/payment-matches/${match.id}/allocate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Validation impossible.")
+      onClose()
+      window.location.reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Validation impossible.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-3">
+      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4 sm:p-5">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Validation manuelle du paiement</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {match.source === "PAYPAL" ? "PayPal" : "Wise"} · {formatCurrency(match.receivedAmount)} · {match.detectedPayerName || "Payeur non détecté"}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400">Référence unique : {match.gmailMessageId}</p>
+          </div>
+          <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose} aria-label="Fermer">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4 sm:p-5">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setMode("sessions")}
+              className={`rounded-xl border px-3 py-2 text-left text-sm ${mode === "sessions" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-gray-200 text-gray-600"}`}
+            >
+              Ce paiement est pour plusieurs sessions
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("students")}
+              className={`rounded-xl border px-3 py-2 text-left text-sm ${mode === "students" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-gray-200 text-gray-600"}`}
+            >
+              Ce paiement est pour plusieurs élèves
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+            <div className="grid gap-2 text-sm sm:grid-cols-3">
+              <div><span className="text-gray-400">Reçu</span><p className="font-semibold">{formatCurrency(match.receivedAmount)}</p></div>
+              <div><span className="text-gray-400">Validé</span><p className="font-semibold">{formatCurrency(allocated)}</p></div>
+              <div><span className="text-gray-400">Reste</span><p className={`font-semibold ${remaining < -0.01 ? "text-red-600" : "text-gray-900"}`}>{formatCurrency(remaining)}</p></div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {rows.map((row, index) => {
+              const teacherStudentIds = row.teacherId ? studentsByTeacher.get(row.teacherId) : null
+              const selectableStudents = row.teacherId
+                ? students.filter((student) => student.group?.teacherId === row.teacherId || teacherStudentIds?.has(student.id))
+                : []
+              const selectableSessions = lessonSessions.filter((session) => (
+                session.teacherId === row.teacherId && session.studentId === row.studentId
+              ))
+              const selectedStudent = students.find((student) => student.id === row.studentId)
+
+              return (
+                <div key={row.id} className="rounded-xl border border-gray-200 p-3">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-700">Validation {index + 1}</p>
+                    {rows.length > 1 && (
+                      <button type="button" className="text-xs font-medium text-red-600" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}>
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_8rem]">
+                    <Select value={row.teacherId} onValueChange={(value) => onTeacherChange(row, value)}>
+                      <SelectTrigger><SelectValue placeholder="Professeur" /></SelectTrigger>
+                      <SelectContent>
+                        {teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={row.studentId} onValueChange={(value) => onStudentChange(row, value)} disabled={!row.teacherId}>
+                      <SelectTrigger><SelectValue placeholder={row.teacherId ? "Élève" : "Choisir professeur"} /></SelectTrigger>
+                      <SelectContent>
+                        {selectableStudents.map((student) => (
+                          <SelectItem key={student.id} value={student.id}>
+                            {student.firstName} {student.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={row.lessonSessionId} onValueChange={(value) => updateRow(row.id, { lessonSessionId: value })} disabled={!row.studentId}>
+                      <SelectTrigger><SelectValue placeholder={row.studentId ? "Session" : "Choisir élève"} /></SelectTrigger>
+                      <SelectContent>
+                        {selectableSessions.map((session) => (
+                          <SelectItem key={session.id} value={session.id}>
+                            Session {session.number} · {session.subject}{session.isComplete ? " · terminée" : " · à venir"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.amount}
+                      onChange={(event) => updateRow(row.id, { amount: event.target.value })}
+                      placeholder="Montant"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-gray-400">
+                    {selectedStudent
+                      ? `Forfait élève : ${formatCurrency(selectedStudent.monthlyFee)} · Payeur attendu : ${selectedStudent.payerName || "non renseigné"}`
+                      : "Choisissez un élève pour afficher son forfait."}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+
+          <Button type="button" variant="outline" onClick={() => setRows((current) => [...current, newAllocationRow(null)])}>
+            <Plus className="h-4 w-4" />
+            Ajouter une validation
+          </Button>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Note interne</label>
+            <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder="ex: 2 sessions payées, frère et sœur, avance..." />
+          </div>
+
+          {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+            <Button variant="outline" onClick={onClose}>Annuler</Button>
+            <Button
+              onClick={submit}
+              disabled={loading || rows.some((row) => !row.teacherId || !row.studentId || !row.lessonSessionId || !row.amount) || remaining < -0.01}
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Valider le paiement
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
