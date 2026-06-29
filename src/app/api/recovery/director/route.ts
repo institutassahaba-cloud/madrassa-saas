@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ensureUserMeetingLinkColumn } from "@/lib/user-schema"
 import bcrypt from "bcryptjs"
 
 const DEFAULT_PASSWORD = "admin1234"
@@ -27,6 +28,8 @@ async function resetDirector(req: Request) {
     if (password.length < 6) {
       return NextResponse.json({ error: "Password too short" }, { status: 400 })
     }
+
+    await ensureUserMeetingLinkColumn()
 
     const director = await prisma.user.findFirst({
       where: { role: "DIRECTOR" },
