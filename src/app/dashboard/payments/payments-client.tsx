@@ -4,7 +4,7 @@ import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Load
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PaymentDialog } from "./payment-dialog"
@@ -12,6 +12,7 @@ import { formatCurrency, formatDate, getMonthName, MONTHS_FR } from "@/lib/utils
 
 const STATUS_CONFIG = {
   PAID: { label: "Payé", variant: "success" as const, icon: CheckCircle2, color: "text-emerald-600" },
+  CONFIRMED: { label: "Payé OK", variant: "success" as const, icon: CheckCircle2, color: "text-emerald-600" },
   PENDING: { label: "En attente", variant: "warning" as const, icon: Clock, color: "text-amber-600" },
   LATE: { label: "En retard", variant: "destructive" as const, icon: AlertTriangle, color: "text-red-600" },
   EXEMPTED: { label: "Exonéré", variant: "secondary" as const, icon: Ban, color: "text-gray-500" },
@@ -26,7 +27,9 @@ interface Payment {
   paidDate: Date | null
   method: string | null
   reference: string | null
-  student: { id: string; firstName: string; lastName: string; group: { name: string } | null }
+  sessionNumber: number | null
+  lessonSession: { id: string; number: number; subject: string; teacherId: string } | null
+  student: { id: string; firstName: string; lastName: string; group: { name: string; teacherId: string | null } | null }
 }
 
 interface Student {
@@ -34,17 +37,36 @@ interface Student {
   firstName: string
   lastName: string
   monthlyFee: number
+  group: { teacherId: string | null; name: string } | null
+}
+
+interface Teacher {
+  id: string
+  name: string
+}
+
+interface LessonSessionOption {
+  id: string
+  studentId: string
+  teacherId: string
+  subject: string
+  number: number
+  isComplete: boolean
 }
 
 export function PaymentsClient({
   payments,
   students,
+  teachers,
+  lessonSessions,
   currentMonth,
   currentYear,
   isDirector,
 }: {
   payments: Payment[]
   students: Student[]
+  teachers: Teacher[]
+  lessonSessions: LessonSessionOption[]
   currentMonth: number
   currentYear: number
   isDirector: boolean
@@ -66,7 +88,7 @@ export function PaymentsClient({
   })
 
   const summary = {
-    paid: filtered.filter((p) => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0),
+    paid: filtered.filter((p) => ["PAID", "CONFIRMED"].includes(p.status)).reduce((sum, p) => sum + p.amount, 0),
     late: filtered.filter((p) => p.status === "LATE").length,
     pending: filtered.filter((p) => p.status === "PENDING").length,
   }
@@ -80,7 +102,7 @@ export function PaymentsClient({
         </div>
         <Button className="w-full sm:w-auto" onClick={() => { setEditPayment(null); setDialogOpen(true) }}>
           <Plus className="h-4 w-4" />
-          Enregistrer un paiement
+          Enregistrer un paiement manuel
         </Button>
       </div>
 
@@ -130,6 +152,7 @@ export function PaymentsClient({
               <SelectTrigger className="w-full"><SelectValue placeholder="Statut" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tous statuts</SelectItem>
+                <SelectItem value="CONFIRMED">Payé OK</SelectItem>
                 <SelectItem value="PAID">Payé</SelectItem>
                 <SelectItem value="PENDING">En attente</SelectItem>
                 <SelectItem value="LATE">En retard</SelectItem>
@@ -162,7 +185,7 @@ export function PaymentsClient({
             <TableHeader>
               <TableRow>
                 <TableHead>Élève</TableHead>
-                <TableHead>Période</TableHead>
+                <TableHead>Session</TableHead>
                 <TableHead>Montant</TableHead>
                 <TableHead>Moyen</TableHead>
                 <TableHead>Date paiement</TableHead>
@@ -184,7 +207,12 @@ export function PaymentsClient({
                         <p className="font-medium text-gray-900">{p.student.firstName} {p.student.lastName}</p>
                         {p.student.group && <p className="text-xs text-gray-500">{p.student.group.name}</p>}
                       </TableCell>
-                      <TableCell className="text-sm">{getMonthName(p.month)} {p.year}</TableCell>
+                      <TableCell className="text-sm">
+                        {p.sessionNumber ?? p.lessonSession?.number
+                          ? `Session ${p.sessionNumber ?? p.lessonSession?.number}`
+                          : `${getMonthName(p.month)} ${p.year}`}
+                        {p.lessonSession?.subject && <p className="text-xs text-gray-400">{p.lessonSession.subject}</p>}
+                      </TableCell>
                       <TableCell><span className="font-semibold">{formatCurrency(p.amount)}</span></TableCell>
                       <TableCell className="text-sm text-gray-600">{p.method ?? "—"}</TableCell>
                       <TableCell className="text-sm">{p.paidDate ? formatDate(p.paidDate) : "—"}</TableCell>
@@ -212,6 +240,8 @@ export function PaymentsClient({
         onClose={() => setDialogOpen(false)}
         payment={editPayment}
         students={students}
+        teachers={teachers}
+        lessonSessions={lessonSessions}
         currentMonth={currentMonth}
         currentYear={currentYear}
       />

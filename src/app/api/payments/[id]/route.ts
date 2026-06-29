@@ -13,19 +13,52 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const payment = await prisma.payment.findFirst({ where: { id, tenantId: user.tenantId } })
   if (!payment) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const amount = Number(body.amount)
+  if (!body.studentId || !body.lessonSessionId || !body.paidDate || !body.method || Number.isNaN(amount)) {
+    return NextResponse.json({ error: "Élève, session, date, moyen et montant requis." }, { status: 400 })
+  }
+  if (!["Virement", "PayPal"].includes(body.method)) {
+    return NextResponse.json({ error: "Moyen de paiement invalide." }, { status: 400 })
+  }
+
+  const lessonSession = await prisma.lessonSession.findFirst({
+    where: {
+      id: body.lessonSessionId,
+      tenantId: user.tenantId,
+      studentId: body.studentId,
+      teacherId: body.teacherId,
+    },
+    include: { student: { select: { monthlyFee: true, payerName: true } } },
+  })
+  if (!lessonSession) return NextResponse.json({ error: "Session introuvable pour ce professeur et cet élève." }, { status: 404 })
+  if (amount !== lessonSession.student.monthlyFee && !body.amountOverrideReason) {
+    return NextResponse.json({ error: "La raison de modification du montant est requise." }, { status: 400 })
+  }
+
+  const paidDate = new Date(body.paidDate)
+  const paymentMonth = paidDate.getMonth() + 1
+  const paymentYear = paidDate.getFullYear()
 
   const updated = await prisma.payment.update({
     where: { id },
     data: {
       studentId: body.studentId,
-      amount: Number(body.amount),
-      status: body.status,
+      amount,
+      status: "CONFIRMED",
       method: body.method || null,
-      month: Number(body.month),
-      year: Number(body.year),
+      month: paymentMonth,
+      year: paymentYear,
       reference: body.reference || null,
-      paidDate: body.paidDate ? new Date(body.paidDate) : null,
-      notes: body.notes || null,
+      paidDate,
+      notes: body.amountOverrideReason || null,
+      dueDate: new Date(paymentYear, paymentMonth - 1, 5),
+      source: "MANUAL",
+      lessonSessionId: lessonSession.id,
+      sessionNumber: lessonSession.number,
+      expectedAmount: lessonSession.student.monthlyFee,
+      receivedAmount: amount,
+      expectedPayerName: lessonSession.student.payerName,
+      confirmedAt: new Date(),
     },
   })
   return NextResponse.json(updated)
