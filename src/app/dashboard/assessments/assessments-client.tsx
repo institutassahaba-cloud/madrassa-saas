@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Download,
   FileText,
+  Link as LinkIcon,
   Loader2,
   Trash2,
   Upload,
@@ -38,6 +39,7 @@ const CATEGORIES = [
 ]
 
 type ResourceType = "BOOK" | "CONTROL"
+type DialogMode = "file" | "link"
 
 interface ExamFile {
   id: string
@@ -83,12 +85,14 @@ function formatSize(bytes: number | null): string {
 export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFile[]; role: string }) {
   const [exams, setExams] = useState(initialExams)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<DialogMode>("file")
   const [uploading, setUploading] = useState(false)
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("LANGUE_ARABE")
   const [level, setLevel] = useState("")
   const [resourceType, setResourceType] = useState<ResourceType>("BOOK")
   const [file, setFile] = useState<File | null>(null)
+  const [driveUrl, setDriveUrl] = useState("")
   const [expandedLevels, setExpandedLevels] = useState<Record<string, boolean>>({})
   const [uploadError, setUploadError] = useState("")
 
@@ -105,18 +109,32 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
     setLevel("")
     setResourceType("BOOK")
     setFile(null)
+    setDriveUrl("")
+    setUploadError("")
+  }
+
+  function openDialog(mode: DialogMode) {
+    resetUploadForm()
+    setDialogMode(mode)
+    setDialogOpen(true)
   }
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault()
-    if (!file || !title || !level || !category || !resourceType) return
+    if (!title || !level || !category || !resourceType) return
+    if (dialogMode === "file" && !file) return
+    if (dialogMode === "link" && !driveUrl) return
 
     setUploadError("")
     setUploading(true)
     const formData = new FormData()
-    formData.append("file", file)
     formData.append("title", title)
     formData.append("level", encodeLevel(category, level, resourceType))
+    if (dialogMode === "file" && file) {
+      formData.append("file", file)
+    } else {
+      formData.append("fileUrl", driveUrl)
+    }
 
     const res = await fetch("/api/exams", { method: "POST", body: formData })
     if (res.ok) {
@@ -200,10 +218,16 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
           </p>
         </div>
         {canManage && (
-          <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
-            <Upload className="h-4 w-4" />
-            Uploader un PDF
-          </Button>
+          <div className="grid gap-2 sm:flex sm:justify-end">
+            <Button className="w-full sm:w-auto" variant="outline" onClick={() => openDialog("link")}>
+              <LinkIcon className="h-4 w-4" />
+              Ajouter un lien Drive
+            </Button>
+            <Button className="w-full sm:w-auto" onClick={() => openDialog("file")}>
+              <Upload className="h-4 w-4" />
+              Uploader un PDF
+            </Button>
+          </div>
         )}
       </div>
 
@@ -271,7 +295,7 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Uploader un PDF</DialogTitle>
+            <DialogTitle>{dialogMode === "file" ? "Uploader un PDF" : "Ajouter un lien Drive"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpload} className="space-y-4">
             <div className="space-y-1.5">
@@ -321,15 +345,28 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Fichier PDF *</Label>
-              <Input
-                type="file"
-                accept=".pdf,application/pdf"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                required
-              />
-            </div>
+            {dialogMode === "file" ? (
+              <div className="space-y-1.5">
+                <Label>Fichier PDF *</Label>
+                <Input
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  required
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Lien Google Drive *</Label>
+                <Input
+                  type="url"
+                  value={driveUrl}
+                  onChange={(e) => setDriveUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  required
+                />
+              </div>
+            )}
             {uploadError && (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {uploadError}
@@ -337,9 +374,12 @@ export function AssessmentsClient({ exams: initialExams, role }: { exams: ExamFi
             )}
             <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={uploading || !file || !title || !level || !category || !resourceType}>
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                Uploader
+              <Button
+                type="submit"
+                disabled={uploading || !title || !level || !category || !resourceType || (dialogMode === "file" ? !file : !driveUrl)}
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : dialogMode === "file" ? <Upload className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+                {dialogMode === "file" ? "Uploader" : "Ajouter le lien"}
               </Button>
             </div>
           </form>

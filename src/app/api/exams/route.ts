@@ -5,6 +5,15 @@ import { uploadToDrive } from "@/lib/google-drive"
 
 const MAX_PDF_SIZE = 25 * 1024 * 1024
 
+function isGoogleDriveUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return ["drive.google.com", "docs.google.com"].includes(url.hostname)
+  } catch {
+    return false
+  }
+}
+
 export async function GET() {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -25,11 +34,36 @@ export async function POST(req: Request) {
 
   const formData = await req.formData()
   const file = formData.get("file") as File | null
-  const title = formData.get("title") as string
-  const level = formData.get("level") as string
+  const title = String(formData.get("title") ?? "").trim()
+  const level = String(formData.get("level") ?? "").trim()
+  const fileUrl = String(formData.get("fileUrl") ?? "").trim()
 
-  if (!file || !title || !level) {
-    return NextResponse.json({ error: "Fichier, titre et niveau requis" }, { status: 400 })
+  if (!title || !level) {
+    return NextResponse.json({ error: "Titre et niveau requis" }, { status: 400 })
+  }
+
+  if (fileUrl) {
+    if (!isGoogleDriveUrl(fileUrl)) {
+      return NextResponse.json({ error: "Le lien doit être un lien Google Drive." }, { status: 400 })
+    }
+
+    const examFile = await prisma.examFile.create({
+      data: {
+        tenantId: user.tenantId,
+        title,
+        level,
+        fileName: "Lien Google Drive",
+        fileUrl,
+        fileSize: null,
+        uploadedBy: user.name ?? user.email,
+      },
+    })
+
+    return NextResponse.json(examFile, { status: 201 })
+  }
+
+  if (!file) {
+    return NextResponse.json({ error: "Fichier PDF ou lien Google Drive requis" }, { status: 400 })
   }
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
     return NextResponse.json({ error: "Seuls les fichiers PDF sont acceptés" }, { status: 400 })
