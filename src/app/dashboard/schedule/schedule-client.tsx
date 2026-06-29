@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, X, Globe, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Clock, Plus, X, Globe, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -29,6 +29,7 @@ const COLORS = [
   "#10b981", "#3b82f6", "#8b5cf6", "#f59e0b",
   "#ef4444", "#06b6d4", "#ec4899", "#84cc16",
 ]
+const AVAILABILITY_LABEL = "Créneau disponible"
 const RECURRENCE_LABELS: Record<ScheduleRecurrence, string> = {
   NONE: "Une seule fois",
   WEEKLY: "Chaque semaine",
@@ -93,6 +94,10 @@ function isSameDay(a: Date, b: Date): boolean {
 
 function slotTitle(slot: TimeSlot): string {
   return parseScheduleLabel(slot.label).label ?? slot.group?.name ?? slot.teacher.name
+}
+
+function isAvailabilitySlot(slot: TimeSlot): boolean {
+  return slot.group === null && parseScheduleLabel(slot.label).label === AVAILABILITY_LABEL
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -352,6 +357,151 @@ function SlotForm({
   )
 }
 
+interface AvailabilityRange {
+  startTime: string
+  endTime: string
+}
+
+type AvailabilityDraft = Record<number, AvailabilityRange[]>
+
+const AVAILABILITY_DAYS = [
+  { value: 1, label: "Lundi" },
+  { value: 2, label: "Mardi" },
+  { value: 3, label: "Mercredi" },
+  { value: 4, label: "Jeudi" },
+  { value: 5, label: "Vendredi" },
+  { value: 6, label: "Samedi" },
+  { value: 0, label: "Dimanche" },
+]
+
+function createEmptyAvailabilityDraft(): AvailabilityDraft {
+  const draft: AvailabilityDraft = {}
+  AVAILABILITY_DAYS.forEach((day) => { draft[day.value] = [] })
+  return draft
+}
+
+function buildAvailabilityDraft(slots: TimeSlot[], teacherId: string): AvailabilityDraft {
+  const draft = createEmptyAvailabilityDraft()
+  slots
+    .filter((slot) => slot.teacher.id === teacherId && isAvailabilitySlot(slot))
+    .forEach((slot) => {
+      draft[slot.dayOfWeek] = [
+        ...(draft[slot.dayOfWeek] ?? []),
+        { startTime: slot.startTime, endTime: slot.endTime },
+      ].sort((a, b) => a.startTime.localeCompare(b.startTime))
+    })
+  return draft
+}
+
+function AvailabilityDialog({
+  teacherName,
+  initialDraft,
+  onSave,
+  onClose,
+}: {
+  teacherName: string
+  initialDraft: AvailabilityDraft
+  onSave: (draft: AvailabilityDraft) => Promise<void>
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState<AvailabilityDraft>(initialDraft)
+  const [saving, setSaving] = useState(false)
+
+  function updateRange(day: number, index: number, field: keyof AvailabilityRange, value: string) {
+    setDraft((prev) => ({
+      ...prev,
+      [day]: (prev[day] ?? []).map((range, i) => i === index ? { ...range, [field]: value } : range),
+    }))
+  }
+
+  function addRange(day: number) {
+    setDraft((prev) => ({
+      ...prev,
+      [day]: [...(prev[day] ?? []), { startTime: "14:00", endTime: "15:00" }],
+    }))
+  }
+
+  function removeRange(day: number, index: number) {
+    setDraft((prev) => ({
+      ...prev,
+      [day]: (prev[day] ?? []).filter((_, i) => i !== index),
+    }))
+  }
+
+  async function submit() {
+    setSaving(true)
+    await onSave(draft)
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-3 py-8">
+      <div className="w-full max-w-3xl rounded-2xl bg-white p-4 shadow-2xl sm:p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Mes horaires disponibles</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Créneaux hebdomadaires affichés sur le planning de {teacherName}.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Fermer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {AVAILABILITY_DAYS.map((day) => (
+            <div key={day.value} className="rounded-xl border border-gray-200 p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="font-semibold text-gray-800">{day.label}</p>
+                <Button type="button" variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => addRange(day.value)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Ajouter un créneau
+                </Button>
+              </div>
+
+              {(draft[day.value] ?? []).length === 0 ? (
+                <p className="rounded-lg border border-dashed border-gray-200 px-3 py-3 text-sm text-gray-400">
+                  Aucun créneau disponible ce jour.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {(draft[day.value] ?? []).map((range, index) => (
+                    <div key={`${day.value}-${index}`} className="flex flex-col gap-2 rounded-lg bg-violet-50/60 p-2 sm:flex-row sm:items-center">
+                      <span className="text-sm font-medium text-violet-900">Créneau</span>
+                      <div className="grid flex-1 grid-cols-2 gap-2">
+                        <Input type="time" value={range.startTime} onChange={(e) => updateRange(day.value, index, "startTime", e.target.value)} />
+                        <Input type="time" value={range.endTime} onChange={(e) => updateRange(day.value, index, "endTime", e.target.value)} />
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-gray-400 hover:text-red-600" onClick={() => removeRange(day.value, index)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
+          <Button type="button" className="gap-2" onClick={submit} disabled={saving}>
+            <Clock className="h-4 w-4" />
+            {saving ? "Enregistrement..." : "Valider les disponibilités"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main ScheduleClient ──────────────────────────────────────────────────────
 
 export function ScheduleClient({ slots: initialSlots, groups, teachers, currentUser, role, initialWeek }: Props) {
@@ -366,6 +516,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   const [filterTeacher, setFilter] = useState(role === "TEACHER" ? currentUser.id : (sortedTeachers[0]?.id ?? ""))
   const [addingDate, setAddingDate] = useState<Date | null>(null)
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null)
+  const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false)
   const [savingTz, setSavingTz] = useState(false)
   const activeTeacherId = role === "TEACHER"
     ? currentUser.id
@@ -389,6 +540,13 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
     role === "TEACHER" || (filterTeacher ? s.teacher.id === filterTeacher : false)
   )
   const selectedTeacher = sortedTeachers.find((t) => t.id === filterTeacher)
+  const availabilityTeacher = role === "TEACHER"
+    ? currentUser
+    : selectedTeacher
+  const availabilityDraft = useMemo(
+    () => activeTeacherId ? buildAvailabilityDraft(slots, activeTeacherId) : createEmptyAvailabilityDraft(),
+    [activeTeacherId, slots]
+  )
 
   // For a given date, get slots that should appear (single, weekly, or monthly)
   function getOccurrences(date: Date) {
@@ -468,6 +626,33 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
     setSavingTz(false)
   }
 
+  async function handleSaveAvailability(draft: AvailabilityDraft) {
+    if (!activeTeacherId) return
+    const ranges = AVAILABILITY_DAYS.flatMap((day) =>
+      (draft[day.value] ?? [])
+        .filter((range) => range.startTime && range.endTime && range.startTime < range.endTime)
+        .map((range) => ({
+          dayOfWeek: day.value,
+          startTime: range.startTime,
+          endTime: range.endTime,
+        }))
+    )
+
+    const res = await fetch("/api/schedule/availability", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId: activeTeacherId, ranges }),
+    })
+
+    if (res.ok) {
+      const updatedSlots = await res.json() as TimeSlot[]
+      setSlots((prev) => [
+        ...prev.filter((slot) => !(slot.teacher.id === activeTeacherId && isAvailabilitySlot(slot))),
+        ...updatedSlots,
+      ])
+    }
+  }
+
   // Week label
   const weekEnd = addDays(weekStart, 6)
   const weekLabel = weekStart.getMonth() === weekEnd.getMonth()
@@ -494,6 +679,18 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          {activeTeacherId && availabilityTeacher && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 justify-center gap-2"
+              onClick={() => setShowAvailabilityDialog(true)}
+            >
+              <Clock className="h-4 w-4 text-violet-600" />
+              Mes horaires disponibles
+            </Button>
+          )}
+
           {role !== "TEACHER" && sortedTeachers.length > 0 && (
             <div className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 sm:w-auto">
               <span className="text-xs font-medium text-gray-500">Professeur</span>
@@ -669,6 +866,16 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
       <p className="mt-2 text-xs text-gray-400">
         Choisissez une récurrence lors de l&apos;ajout : une seule fois, chaque semaine ou chaque mois. Annuler un cours (×) ne supprime que l&apos;occurrence affichée.
       </p>
+
+      {showAvailabilityDialog && activeTeacherId && availabilityTeacher && (
+        <AvailabilityDialog
+          key={activeTeacherId}
+          teacherName={availabilityTeacher.name}
+          initialDraft={availabilityDraft}
+          onSave={handleSaveAvailability}
+          onClose={() => setShowAvailabilityDialog(false)}
+        />
+      )}
     </div>
   )
 }
