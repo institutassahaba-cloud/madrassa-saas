@@ -101,7 +101,7 @@ export function sessionEndEmailHtml({
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="format-detection" content="telephone=no" />
-  <title>Fin de session</title>
+  <title>Demande de paiement</title>
   <style type="text/css">
     *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
     body{margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;}
@@ -131,7 +131,7 @@ export function sessionEndEmailHtml({
         <!-- Titre -->
         <tr>
           <td align="center" style="padding:36px 32px 8px;font-size:22px;line-height:30px;color:#17456C;font-weight:700;">
-            Fin de session de cours
+            Demande de paiement pour la prochaine session
           </td>
         </tr>
 
@@ -150,12 +150,12 @@ export function sessionEndEmailHtml({
           </td>
         </tr>
 
-        <!-- Récapitulatif -->
+        <!-- Détail de la demande -->
         <tr>
           <td style="padding:18px 36px 8px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F9FC;border-radius:10px;border:1px solid #E9F1F8;">
               <tbody>
-              <tr><td style="padding:16px 20px 4px;font-size:14px;font-weight:700;color:#17456C;">📋 Récapitulatif</td></tr>
+              <tr><td style="padding:16px 20px 4px;font-size:14px;font-weight:700;color:#17456C;">📋 Détail de la demande</td></tr>
               <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">🧑‍🎓 Élève concerné : <strong>${studentName}</strong></td></tr>
               <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">👩‍🏫 Enseignant(e) : <strong>${teacherName}</strong></td></tr>
               <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">📘 Matière : <strong>${subject}</strong></td></tr>

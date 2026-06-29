@@ -13,7 +13,13 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
       where: {
         tenantId: user.tenantId,
         ...(user.role === "TEACHER"
-          ? { status: "ACTIVE", group: { teacherId: user.id } }
+          ? {
+              status: "ACTIVE",
+              OR: [
+                { group: { teacherId: user.id } },
+                { lessonSessions: { some: { teacherId: user.id } } },
+              ],
+            }
           : {}),
       },
       select: {
@@ -52,7 +58,11 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
         status: "CONFIRMED",
         sessionNumber: { not: null },
         paidDate: { not: null },
-        ...(user.role === "TEACHER" ? { student: { group: { teacherId: user.id } } } : {}),
+        ...(user.role === "TEACHER"
+          ? {
+              lessonSession: { teacherId: user.id },
+            }
+          : {}),
       },
       select: { studentId: true, sessionNumber: true, paidDate: true },
     }),

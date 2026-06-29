@@ -457,8 +457,8 @@ function SessionCard({
           </div>
           {!session.isComplete && (
             <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs text-amber-700"><Bell className="h-3.5 w-3.5" />Terminer la session et envoyer le récap à l&apos;élève</div>
-              <Button size="sm" className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3" onClick={() => onCloseSession(session.id)}>Fin de session</Button>
+              <div className="flex items-center gap-2 text-xs text-amber-700"><Bell className="h-3.5 w-3.5" />Terminer la session et envoyer la demande de paiement à l&apos;élève</div>
+              <Button size="sm" className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3" onClick={() => onCloseSession(session.id)}>Envoyer la demande</Button>
             </div>
           )}
         </div>
@@ -1108,7 +1108,10 @@ export function TeachersClient({
   }
 
   function getTeacherStudents(teacherId: string) {
-    return students.filter(s => s.group?.teacherId === teacherId)
+    return students.filter((student) =>
+      student.group?.teacherId === teacherId ||
+      sessions.some((session) => session.teacher.id === teacherId && session.student.id === student.id)
+    )
   }
 
   function getTeacherSessions(teacherId: string) {

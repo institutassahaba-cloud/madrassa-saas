@@ -423,14 +423,14 @@ function SessionCard({
             <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 text-xs text-amber-700">
                 <Bell className="h-3.5 w-3.5" />
-                Terminer la session et envoyer le récap à l&apos;élève
+                Terminer la session et envoyer la demande de paiement à l&apos;élève
               </div>
               <Button
                 size="sm"
                 className="h-8 bg-amber-500 px-3 text-xs text-white hover:bg-amber-600 sm:h-7"
                 onClick={() => onCloseSession(session.id)}
               >
-                Fin de session
+                Envoyer la demande
               </Button>
             </div>
           )}
@@ -645,7 +645,11 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
   const filteredStudents = students.filter((s) => {
     const name = `${s.displayName ?? ""} ${s.firstName} ${s.lastName}`.toLowerCase()
     if (!name.includes(search.toLowerCase())) return false
-    if (teacherFilter !== "ALL" && s.group?.teacherId !== teacherFilter) return false
+    if (
+      teacherFilter !== "ALL" &&
+      s.group?.teacherId !== teacherFilter &&
+      !sessions.some((session) => session.teacher.id === teacherFilter && session.student.id === s.id)
+    ) return false
     return true
   })
 
