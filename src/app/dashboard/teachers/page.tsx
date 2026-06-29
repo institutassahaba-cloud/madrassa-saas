@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { ensureUserMeetingLinkColumn } from "@/lib/user-schema"
 import { getEffectiveUser } from "@/lib/view-as"
 import { TeachersClient } from "./teachers-client"
@@ -9,6 +10,7 @@ export default async function TeachersPage() {
   if (!user) redirect("/login")
   if (!["DIRECTOR", "SECRETARY"].includes(user.role)) redirect("/dashboard")
   await ensureUserMeetingLinkColumn()
+  await ensureLessonLegacyPayrollBoundaryColumn()
 
   const [teachers, students, lessonSessions, payments] = await Promise.all([
     prisma.user.findMany({

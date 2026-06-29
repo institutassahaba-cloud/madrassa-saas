@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { prisma } from "@/lib/prisma"
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,27 +10,48 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params
 
   const body = await req.json()
+  await ensureLessonLegacyPayrollBoundaryColumn()
+  const updatesLegacyBoundary = body.legacyPayrollBoundary !== undefined
+  if (updatesLegacyBoundary && !["DIRECTOR", "SECRETARY"].includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const lesson = await prisma.lesson.findFirst({
     where: { id, tenantId: user.tenantId },
-    include: { session: { select: { teacherId: true } } },
+    include: { session: { select: { studentId: true, teacherId: true, subject: true } } },
   })
   if (!lesson) return NextResponse.json({ error: "Not found" }, { status: 404 })
   if (user.role === "TEACHER" && lesson.session.teacherId !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const updated = await prisma.lesson.update({
-    where: { id },
-    data: {
+  const data = {
       status: body.status ?? lesson.status,
       content: body.content !== undefined ? body.content : lesson.content,
       date: body.date ? new Date(body.date) : lesson.date,
       duration: body.duration !== undefined ? body.duration : lesson.duration,
       makeupMinutes: body.makeupMinutes !== undefined ? body.makeupMinutes : lesson.makeupMinutes,
       makeupOnLessonId: body.makeupOnLessonId !== undefined ? body.makeupOnLessonId : lesson.makeupOnLessonId,
-    },
-  })
+      legacyPayrollBoundary: updatesLegacyBoundary ? Boolean(body.legacyPayrollBoundary) : lesson.legacyPayrollBoundary,
+  }
+
+  const updated = updatesLegacyBoundary && body.legacyPayrollBoundary === true
+    ? await prisma.$transaction(async (tx) => {
+        await tx.lesson.updateMany({
+          where: {
+            tenantId: user.tenantId,
+            legacyPayrollBoundary: true,
+            session: {
+              studentId: lesson.session.studentId,
+              teacherId: lesson.session.teacherId,
+              subject: lesson.session.subject,
+            },
+          },
+          data: { legacyPayrollBoundary: false },
+        })
+        return tx.lesson.update({ where: { id }, data })
+      })
+    : await prisma.lesson.update({ where: { id }, data })
 
   return NextResponse.json(updated)
 }

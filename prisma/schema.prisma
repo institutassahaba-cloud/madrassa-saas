@@ -256,6 +256,7 @@ model Lesson {
   duration        Int?          // durée réelle en minutes (null = durée prévue)
   makeupMinutes   Int?          // minutes à rattraper sur un autre cours
   makeupOnLessonId String?      // id du cours sur lequel rattraper
+  legacyPayrollBoundary Boolean @default(false) // dernier cours déjà comptabilisé dans l'ancien système
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }

@@ -21,6 +21,7 @@ interface Lesson {
   duration: number | null       // durée réelle en minutes
   makeupMinutes: number | null  // minutes à rattraper
   makeupOnLessonId: string | null
+  legacyPayrollBoundary: boolean
 }
 
 interface LessonSession {
@@ -124,12 +125,34 @@ function formatMins(m: number): string {
   return `${m} min`
 }
 
+function applyLessonUpdate(sessions: LessonSession[], lessonId: string, data: Partial<Lesson>) {
+  const targetSession = sessions.find((session) => session.lessons.some((lesson) => lesson.id === lessonId))
+  return sessions.map((session) => {
+    const sameFollowUp = Boolean(
+      data.legacyPayrollBoundary &&
+      targetSession &&
+      session.student.id === targetSession.student.id &&
+      session.teacher.id === targetSession.teacher.id &&
+      session.subject === targetSession.subject
+    )
+    return {
+      ...session,
+      lessons: session.lessons.map((lesson) => {
+        if (lesson.id === lessonId) return { ...lesson, ...data }
+        if (sameFollowUp) return { ...lesson, legacyPayrollBoundary: false }
+        return lesson
+      }),
+    }
+  })
+}
+
 function LessonRow({
-  lesson, sessionDuration, siblingLessons, onUpdate, onDelete,
+  lesson, sessionDuration, siblingLessons, canSetLegacyBoundary, onUpdate, onDelete,
 }: {
   lesson: Lesson
   sessionDuration: string | null
   siblingLessons: Lesson[]
+  canSetLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (id: string, data: any) => void
   onDelete: (id: string) => void
@@ -202,6 +225,9 @@ function LessonRow({
           {lesson.status === "ABSENT" && (
             <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">Absente</span>
           )}
+          {lesson.legacyPayrollBoundary && (
+            <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>
+          )}
           <button
             onClick={() => { if (confirm(`Supprimer le Cours ${lesson.number} ?`)) onDelete(lesson.id) }}
             className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
@@ -210,6 +236,18 @@ function LessonRow({
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
+
+        {canSetLegacyBoundary && (
+          <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
+            <input
+              type="checkbox"
+              checked={lesson.legacyPayrollBoundary}
+              onChange={(e) => onUpdate(lesson.id, { legacyPayrollBoundary: e.target.checked })}
+              className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Dernier cours comptabilisé sur l&apos;ancien système
+          </label>
+        )}
 
         {/* Makeup reminder badge */}
         {lesson.makeupMinutes != null && lesson.makeupMinutes > 0 && !editing && (
@@ -297,6 +335,7 @@ function LessonRow({
 function SessionCard({
   session,
   paidAt,
+  canSetLegacyBoundary,
   onUpdateLesson,
   onAddLesson,
   onCloseSession,
@@ -304,6 +343,7 @@ function SessionCard({
 }: {
   session: LessonSession
   paidAt?: string | null
+  canSetLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -372,6 +412,7 @@ function SessionCard({
               lesson={lesson}
               sessionDuration={session.duration}
               siblingLessons={session.lessons}
+              canSetLegacyBoundary={canSetLegacyBoundary}
               onUpdate={onUpdateLesson}
               onDelete={onDeleteLesson}
             />
@@ -449,6 +490,7 @@ function StudentCahier({
   schedule,
   teachers,
   currentUserId,
+  canSetLegacyBoundary,
   onUpdateLesson,
   onAddLesson,
   onCloseSession,
@@ -461,6 +503,7 @@ function StudentCahier({
   schedule: Slot[] | undefined
   teachers: { id: string; name: string }[]
   currentUserId: string
+  canSetLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -572,6 +615,7 @@ function StudentCahier({
               key={selected.id}
               session={selected}
               paidAt={paidBySession[`${student.id}:${selected.number}`]}
+              canSetLegacyBoundary={canSetLegacyBoundary}
               onUpdateLesson={onUpdateLesson}
               onAddLesson={onAddLesson}
               onCloseSession={onCloseSession}
@@ -634,11 +678,12 @@ function StudentCahier({
 
 // ─── Main CahierClient ────────────────────────────────────────────────────────
 
-export function CahierClient({ students, lessonSessions, paidBySession, scheduleByGroup, teachers, currentUserId, initialSearch = "" }: Props) {
+export function CahierClient({ students, lessonSessions, paidBySession, scheduleByGroup, teachers, currentUserId, role, initialSearch = "" }: Props) {
   const [sessions, setSessions]   = useState<LessonSession[]>(lessonSessions)
   const [search, setSearch]       = useState(initialSearch)
   const [subjectFilter, setSubjectFilter] = useState("ALL")
   const [teacherFilter, setTeacherFilter] = useState("ALL")
+  const canSetLegacyBoundary = role === "DIRECTOR" || role === "SECRETARY"
 
   const filteredStudents = students.filter((s) => {
     const name = `${s.displayName ?? ""} ${s.firstName} ${s.lastName}`.toLowerCase()
@@ -668,10 +713,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
       body: JSON.stringify(data),
     })
     setSessions((prev) =>
-      prev.map((s) => ({
-        ...s,
-        lessons: s.lessons.map((l) => l.id === lessonId ? { ...l, ...data } : l),
-      }))
+      applyLessonUpdate(prev, lessonId, data)
     )
   }
 
@@ -778,6 +820,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
                   schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                   teachers={teachers}
                   currentUserId={currentUserId}
+                  canSetLegacyBoundary={canSetLegacyBoundary}
                   onUpdateLesson={handleUpdateLesson}
                   onAddLesson={handleAddLesson}
                   onCloseSession={handleCloseSession}
@@ -805,6 +848,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
                     schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                     teachers={teachers}
                     currentUserId={currentUserId}
+                    canSetLegacyBoundary={canSetLegacyBoundary}
                     onUpdateLesson={handleUpdateLesson}
                     onAddLesson={handleAddLesson}
                     onCloseSession={handleCloseSession}
@@ -833,6 +877,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
                     schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                     teachers={teachers}
                     currentUserId={currentUserId}
+                    canSetLegacyBoundary={canSetLegacyBoundary}
                     onUpdateLesson={handleUpdateLesson}
                     onAddLesson={handleAddLesson}
                     onCloseSession={handleCloseSession}

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { getEffectiveUser } from "@/lib/view-as"
 import { CahierClient } from "./cahier-client"
 
@@ -7,6 +8,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
   const { q } = await searchParams
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
+  await ensureLessonLegacyPayrollBoundaryColumn()
 
   const [students, lessonSessions, payments] = await Promise.all([
     prisma.student.findMany({

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { prisma } from "@/lib/prisma"
 
 function parseDurationToMinutes(d: string | null): number {
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
   if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  await ensureLessonLegacyPayrollBoundaryColumn()
 
   const body = await req.json()
   const bonuses: Record<string, number> = body.bonuses || {}
@@ -54,17 +56,41 @@ export async function POST(req: Request) {
       select: {
         id: true,
         studentId: true,
+        teacherId: true,
+        subject: true,
+        number: true,
         duration: true,
         student: { select: { groupId: true } },
         lessons: {
           where: {
-            status: { in: ["PRESENT", "ABSENT"] },
-            date: { not: null, gt: periodStart, lte: periodEnd },
+            OR: [
+              { legacyPayrollBoundary: true },
+              {
+                status: { in: ["PRESENT", "ABSENT"] },
+                date: { not: null, gt: periodStart, lte: periodEnd },
+              },
+            ],
           },
-          select: { id: true, duration: true, status: true },
+          select: { id: true, date: true, duration: true, status: true, number: true, legacyPayrollBoundary: true },
         },
       },
     })
+
+    const legacyBoundaries: Record<string, { sessionNumber: number; lessonNumber: number }> = {}
+    for (const ls of lessonSessions) {
+      const key = `${ls.studentId}:${ls.teacherId}:${ls.subject}`
+      for (const lesson of ls.lessons) {
+        if (!lesson.legacyPayrollBoundary) continue
+        const current = legacyBoundaries[key]
+        if (
+          !current ||
+          ls.number > current.sessionNumber ||
+          (ls.number === current.sessionNumber && lesson.number > current.lessonNumber)
+        ) {
+          legacyBoundaries[key] = { sessionNumber: ls.number, lessonNumber: lesson.number }
+        }
+      }
+    }
 
     const groupSizes: Record<string, number> = {}
     const groupIds = new Set<string>()
@@ -86,8 +112,17 @@ export async function POST(req: Request) {
       const defaultMin = parseDurationToMinutes(ls.duration)
       const gid = ls.student.groupId
       const size = gid ? (groupSizes[gid] ?? 1) : 1
+      const legacyBoundary = legacyBoundaries[`${ls.studentId}:${ls.teacherId}:${ls.subject}`]
 
       for (const lesson of ls.lessons) {
+        if (lesson.legacyPayrollBoundary) continue
+        if (!lesson.date || !["PRESENT", "ABSENT"].includes(lesson.status)) continue
+        if (lesson.date <= periodStart || lesson.date > periodEnd) continue
+        if (
+          legacyBoundary &&
+          (ls.number < legacyBoundary.sessionNumber ||
+            (ls.number === legacyBoundary.sessionNumber && lesson.number <= legacyBoundary.lessonNumber))
+        ) continue
         const mins = lesson.duration ?? defaultMin
         if (size === 1) { individualCount++; individualMins += mins }
         else if (size === 2) { binomeCount++; binomeMins += mins }
