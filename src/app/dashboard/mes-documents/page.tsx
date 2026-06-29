@@ -6,7 +6,7 @@ import { MesDocumentsClient } from "./mes-documents-client"
 export default async function MesDocumentsPage() {
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
-  if (user.role !== "TEACHER") redirect("/dashboard")
+  if (!["TEACHER", "SECRETARY"].includes(user.role)) redirect("/dashboard")
 
   const salaries = await prisma.teacherSalary.findMany({
     where: { teacherId: user.id },

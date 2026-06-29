@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const MONTHS = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
 
-interface Teacher { id: string; name: string }
+interface StaffMember { id: string; name: string; role: string }
 interface Contract {
   id: string
   teacherId: string
@@ -38,9 +38,9 @@ function formatCurrency(v: number) {
 }
 
 function TeacherDocSection({
-  teacher, contracts, salaries, role, onContractUploaded, onDeleteContract,
+  member, contracts, salaries, role, onContractUploaded, onDeleteContract,
 }: {
-  teacher: Teacher
+  member: StaffMember
   contracts: Contract[]
   salaries: Salary[]
   role: string
@@ -60,7 +60,7 @@ function TeacherDocSection({
     const formData = new FormData()
     formData.append("file", file)
     formData.append("title", uploadTitle.trim())
-    formData.append("teacherId", teacher.id)
+    formData.append("teacherId", member.id)
     try {
       const res = await fetch("/api/documents/contracts", { method: "POST", body: formData })
       if (!res.ok) throw new Error(await res.text())
@@ -80,10 +80,15 @@ function TeacherDocSection({
         className="flex w-full items-start gap-3 p-4 text-left sm:items-center sm:gap-4 sm:p-5"
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
-          {teacher.name.charAt(0).toUpperCase()}
+          {member.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900">{teacher.name}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-gray-900">{member.name}</p>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+              {member.role === "SECRETARY" ? "Secrétaire" : "Professeur"}
+            </span>
+          </div>
           <p className="text-xs text-gray-400">
             {contracts.length} contrat{contracts.length !== 1 ? "s" : ""}
             {" · "}
@@ -103,7 +108,7 @@ function TeacherDocSection({
                   <ScrollText className="h-4 w-4 text-blue-600" />
                   Contrats
                 </p>
-                <p className="mt-0.5 text-xs text-gray-400">Ajout manuel des contrats professeurs</p>
+                <p className="mt-0.5 text-xs text-gray-400">Ajout manuel des contrats de l&apos;équipe</p>
               </div>
               {role === "DIRECTOR" && (
                 <Button size="sm" variant="outline" className="h-8 w-full text-xs sm:h-7 sm:w-auto" onClick={() => setShowUpload(!showUpload)}>
@@ -217,17 +222,17 @@ function TeacherDocSection({
 }
 
 export function DocumentsClient({
-  teachers, contracts: initialContracts, salaries, role,
+  staff, contracts: initialContracts, salaries, role,
 }: {
-  teachers: Teacher[]
+  staff: StaffMember[]
   contracts: Contract[]
   salaries: Salary[]
   role: string
 }) {
   const [contracts, setContracts] = useState(initialContracts)
-  const [teacherFilter, setTeacherFilter] = useState("ALL")
+  const [staffFilter, setStaffFilter] = useState("ALL")
 
-  const filteredTeachers = teacherFilter === "ALL" ? teachers : teachers.filter(t => t.id === teacherFilter)
+  const filteredStaff = staffFilter === "ALL" ? staff : staff.filter(member => member.id === staffFilter)
 
   async function reload() {
     const res = await fetch("/api/documents/contracts")
@@ -243,38 +248,42 @@ export function DocumentsClient({
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Documents</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Contrats manuels et fiches de paie automatiques des professeurs</p>
+        <p className="text-sm text-gray-500 mt-0.5">Contrats manuels et fiches de paie automatiques de l&apos;équipe</p>
       </div>
 
-      {/* Filtre prof */}
-      {teachers.length > 1 && (
+      {/* Filtre équipe */}
+      {staff.length > 1 && (
         <div className="flex gap-3">
-          <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+          <Select value={staffFilter} onValueChange={setStaffFilter}>
             <SelectTrigger className="w-full sm:w-56">
-              <SelectValue placeholder="Tous les professeurs" />
+              <SelectValue placeholder="Toute l'équipe" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Tous les professeurs</SelectItem>
-              {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              <SelectItem value="ALL">Toute l&apos;équipe</SelectItem>
+              {staff.map((member) => (
+                <SelectItem key={member.id} value={member.id}>
+                  {member.name} · {member.role === "SECRETARY" ? "Secrétaire" : "Professeur"}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
       )}
 
-      {/* Par prof */}
-      {filteredTeachers.length === 0 ? (
+      {/* Par membre */}
+      {filteredStaff.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 p-12 text-center">
           <Users className="mx-auto h-10 w-10 text-gray-300 mb-3" />
-          <p className="text-gray-400">Aucun professeur</p>
+          <p className="text-gray-400">Aucun membre</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredTeachers.map((teacher) => (
+          {filteredStaff.map((member) => (
             <TeacherDocSection
-              key={teacher.id}
-              teacher={teacher}
-              contracts={contracts.filter(c => c.teacherId === teacher.id)}
-              salaries={salaries.filter(s => s.teacherId === teacher.id)}
+              key={member.id}
+              member={member}
+              contracts={contracts.filter(c => c.teacherId === member.id)}
+              salaries={salaries.filter(s => s.teacherId === member.id)}
               role={role}
               onContractUploaded={reload}
               onDeleteContract={handleDelete}

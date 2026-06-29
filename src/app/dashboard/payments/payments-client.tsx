@@ -251,7 +251,7 @@ export function PaymentsClient({
 
 function SecretaryPayBlock() {
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ secretaryName: string; collectedTotal: number; amount: number; periodStart: string; periodEnd: string } | null>(null)
+  const [result, setResult] = useState<{ secretaryName: string; collectedTotal: number; amount: number; paymentCount: number; periodStart: string; periodEnd: string } | null>(null)
   const [confirmed, setConfirmed] = useState(false)
 
   async function calculate() {
@@ -276,11 +276,11 @@ function SecretaryPayBlock() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Calculator className="h-5 w-5 text-violet-600" />
-            <span className="font-semibold text-violet-900">Calculer la paie de la secrétaire</span>
+            <span className="font-semibold text-violet-900">Clôturer la paie de la secrétaire</span>
           </div>
           <Button variant="outline" size="sm" onClick={calculate} disabled={loading} className="border-violet-300 text-violet-700 hover:bg-violet-100">
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Calculator className="h-4 w-4 mr-1" />}
-            Calculer (10%)
+            Prévisualiser (10%)
           </Button>
         </div>
 
@@ -289,6 +289,9 @@ function SecretaryPayBlock() {
             <p className="font-medium text-gray-900">{result.secretaryName}</p>
             <p className="text-xs text-gray-400">
               Période : {new Date(result.periodStart).toLocaleDateString("fr-FR")} → {new Date(result.periodEnd).toLocaleDateString("fr-FR")}
+            </p>
+            <p className="text-xs text-gray-400">
+              {result.paymentCount} paiement{result.paymentCount > 1 ? "s" : ""} inclus dans cette clôture.
             </p>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Total encaissé</span>
@@ -301,10 +304,10 @@ function SecretaryPayBlock() {
             {!confirmed ? (
               <Button size="sm" onClick={confirm} disabled={loading} className="bg-violet-600 hover:bg-violet-700 text-white mt-2">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                Confirmer et enregistrer
+                Confirmer et clôturer cette période
               </Button>
             ) : (
-              <p className="text-sm text-emerald-600 font-medium mt-2">✓ Fiche de paie enregistrée</p>
+              <p className="text-sm text-emerald-600 font-medium mt-2">✓ Période clôturée et fiche de paie enregistrée</p>
             )}
           </div>
         )}

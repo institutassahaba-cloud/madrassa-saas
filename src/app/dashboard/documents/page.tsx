@@ -8,10 +8,10 @@ export default async function DocumentsPage() {
   if (!user) redirect("/login")
   if (!["DIRECTOR", "SECRETARY"].includes(user.role)) redirect("/dashboard")
 
-  const [teachers, contracts, salaries] = await Promise.all([
+  const [staff, contracts, salaries] = await Promise.all([
     prisma.user.findMany({
-      where: { tenantId: user.tenantId, role: "TEACHER", isActive: true },
-      select: { id: true, name: true },
+      where: { tenantId: user.tenantId, role: { in: ["TEACHER", "SECRETARY"] }, isActive: true },
+      select: { id: true, name: true, role: true },
       orderBy: { name: "asc" },
     }),
     prisma.teacherContract.findMany({
@@ -46,7 +46,7 @@ export default async function DocumentsPage() {
 
   return (
     <DocumentsClient
-      teachers={teachers}
+      staff={staff}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       contracts={contracts as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
