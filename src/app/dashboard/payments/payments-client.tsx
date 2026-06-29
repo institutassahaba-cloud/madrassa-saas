@@ -62,6 +62,7 @@ interface PaymentMatch {
   gmailMessageId: string
   receivedAmount: number
   detectedPayerName: string | null
+  paymentLabel: string | null
   paymentDate: Date | string | null
   status: string
   reason: string | null
@@ -194,6 +195,11 @@ export function PaymentsClient({
                         : "Aucun élève pressenti"}
                       {match.reason ? ` · ${match.reason}` : ""}
                     </p>
+                    {(match.paymentLabel || match.rawSubject) && (
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Libellé : {match.paymentLabel || match.rawSubject}
+                      </p>
+                    )}
                     <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
                   </div>
                   <Button size="sm" onClick={() => setSelectedMatch(match)}>
@@ -428,6 +434,9 @@ function PaymentMatchDialog({
             <p className="mt-1 text-sm text-gray-500">
               {match.source === "PAYPAL" ? "PayPal" : "Wise"} · {formatCurrency(match.receivedAmount)} · {match.detectedPayerName || "Payeur non détecté"}
             </p>
+            {(match.paymentLabel || match.rawSubject) && (
+              <p className="mt-0.5 text-xs text-gray-500">Libellé : {match.paymentLabel || match.rawSubject}</p>
+            )}
             <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
           </div>
           <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose} aria-label="Fermer">

@@ -410,6 +410,7 @@ model PaymentMatch {
   gmailMessageId    String // verrou unique : transaction PayPal / transfert Wise / référence bancaire
   receivedAmount    Float
   detectedPayerName String?
+  paymentLabel      String? // libellé / note du paiement, utile pour fratrie ou multi-profs
   paymentDate       DateTime?
   // Élève « pressenti » (facultatif, indicatif)
   studentId         String?

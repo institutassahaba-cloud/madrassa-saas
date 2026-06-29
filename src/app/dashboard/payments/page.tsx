@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
 import { getEffectiveUser } from "@/lib/view-as"
 import { PaymentsClient } from "./payments-client"
 
@@ -7,6 +8,7 @@ export default async function PaymentsPage() {
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
+  await ensurePaymentMatchLabelColumn()
 
   const now = new Date()
   const month = now.getMonth() + 1
