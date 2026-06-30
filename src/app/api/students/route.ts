@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
 import { z } from "zod"
 
 const studentSchema = z.object({
@@ -26,6 +27,10 @@ const studentSchema = z.object({
   parentName: z.string().optional(),
   parentPhone: z.string().optional(),
   parentEmail: z.string().email().optional().or(z.literal("")),
+  paymentAliases: z.array(z.object({
+    type: z.enum(["PAYPAL", "WISE", "ANY"]).optional(),
+    alias: z.string().optional(),
+  })).optional(),
   notes: z.string().optional(),
 })
 
@@ -79,6 +84,8 @@ export async function POST(req: Request) {
       notes: data.notes || null,
     },
   })
+
+  await replaceStudentPaymentAliases(user.tenantId, student.id, data.paymentAliases)
 
   if (data.groupId) {
     const group = await prisma.group.findFirst({

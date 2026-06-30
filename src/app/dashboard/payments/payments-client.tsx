@@ -1,6 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PaymentDialog } from "./payment-dialog"
-import { formatCurrency, formatDate, getMonthName, MONTHS_FR } from "@/lib/utils"
+import { formatCurrency, formatDate, getMonthName } from "@/lib/utils"
 
 const STATUS_CONFIG = {
   PAID: { label: "Payé", variant: "success" as const, icon: CheckCircle2, color: "text-emerald-600" },
@@ -29,6 +29,7 @@ interface Payment {
   reference: string | null
   createdAt: Date | string
   emailSentAt?: Date | string | null
+  confirmedAt?: Date | string | null
   sessionNumber: number | null
   lessonSession: { id: string; number: number; subject: string; teacherId: string } | null
   student: { id: string; firstName: string; lastName: string; paymentGraceAllowed?: boolean; group: { name: string; teacherId: string | null } | null }
@@ -56,6 +57,14 @@ interface LessonSessionOption {
   subject: string
   number: number
   isComplete: boolean
+}
+
+interface PaymentPeriod {
+  id: string
+  label: string
+  start: string | null
+  end: string | null
+  isCurrent?: boolean
 }
 
 interface PaymentMatch {
@@ -87,7 +96,9 @@ export function PaymentsClient({
   lessonSessions,
   paymentMatches,
   autoPaymentMatches,
+  trashedPaymentMatches,
   pendingPayments,
+  paymentPeriods,
   currentMonth,
   currentYear,
   isDirector,
@@ -99,7 +110,9 @@ export function PaymentsClient({
   lessonSessions: LessonSessionOption[]
   paymentMatches: PaymentMatch[]
   autoPaymentMatches: PaymentMatch[]
+  trashedPaymentMatches: PaymentMatch[]
   pendingPayments: Payment[]
+  paymentPeriods: PaymentPeriod[]
   currentMonth: number
   currentYear: number
   isDirector: boolean
@@ -107,23 +120,28 @@ export function PaymentsClient({
 }) {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
-  const [monthFilter, setMonthFilter] = useState(String(currentMonth))
-  const [yearFilter, setYearFilter] = useState(String(currentYear))
+  const [periodFilter, setPeriodFilter] = useState("CURRENT")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<PaymentMatch | null>(null)
   const [scanState, setScanState] = useState(scanControl)
   const [scanLoading, setScanLoading] = useState(false)
-  const [syncLoading, setSyncLoading] = useState(false)
+  const [unprocessedOpen, setUnprocessedOpen] = useState(paymentMatches.length > 0)
+  const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
+  const [trashOpen, setTrashOpen] = useState(false)
+  const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [nowTime] = useState(() => Date.now())
 
   const filtered = payments.filter((p) => {
     const name = `${p.student.firstName} ${p.student.lastName}`.toLowerCase()
     const matchSearch = name.includes(search.toLowerCase()) || (p.reference ?? "").includes(search)
     const matchStatus = statusFilter === "ALL" || p.status === statusFilter
-    const matchMonth = monthFilter === "ALL" || p.month === Number(monthFilter)
-    const matchYear = yearFilter === "ALL" || p.year === Number(yearFilter)
-    return matchSearch && matchStatus && matchMonth && matchYear
+    const period = paymentPeriods.find((item) => item.id === periodFilter)
+    const paymentDate = new Date(p.confirmedAt || p.paidDate || p.createdAt).getTime()
+    const matchPeriod = !period || periodFilter === "ALL"
+      ? true
+      : (!period.start || paymentDate > new Date(period.start).getTime()) && (!period.end || paymentDate <= new Date(period.end).getTime())
+    return matchSearch && matchStatus && matchPeriod
   })
 
   const summary = {
@@ -165,18 +183,25 @@ export function PaymentsClient({
     }
   }
 
-  async function syncTdbAliases() {
-    setSyncLoading(true)
+  async function updatePaymentMatch(matchId: string, action: "trash" | "restore") {
+    const confirmed = action === "trash"
+      ? window.confirm("Mettre ce paiement non traité dans la corbeille ? Vous pourrez le restaurer ensuite.")
+      : true
+    if (!confirmed) return
+    setMatchActionLoading(matchId)
     try {
-      const res = await fetch("/api/payments/sync-tdb-aliases", { method: "POST" })
+      const res = await fetch(`/api/payment-matches/${matchId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Synchronisation impossible.")
-      alert(`Synchronisation terminée : ${data.upsertedAliases} nom(s) associé(s), ${data.updatedStudents} fiche(s) élève mise(s) à jour.`)
+      if (!res.ok) throw new Error(data.error || "Action impossible.")
       window.location.reload()
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Synchronisation impossible.")
+      alert(error instanceof Error ? error.message : "Action impossible.")
     } finally {
-      setSyncLoading(false)
+      setMatchActionLoading(null)
     }
   }
 
@@ -239,10 +264,6 @@ export function PaymentsClient({
               </p>
             </div>
             <div className="grid gap-2 sm:flex">
-              <Button variant="outline" onClick={syncTdbAliases} disabled={syncLoading} className="w-full sm:w-auto">
-                {syncLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Synchroniser NEW TDB
-              </Button>
               <Button
                 variant={scanState.enabled ? "outline" : "default"}
                 onClick={() => updateScanControl(scanState.enabled ? "pause" : "activate")}
@@ -260,17 +281,24 @@ export function PaymentsClient({
       {paymentMatches.length > 0 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="space-y-3 p-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => setUnprocessedOpen((value) => !value)}
+              className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
                 <h3 className="font-semibold text-amber-900">Paiements non traités</h3>
                 <p className="text-sm text-amber-700">
                   Paiements reçus sans concordance automatique, à associer à un ou plusieurs élèves, professeurs ou sessions.
                 </p>
               </div>
-              <Badge variant="warning">{paymentMatches.length} à traiter</Badge>
-            </div>
+              <span className="flex items-center gap-2">
+                <Badge variant="warning">{paymentMatches.length} à traiter</Badge>
+                {unprocessedOpen ? <ChevronUp className="h-4 w-4 text-amber-700" /> : <ChevronDown className="h-4 w-4 text-amber-700" />}
+              </span>
+            </button>
 
-            <div className="space-y-2">
+            {unprocessedOpen && <div className="space-y-2">
               {paymentMatches.map((match) => (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
@@ -292,13 +320,24 @@ export function PaymentsClient({
                     )}
                     <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
                   </div>
-                  <Button size="sm" onClick={() => setSelectedMatch(match)}>
-                    <SplitSquareHorizontal className="h-4 w-4" />
-                    Associer un élève
-                  </Button>
+                  <div className="grid gap-2 sm:flex sm:items-center">
+                    <Button size="sm" onClick={() => setSelectedMatch(match)}>
+                      <SplitSquareHorizontal className="h-4 w-4" />
+                      Associer un élève
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => updatePaymentMatch(match.id, "trash")}
+                      disabled={matchActionLoading === match.id}
+                      title="Mettre à la corbeille"
+                    >
+                      {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
+                    </Button>
+                  </div>
                 </div>
               ))}
-            </div>
+            </div>}
           </CardContent>
         </Card>
       )}
@@ -306,16 +345,23 @@ export function PaymentsClient({
       {autoPaymentMatches.length > 0 && (
         <Card className="border-emerald-200 bg-emerald-50">
           <CardContent className="space-y-3 p-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => setAutoOpen((value) => !value)}
+              className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
                 <h3 className="font-semibold text-emerald-900">Paiements auto-validés</h3>
                 <p className="text-sm text-emerald-700">
                   Validés automatiquement. En cas d&apos;erreur, vous pouvez corriger l&apos;association.
                 </p>
               </div>
-              <Badge variant="success">{autoPaymentMatches.length} validé(s)</Badge>
-            </div>
-            <div className="space-y-2">
+              <span className="flex items-center gap-2">
+                <Badge variant="success">{autoPaymentMatches.length} validé(s)</Badge>
+                {autoOpen ? <ChevronUp className="h-4 w-4 text-emerald-700" /> : <ChevronDown className="h-4 w-4 text-emerald-700" />}
+              </span>
+            </button>
+            {autoOpen && <div className="space-y-2">
               {autoPaymentMatches.map((match) => (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-emerald-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
@@ -335,7 +381,46 @@ export function PaymentsClient({
                   </Button>
                 </div>
               ))}
-            </div>
+            </div>}
+          </CardContent>
+        </Card>
+      )}
+
+      {trashedPaymentMatches.length > 0 && (
+        <Card className="border-gray-200 bg-gray-50">
+          <CardContent className="space-y-3 p-4">
+            <button
+              type="button"
+              onClick={() => setTrashOpen((value) => !value)}
+              className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <h3 className="font-semibold text-gray-900">Corbeille des paiements détectés</h3>
+                <p className="text-sm text-gray-500">Paiements retirés des non traités, restaurables si besoin.</p>
+              </div>
+              <span className="flex items-center gap-2">
+                <Badge variant="secondary">{trashedPaymentMatches.length} dans la corbeille</Badge>
+                {trashOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+              </span>
+            </button>
+            {trashOpen && <div className="space-y-2">
+              {trashedPaymentMatches.map((match) => (
+                <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                    </div>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
+                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                    Remettre dans non traités
+                  </Button>
+                </div>
+              ))}
+            </div>}
           </CardContent>
         </Card>
       )}
@@ -377,7 +462,7 @@ export function PaymentsClient({
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_9rem_7rem]">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_minmax(16rem,18rem)]">
             <div className="relative min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input placeholder="Rechercher..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -393,19 +478,13 @@ export function PaymentsClient({
                 <SelectItem value="EXEMPTED">Exonéré</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Mois" /></SelectTrigger>
+            <Select value={periodFilter} onValueChange={setPeriodFilter}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Période" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">Tous mois</SelectItem>
-                {MONTHS_FR.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Année" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Toutes</SelectItem>
-                <SelectItem value={String(currentYear)}>{currentYear}</SelectItem>
-                <SelectItem value={String(currentYear - 1)}>{currentYear - 1}</SelectItem>
+                <SelectItem value="ALL">Toutes les périodes</SelectItem>
+                {paymentPeriods.map((period) => (
+                  <SelectItem key={period.id} value={period.id}>{period.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

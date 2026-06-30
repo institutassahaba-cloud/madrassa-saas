@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
 
 async function recalcGroupRate(groupId: string, tenantId: string) {
   const count = await prisma.student.count({
@@ -59,6 +60,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       notes: body.notes || null,
     },
   })
+
+  await replaceStudentPaymentAliases(user.tenantId, id, body.paymentAliases)
 
   if (oldGroupId !== newGroupId) {
     if (oldGroupId) await recalcGroupRate(oldGroupId, user.tenantId)

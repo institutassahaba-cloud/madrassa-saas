@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Loader2, ChevronUp, ChevronDown } from "lucide-react"
+import { Loader2, ChevronUp, ChevronDown, Plus, Trash2 } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog"
@@ -34,6 +34,12 @@ const EMPTY_EXTRA = {
   subject: "", groupId: "", hourlyRate: "", lessonsPerWeek: "", duration: "", startSession: "",
 }
 
+type PaymentAliasFormRow = {
+  id: string
+  type: "PAYPAL" | "WISE"
+  alias: string
+}
+
 const SUBJECTS = ["Coran", "Nouraniya", "Arabe", "Langue arabe", "Tajwid", "Fiqh", "Autre"]
 
 export function StudentDialog({ open, onClose, student, groups, teachers }: StudentDialogProps) {
@@ -43,6 +49,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
   const [teacherId, setTeacherId] = useState("")
   const [joinExisting, setJoinExisting] = useState(false)
   const [multiProf, setMultiProf] = useState(false)
+  const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
   const [extraTeacherId, setExtraTeacherId] = useState("")
   const [extra, setExtra] = useState({ ...EMPTY_EXTRA })
   const [groupInfo, setGroupInfo] = useState<{ count: number; subject?: string; lessonsPerWeek?: number; duration?: string; newRate?: number } | null>(null)
@@ -80,6 +87,24 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
         status: student.status ?? "ACTIVE",
         recontactDate: student.recontactDate ? student.recontactDate.toString().slice(0, 10) : "",
       })
+      const existingAliases = Array.isArray(student.paymentAliases)
+        ? student.paymentAliases.map((alias: { id?: string; type?: string; alias?: string }) => ({
+          id: alias.id || Math.random().toString(36).slice(2),
+          type: alias.type === "PAYPAL" ? "PAYPAL" : "WISE",
+          alias: alias.alias || "",
+        }))
+        : []
+      if (existingAliases.length > 0) {
+        setPaymentAliases(existingAliases)
+      } else if (student.payerName) {
+        setPaymentAliases([{
+          id: Math.random().toString(36).slice(2),
+          type: student.paymentType === "PAYPAL" ? "PAYPAL" : "WISE",
+          alias: student.payerName,
+        }])
+      } else {
+        setPaymentAliases([])
+      }
       const currentGroup = groups.find(g => g.id === student.group?.id)
       setTeacherId(currentGroup?.teacherId ?? "")
     } else {
@@ -87,6 +112,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
       setIdentities([{ ...EMPTY_IDENTITY }])
       setShared({ ...EMPTY_SHARED })
       setTeacherId("")
+      setPaymentAliases([])
     }
     setJoinExisting(false)
     setMultiProf(false)
@@ -119,6 +145,22 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
     setExtra((f) => ({ ...f, [key]: value }))
   }
 
+  function addPaymentAlias(type: "PAYPAL" | "WISE") {
+    setPaymentAliases((prev) => [...prev, { id: Math.random().toString(36).slice(2), type, alias: "" }])
+  }
+
+  function updatePaymentAlias(id: string, key: "type" | "alias", value: string) {
+    setPaymentAliases((prev) => prev.map((row) => {
+      if (row.id !== id) return row
+      if (key === "type") return { ...row, type: value === "PAYPAL" ? "PAYPAL" : "WISE" }
+      return { ...row, alias: value }
+    }))
+  }
+
+  function removePaymentAlias(id: string) {
+    setPaymentAliases((prev) => prev.filter((row) => row.id !== id))
+  }
+
   const filteredGroups = teacherId ? groups.filter(g => g.teacherId === teacherId) : groups
   const lockedByGroup = joinExisting && !!shared.groupId && !!groupInfo && groupInfo.count > 0
   const extraFilteredGroups = extraTeacherId ? groups.filter(g => g.teacherId === extraTeacherId) : groups
@@ -130,7 +172,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
     try {
       if (student) {
         // Edit mode: single student
-        const form = { ...identities[0], ...shared }
+        const form = { ...identities[0], ...shared, paymentAliases }
         const res = await fetch(`/api/students/${student.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -303,6 +345,53 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                 </span>
               </label>
             </div>
+            {student && (
+              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Noms associés aux paiements</p>
+                    <p className="text-xs text-gray-500">Ajoutez les noms qui peuvent apparaître sur PayPal ou sur un virement.</p>
+                  </div>
+                  <div className="grid gap-2 sm:flex">
+                    <Button type="button" variant="outline" size="sm" onClick={() => addPaymentAlias("PAYPAL")}>
+                      <Plus className="h-4 w-4" />
+                      PayPal
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => addPaymentAlias("WISE")}>
+                      <Plus className="h-4 w-4" />
+                      Virement
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {paymentAliases.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-2 text-sm text-gray-400">
+                      Aucun nom associé pour l&apos;instant.
+                    </p>
+                  ) : (
+                    paymentAliases.map((row) => (
+                      <div key={row.id} className="grid gap-2 rounded-lg border border-gray-200 bg-white p-2 sm:grid-cols-[9rem_1fr_2.5rem]">
+                        <Select value={row.type} onValueChange={(value) => updatePaymentAlias(row.id, "type", value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PAYPAL">PayPal</SelectItem>
+                            <SelectItem value="WISE">Virement</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={row.alias}
+                          onChange={(e) => updatePaymentAlias(row.id, "alias", e.target.value)}
+                          placeholder="Nom affiché dans le paiement"
+                        />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removePaymentAlias(row.id)} title="Supprimer ce nom">
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Professeur & forfait */}

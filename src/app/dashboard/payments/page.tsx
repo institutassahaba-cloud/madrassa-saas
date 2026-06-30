@@ -18,7 +18,7 @@ export default async function PaymentsPage() {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [payments, students, teachers, lessonSessions, paymentMatches, autoPaymentMatches, pendingPayments, scanSettings] = await Promise.all([
+  const [payments, students, teachers, lessonSessions, paymentMatches, autoPaymentMatches, trashedPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -67,6 +67,14 @@ export default async function PaymentsPage() {
       orderBy: { confirmedAt: "desc" },
       take: 30,
     }),
+    prisma.paymentMatch.findMany({
+      where: { tenantId: user.tenantId, status: "TRASHED" },
+      include: {
+        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    }),
     prisma.payment.findMany({
       where: { tenantId: user.tenantId, status: { in: ["EXPECTED", "EMAIL_SENT", "REMINDED", "PENDING"] } },
       include: {
@@ -80,7 +88,42 @@ export default async function PaymentsPage() {
       where: { tenantId: user.tenantId },
       select: { paymentScanEnabled: true, paymentScanStartedAt: true },
     }),
+    prisma.teacherSalary.findMany({
+      where: { tenantId: user.tenantId, periodStart: { not: null }, periodEnd: { not: null } },
+      select: { periodStart: true, periodEnd: true, createdAt: true },
+      orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
+    }),
   ])
+
+  const periodMap = new Map<string, { id: string; label: string; start: string | null; end: string | null; isCurrent?: boolean }>()
+  let latestPeriodEnd: Date | null = null
+  for (const salary of salaryPeriods) {
+    if (!salary.periodStart || !salary.periodEnd) continue
+    if (!latestPeriodEnd || salary.periodEnd > latestPeriodEnd) latestPeriodEnd = salary.periodEnd
+    const start = salary.periodStart.toISOString()
+    const end = salary.periodEnd.toISOString()
+    const key = `${start}__${end}`
+    if (!periodMap.has(key)) {
+      periodMap.set(key, {
+        id: key,
+        start,
+        end,
+        label: `${salary.periodStart.toLocaleDateString("fr-FR")} → ${salary.periodEnd.toLocaleDateString("fr-FR")}`,
+      })
+    }
+  }
+  const paymentPeriods = [
+    {
+      id: "CURRENT",
+      start: latestPeriodEnd?.toISOString() ?? null,
+      end: null,
+      isCurrent: true,
+      label: latestPeriodEnd
+        ? `Période en cours depuis le ${latestPeriodEnd.toLocaleDateString("fr-FR")}`
+        : "Période en cours",
+    },
+    ...Array.from(periodMap.values()),
+  ]
 
   return (
     <PaymentsClient
@@ -95,7 +138,10 @@ export default async function PaymentsPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       autoPaymentMatches={autoPaymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      trashedPaymentMatches={trashedPaymentMatches as any}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pendingPayments={pendingPayments as any}
+      paymentPeriods={paymentPeriods}
       currentMonth={month}
       currentYear={year}
       isDirector={user.role === "DIRECTOR"}
