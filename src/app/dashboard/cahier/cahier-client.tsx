@@ -359,6 +359,7 @@ function SessionCard({
   const total   = session.lessons.length
   const present = session.lessons.filter((l) => l.status === "PRESENT").length
   const totalMakeup = session.lessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
+  const canRequestPayment = !paidAt
 
   return (
     <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-emerald-200 bg-white shadow-sm"}`}>
@@ -460,19 +461,21 @@ function SessionCard({
             )}
           </div>
 
-          {/* Close session */}
-          {!session.isComplete && (
+          {/* Close session / payment request */}
+          {canRequestPayment && (
             <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 text-xs text-amber-700">
                 <Bell className="h-3.5 w-3.5" />
-                Terminer la session et envoyer la demande de paiement à l&apos;élève
+                {session.isComplete
+                  ? "Envoyer la demande de paiement à l'élève"
+                  : "Terminer la session et envoyer la demande de paiement à l'élève"}
               </div>
               <Button
                 size="sm"
                 className="h-8 bg-amber-500 px-3 text-xs text-white hover:bg-amber-600 sm:h-7"
                 onClick={() => onCloseSession(session.id)}
               >
-                Envoyer la demande
+                {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
               </Button>
             </div>
           )}
@@ -742,7 +745,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
     await fetch(`/api/sessions/${sessionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isComplete: true }),
+      body: JSON.stringify({ isComplete: true, requestPayment: true }),
     })
     setSessions((prev) =>
       prev.map((s) => s.id === sessionId ? { ...s, isComplete: true } : s)

@@ -31,6 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const isClosing = body.isComplete === true && !existing.isComplete
+  const shouldRequestPayment = isClosing || body.requestPayment === true
   const closingAt = new Date()
 
   const updated = await prisma.lessonSession.update({
@@ -40,12 +41,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       notes: body.notes ?? existing.notes,
       frequency: body.frequency != null ? Number(body.frequency) : existing.frequency,
       duration: body.duration ?? existing.duration,
-      ...(isClosing ? { endedAt: closingAt, paymentRequestedAt: closingAt } : {}),
+      ...(isClosing ? { endedAt: closingAt } : {}),
+      ...(shouldRequestPayment ? { paymentRequestedAt: closingAt } : {}),
     },
     include: { lessons: { orderBy: { number: "asc" } } },
   })
 
-  if (isClosing) {
+  if (shouldRequestPayment) {
     const [student, teacher] = await Promise.all([
       prisma.student.findUnique({ where: { id: existing.studentId } }),
       prisma.user.findUnique({ where: { id: existing.teacherId } }),
