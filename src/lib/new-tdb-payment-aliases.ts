@@ -18,6 +18,12 @@ function getSheetsAuth() {
     return new google.auth.GoogleAuth({ credentials: JSON.parse(raw!), scopes })
   }
 
+  if (process.env.VERCEL) {
+    throw new Error(
+      "Google service account credentials are missing. Add GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 in Vercel.",
+    )
+  }
+
   return new google.auth.GoogleAuth({
     keyFile: path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "./google-drive-credentials.json"),
     scopes,

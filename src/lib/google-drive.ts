@@ -2,8 +2,7 @@ import { google } from "googleapis"
 import path from "path"
 import { Readable } from "stream"
 
-function getAuth() {
-  const scopes = ["https://www.googleapis.com/auth/drive.file"]
+function getGoogleServiceAccountAuth(scopes: string[]) {
   const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   const credentialsJsonBase64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64
 
@@ -18,11 +17,21 @@ function getAuth() {
     })
   }
 
+  if (process.env.VERCEL) {
+    throw new Error(
+      "Google service account credentials are missing. Add GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 in Vercel.",
+    )
+  }
+
   const credPath = path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "./google-drive-credentials.json")
   return new google.auth.GoogleAuth({
     keyFile: credPath,
     scopes,
   })
+}
+
+function getAuth() {
+  return getGoogleServiceAccountAuth(["https://www.googleapis.com/auth/drive.file"])
 }
 
 export async function uploadToDrive(file: Buffer, filename: string, mimeType: string) {
