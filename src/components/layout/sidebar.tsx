@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Users, BookOpen, CreditCard,
@@ -51,12 +52,10 @@ export function Sidebar({ role, tenantName, onNavigate }: SidebarProps) {
     <aside className="flex h-full w-full flex-col border-r border-gray-100 bg-white md:h-screen md:w-64">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-5 pr-14 md:px-6 md:pr-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600">
-          <GraduationCap className="h-5 w-5 text-white" />
-        </div>
+        <Image src="/logo-assahaba.png" alt="Institut Assahaba" width={36} height={36} className="h-9 w-9 rounded-lg object-contain" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-900">{tenantName}</p>
-          <p className="text-xs text-gray-500">MadrassaApp</p>
+          <p className="text-xs text-gray-500">Institut Assahaba</p>
         </div>
       </div>
 

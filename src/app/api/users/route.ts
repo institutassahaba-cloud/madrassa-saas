@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
     const loginUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3002"}/${tenant?.slug ?? "assahaba"}`
     const html = welcomeEmailHtml(body.name, body.email, tempPassword, loginUrl)
-    const emailResult = await sendEmail({ to: body.email, subject: "Bienvenue sur MadrassaApp — Vos identifiants", html })
+    const emailResult = await sendEmail({ to: body.email, subject: "Bienvenue sur Institut Assahaba — Vos identifiants", html })
 
     return NextResponse.json({
       id: newUser.id,

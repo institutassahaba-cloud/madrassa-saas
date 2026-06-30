@@ -64,7 +64,7 @@ export function DashboardShell({
         <Topbar
           userName={userName}
           userEmail={userEmail}
-          title="MadrassaApp"
+          title="Institut Assahaba"
           unreadNotifications={unreadNotifications}
           onMenuClick={() => setMenuOpen(true)}
           viewAsOptions={viewAsOptions}

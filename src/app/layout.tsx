@@ -5,7 +5,7 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "MadrassaApp — Gestion d'Institut",
+  title: "Institut Assahaba — Gestion d'Institut",
   description: "Plateforme de gestion pour instituts de langue arabe, écoles coraniques et centres de soutien scolaire",
 }
 

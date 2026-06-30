@@ -349,7 +349,7 @@ export function generatePassword(length = 10): string {
 export function welcomeEmailHtml(name: string, email: string, password: string, loginUrl: string) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-      <h2 style="color: #059669;">Bienvenue sur MadrassaApp</h2>
+      <h2 style="color: #059669;">Bienvenue sur Institut Assahaba</h2>
       <p>Assalâmu ʿalaykum ${name},</p>
       <p>Votre compte a été créé. Voici vos identifiants :</p>
       <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
@@ -358,7 +358,7 @@ export function welcomeEmailHtml(name: string, email: string, password: string, 
       </div>
       <p>Vous devrez changer votre mot de passe lors de votre première connexion.</p>
       <a href="${loginUrl}" style="display: inline-block; background: #059669; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; margin-top: 8px;">Se connecter</a>
-      <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">Institut As-Sahaba — MadrassaApp</p>
+      <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">Institut Assahaba</p>
     </div>
   `
 }

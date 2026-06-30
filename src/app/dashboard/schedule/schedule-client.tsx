@@ -85,7 +85,10 @@ function addDays(d: Date, n: number): Date {
 }
 
 function dateKey(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -94,6 +97,18 @@ function isSameDay(a: Date, b: Date): boolean {
 
 function slotTitle(slot: TimeSlot): string {
   return parseScheduleLabel(slot.label).label ?? slot.group?.name ?? slot.teacher.name
+}
+
+function getSlotDuration(slot: TimeSlot): number {
+  return Math.max(timeToMinutes(slot.endTime) - timeToMinutes(slot.startTime), 15)
+}
+
+function snapMinutes(minutes: number): number {
+  return Math.round(minutes / 15) * 15
+}
+
+function minDateKey(a: string, b: string): string {
+  return a < b ? a : b
 }
 
 function isAvailabilitySlot(slot: TimeSlot): boolean {
@@ -139,6 +154,7 @@ function OccurrenceBlock({
   onCancel,
   onDeleteSlot,
   onColorChange,
+  onDragStart,
 }: {
   slot: TimeSlot
   date: Date
@@ -147,6 +163,7 @@ function OccurrenceBlock({
   onCancel: (slotId: string, date: Date) => void
   onDeleteSlot: (slotId: string) => void
   onColorChange: (slotId: string, color: string) => void
+  onDragStart: (slot: TimeSlot, date: Date) => void
 }) {
   const [showPalette, setShowPalette] = useState(false)
   const recurrence = parseScheduleLabel(slot.label).recurrence
@@ -163,7 +180,9 @@ function OccurrenceBlock({
 
   return (
     <div
-      className={`absolute left-0.5 right-0.5 rounded-lg px-1.5 py-1 text-white text-xs overflow-hidden group ${isToday ? "ring-2 ring-yellow-300" : ""}`}
+      draggable
+      onDragStart={() => onDragStart(slot, date)}
+      className={`absolute left-0.5 right-0.5 cursor-move rounded-lg px-1.5 py-1 text-white text-xs overflow-hidden group ${isToday ? "ring-2 ring-yellow-300" : ""}`}
       style={{
         top: `${top}%`,
         height: `${height}%`,
@@ -516,6 +535,8 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   const [filterTeacher, setFilter] = useState(role === "TEACHER" ? currentUser.id : (sortedTeachers[0]?.id ?? ""))
   const [addingDate, setAddingDate] = useState<Date | null>(null)
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null)
+  const [editingDate, setEditingDate] = useState<Date | null>(null)
+  const [draggedOccurrence, setDraggedOccurrence] = useState<{ slot: TimeSlot; date: Date } | null>(null)
   const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false)
   const [savingTz, setSavingTz] = useState(false)
   const activeTeacherId = role === "TEACHER"
@@ -583,6 +604,58 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
       const updated = await res.json()
       setSlots(prev => prev.map(s => s.id === slotId ? updated : s))
     }
+  }
+
+  async function handleMoveOccurrence(targetDate: Date, targetStartTime: string) {
+    if (!draggedOccurrence) return
+
+    const { slot, date: sourceDate } = draggedOccurrence
+    const duration = getSlotDuration(slot)
+    const targetStartMin = timeToMinutes(targetStartTime)
+    const targetEndTime = minutesToTime(Math.min(targetStartMin + duration, 21 * 60))
+    const targetDateKey = dateKey(targetDate)
+    const sourceDateKey = dateKey(sourceDate)
+    const targetDayOfWeek = targetDate.getDay()
+    const meta = parseScheduleLabel(slot.label)
+
+    setDraggedOccurrence(null)
+
+    if (
+      targetDateKey === sourceDateKey &&
+      targetStartTime === slot.startTime &&
+      targetEndTime === slot.endTime
+    ) return
+
+    const moveSeries = meta.recurrence !== "NONE"
+      ? confirm("Déplacer aussi les semaines suivantes ?\n\nOK = avec récurrence\nAnnuler = seulement cette séance")
+      : true
+
+    if (moveSeries) {
+      const nextStartDate = meta.recurrence === "NONE"
+        ? targetDateKey
+        : minDateKey(meta.startDate ?? targetDateKey, targetDateKey)
+      await handleSaveSlot({
+        dayOfWeek: targetDayOfWeek,
+        startTime: targetStartTime,
+        endTime: targetEndTime,
+        label: encodeScheduleLabel(meta.label ?? "", meta.recurrence, nextStartDate),
+        color: slot.color,
+        groupId: slot.group?.id ?? null,
+        teacherId: slot.teacher.id,
+      }, slot.id)
+      return
+    }
+
+    await handleCancel(slot.id, sourceDate)
+    await handleAdd({
+      dayOfWeek: targetDayOfWeek,
+      startTime: targetStartTime,
+      endTime: targetEndTime,
+      label: encodeScheduleLabel(meta.label ?? "", "NONE", targetDateKey),
+      color: slot.color,
+      groupId: slot.group?.id ?? null,
+      teacherId: slot.teacher.id,
+    })
   }
 
   async function handleCancel(slotId: string, date: Date) {
@@ -694,7 +767,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
           {role !== "TEACHER" && sortedTeachers.length > 0 && (
             <div className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 sm:w-auto">
               <span className="text-xs font-medium text-gray-500">Professeur</span>
-              <Select value={filterTeacher} onValueChange={(value) => { setFilter(value); setAddingDate(null); setEditingSlot(null) }}>
+              <Select value={filterTeacher} onValueChange={(value) => { setFilter(value); setAddingDate(null); setEditingSlot(null); setEditingDate(null) }}>
                 <SelectTrigger className="h-8 flex-1 border-0 p-0 text-xs font-medium text-gray-700 shadow-none focus:ring-0 sm:w-56 sm:flex-none">
                   <SelectValue placeholder="Choisir un professeur" />
                 </SelectTrigger>
@@ -745,7 +818,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
               return (
                 <button
                   key={t.id}
-                  onClick={() => { setFilter(t.id); setAddingDate(null); setEditingSlot(null) }}
+                  onClick={() => { setFilter(t.id); setAddingDate(null); setEditingSlot(null); setEditingDate(null) }}
                   className={`min-h-10 w-40 shrink-0 rounded-lg px-3 py-2 text-left text-sm transition-colors lg:w-full ${filterTeacher === t.id ? "bg-emerald-50 text-emerald-700 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
                 >
                   <span className="block truncate">{t.name}</span>
@@ -768,6 +841,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                     if (!activeTeacherId) return
                     setAddingDate(weekDates[0])
                     setEditingSlot(null)
+                    setEditingDate(null)
                   }}
                   disabled={!activeTeacherId}
                   className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
@@ -821,6 +895,16 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                     key={i}
                     className={`border-r border-gray-100 last:border-0 relative ${isToday ? "bg-emerald-50/30" : ""}`}
                     style={{ height: `${HOURS.length * 56}px` }}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      const ratio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1)
+                      const duration = draggedOccurrence ? getSlotDuration(draggedOccurrence.slot) : 30
+                      const minutes = snapMinutes(7 * 60 + ratio * (14 * 60))
+                      const latestStart = 21 * 60 - duration
+                      handleMoveOccurrence(d, minutesToTime(Math.min(Math.max(minutes, 7 * 60), latestStart)))
+                    }}
                   >
                     {HOURS.map(h => (
                       <div key={h} className="border-b border-gray-50 absolute w-full" style={{ top: `${((h - 7) / 14) * 100}%`, height: "56px" }} />
@@ -836,23 +920,29 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                         slot={slot}
                         date={d}
                         viewTz={viewTz}
-                        onEdit={(slotToEdit) => { setEditingSlot(slotToEdit); setAddingDate(null) }}
+                        onEdit={(slotToEdit) => { setEditingSlot(slotToEdit); setEditingDate(d); setAddingDate(null) }}
                         onCancel={handleCancel}
                         onDeleteSlot={handleDeleteSlot}
                         onColorChange={handleColorChange}
+                        onDragStart={(slotToMove, occurrenceDate) => {
+                          setDraggedOccurrence({ slot: slotToMove, date: occurrenceDate })
+                          setAddingDate(null)
+                          setEditingSlot(null)
+                          setEditingDate(null)
+                        }}
                       />
                     ))}
 
                     {editingSlot && editingSlot.dayOfWeek === d.getDay() && (
                       <SlotForm
-                        date={d}
+                        date={editingDate ?? d}
                         slot={editingSlot}
                         groups={groups}
                         teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
                         role="TEACHER"
                         currentUserId={editingSlot.teacher.id}
                         onSave={handleSaveSlot}
-                        onClose={() => setEditingSlot(null)}
+                        onClose={() => { setEditingSlot(null); setEditingDate(null) }}
                       />
                     )}
                   </div>

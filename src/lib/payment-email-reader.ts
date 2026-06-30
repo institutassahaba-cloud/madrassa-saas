@@ -169,25 +169,38 @@ async function suggestStudentForPayment(tenantId: string, source: string, payerN
   return best && best.score >= 0.45 ? best : null
 }
 
-async function autoConfirmIfCertain({
+type CertainPendingPayment = {
+  id: string
+  amount: number
+  dueDate: Date | null
+  invoiceNumber: string | null
+  sessionNumber: number | null
+  student: {
+    firstName: string
+    lastName: string
+    email: string | null
+    payerName: string | null
+    monthlyFee: number
+  }
+  lessonSession: {
+    id: string
+    number: number
+    subject: string
+    teacher: { name: string | null }
+  } | null
+}
+
+async function findCertainPendingPayment({
   tenantId,
-  source,
-  reference,
   amount,
-  paymentDate,
-  detectedPayerName,
   studentId,
   score,
 }: {
   tenantId: string
-  source: string
-  reference: string
   amount: number
-  paymentDate: Date | null
-  detectedPayerName: string | null
   studentId: string | undefined
   score: number | undefined
-}) {
+}): Promise<CertainPendingPayment | null> {
   if (!studentId || score !== 1) return null
 
   const pendingPayments = await prisma.payment.findMany({
@@ -211,7 +224,31 @@ async function autoConfirmIfCertain({
 
   if (matchingAmount.length !== 1) return null
 
-  const payment = matchingAmount[0]
+  return matchingAmount[0]
+}
+
+async function autoConfirmIfCertain({
+  tenantId,
+  source,
+  reference,
+  amount,
+  paymentDate,
+  detectedPayerName,
+  studentId,
+  score,
+}: {
+  tenantId: string
+  source: string
+  reference: string
+  amount: number
+  paymentDate: Date | null
+  detectedPayerName: string | null
+  studentId: string | undefined
+  score: number | undefined
+}) {
+  const payment = await findCertainPendingPayment({ tenantId, amount, studentId, score })
+  if (!payment) return null
+
   const paidAt = paymentDate ?? new Date()
   const invoiceNumber = payment.invoiceNumber || `FAC-${paidAt.getFullYear()}${String(paidAt.getMonth() + 1).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
   const confirmed = await prisma.payment.update({
@@ -264,6 +301,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   await ensurePaymentScanSettingsColumns()
   await ensurePaymentAliasSchema()
   const requireEnabled = options.requireEnabled ?? true
+  const autoConfirmEnabled = process.env.PAYMENT_SCAN_AUTO_CONFIRM === "true"
   const scanSettings = await prisma.tenantSettings.findUnique({
     where: { tenantId },
     select: { paymentScanEnabled: true, paymentScanStartedAt: true },
@@ -335,7 +373,13 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     const detectedPayerName = extractPayerName(combined)
     const paymentLabel = extractLabel(subject, combined)
     const suggestion = await suggestStudentForPayment(tenantId, source, detectedPayerName, paymentLabel)
-    const autoConfirmedPayment = await autoConfirmIfCertain({
+    const certainPendingPayment = await findCertainPendingPayment({
+      tenantId,
+      amount,
+      studentId: suggestion?.studentId,
+      score: suggestion?.score,
+    })
+    const autoConfirmedPayment = autoConfirmEnabled ? await autoConfirmIfCertain({
       tenantId,
       source,
       reference,
@@ -344,7 +388,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       detectedPayerName,
       studentId: suggestion?.studentId,
       score: suggestion?.score,
-    })
+    }) : null
     await prisma.paymentMatch.create({
       data: {
         tenantId,
@@ -359,6 +403,8 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
         score: suggestion?.score,
         reason: autoConfirmedPayment
           ? "Validé automatiquement : concordance exacte nom + montant + une seule demande en attente."
+          : certainPendingPayment
+            ? "Concordance exacte détectée : validation manuelle demandée avant confirmation."
           : suggestion?.reason || "Paiement détecté par email, à associer.",
         rawSubject: subject || null,
         confirmedAt: autoConfirmedPayment ? new Date() : null,

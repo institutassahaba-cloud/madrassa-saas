@@ -1,8 +1,9 @@
 "use client"
 import { useState } from "react"
+import Image from "next/image"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { GraduationCap, Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -58,10 +59,14 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 shadow-lg">
-            <GraduationCap className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">MadrassaApp</h1>
+          <Image
+            src="/logo-assahaba.png"
+            alt="Institut Assahaba"
+            width={80}
+            height={80}
+            className="mx-auto mb-4 h-20 w-20 rounded-2xl object-contain shadow-sm"
+          />
+          <h1 className="text-2xl font-bold text-gray-900">Institut Assahaba</h1>
           <p className="mt-1 text-sm text-gray-500">Gestion d&apos;instituts islamiques</p>
         </div>
 

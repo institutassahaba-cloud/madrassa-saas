@@ -71,7 +71,7 @@ Merci de vérifier qu'ils remplissent bien leur cahier de cours.
 </td></tr>
 <tr><td height="20"></td></tr>
 <tr><td align="center" bgcolor="#F4EFE3" style="background:#F4EFE3;padding:16px 32px;font-size:12px;color:#5C6577;">
-<strong style="color:#17456C;">${tenantName}</strong> — MadrassaApp
+<strong style="color:#17456C;">${tenantName}</strong> — Institut Assahaba
 </td></tr>
 </tbody></table></td></tr></tbody></table></body></html>`
 
