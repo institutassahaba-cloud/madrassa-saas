@@ -25,6 +25,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
       status: { not: "READ" },
     },
   })
+  const viewAsOptions = session.user.role === "DIRECTOR"
+    ? await prisma.user.findMany({
+        where: { tenantId: session.user.tenantId, role: { in: ["SECRETARY", "TEACHER"] }, isActive: true },
+        select: { id: true, name: true, role: true },
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+      })
+    : []
 
   return (
     <DashboardShell
@@ -34,6 +41,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
       userEmail={user.email}
       unreadNotifications={unreadNotifications}
       impersonating={user.impersonating}
+      currentViewAsId={user.impersonating ? user.id : "DIRECTOR"}
+      viewAsOptions={viewAsOptions.map((option) => ({
+        id: option.id,
+        label: option.name,
+        role: option.role,
+      }))}
     >
       {children}
     </DashboardShell>

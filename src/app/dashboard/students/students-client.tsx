@@ -43,9 +43,13 @@ interface Student {
   subject: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   monthlyFee: any
+  paymentGraceAllowed: boolean
   hourlyRate: number | null
   lessonsPerWeek: number | null
   duration: string | null
+  payerName: string | null
+  paymentType: string | null
+  paymentAliases: { id: string; type: string; alias: string; source: string }[]
   enrollmentDate: Date
   group: { id: string; name: string } | null
   teacherName: string | null
@@ -94,6 +98,12 @@ function subjectLabel(subject: string): string {
   if (subject === "Nouraniyah") return "Nouraniya"
   if (subject === "Langue arabe") return "Arabe"
   return subject
+}
+
+function paymentAliasLabel(type: string | null) {
+  if (type === "PAYPAL") return "PayPal"
+  if (type === "WISE") return "Virement"
+  return "Associé"
 }
 
 interface Group {
@@ -186,6 +196,15 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "ARCHIVED" }),
+    })
+    window.location.reload()
+  }
+
+  async function togglePaymentGrace(student: Student, checked: boolean) {
+    await fetch(`/api/students/${student.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentGraceAllowed: checked }),
     })
     window.location.reload()
   }
@@ -349,6 +368,7 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                 <TableHead>Type</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Forfait</TableHead>
+                <TableHead>Nom paiement</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
@@ -356,7 +376,7 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-gray-400">
+                  <TableCell colSpan={8} className="py-10 text-center text-gray-400">
                     Aucun élève trouvé
                   </TableCell>
                 </TableRow>
@@ -418,6 +438,16 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                       </TableCell>
                       <TableCell className="text-sm">
                         <p className="font-medium text-gray-900">{formatCurrency(student.monthlyFee)}<span className="font-normal text-gray-400"> / 4 sem.</span></p>
+                        <label className="mt-1 flex items-start gap-1.5 text-xs text-amber-700">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-3.5 w-3.5 rounded border-amber-300"
+                            checked={student.paymentGraceAllowed}
+                            disabled={role !== "DIRECTOR"}
+                            onChange={(event) => togglePaymentGrace(student, event.target.checked)}
+                          />
+                          <span>Cours autorisé sans paiement</span>
+                        </label>
                         <p className="text-xs text-gray-500">
                           {student.lessonsPerWeek ? `${student.lessonsPerWeek}×/sem` : "—"}
                           {` · ${formatDuration(student.duration)}`}
@@ -428,6 +458,26 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                             <Clock className="h-3 w-3 text-emerald-600" />
                             {schedule}
                           </p>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-56 text-xs text-gray-600">
+                        {student.paymentAliases?.length ? (
+                          <div className="space-y-1">
+                            {student.paymentAliases.slice(0, 3).map((alias) => (
+                              <p key={alias.id} className="truncate">
+                                <span className="font-medium text-gray-800">{paymentAliasLabel(alias.type)} :</span> {alias.alias}
+                              </p>
+                            ))}
+                            {student.paymentAliases.length > 3 && (
+                              <p className="text-gray-400">+ {student.paymentAliases.length - 3} autre(s)</p>
+                            )}
+                          </div>
+                        ) : student.payerName ? (
+                          <p className="truncate">
+                            <span className="font-medium text-gray-800">{paymentAliasLabel(student.paymentType)} :</span> {student.payerName}
+                          </p>
+                        ) : (
+                          <span className="text-gray-300">—</span>
                         )}
                       </TableCell>
                       <TableCell>

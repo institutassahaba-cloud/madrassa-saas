@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
+import { ensurePaymentAliasSchema } from "@/lib/payment-alias-schema"
+import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { StudentsClient } from "./students-client"
 
 export default async function StudentsPage() {
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
+  await ensurePaymentAliasSchema()
+  await ensureStudentPaymentColumns()
 
   const [students, groups, teachers, slots] = await Promise.all([
     prisma.student.findMany({
@@ -18,6 +22,10 @@ export default async function StudentsPage() {
             name: true,
             teacher: { select: { id: true, name: true } },
           },
+        },
+        paymentAliases: {
+          select: { id: true, type: true, alias: true, source: true },
+          orderBy: [{ type: "asc" }, { alias: "asc" }],
         },
       },
       orderBy: { lastName: "asc" },

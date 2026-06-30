@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
+import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { scanPaymentEmails } from "@/lib/payment-email-reader"
 
 function isAuthorized(req: Request) {
@@ -18,16 +19,21 @@ export async function GET(req: Request) {
   }
 
   await ensurePaymentMatchLabelColumn()
+  await ensurePaymentScanSettingsColumns()
 
   const settings = await prisma.tenantSettings.findMany({
-    where: { gmailRefreshToken: { not: null } },
-    select: { tenantId: true },
+    where: {
+      gmailRefreshToken: { not: null },
+      paymentScanEnabled: true,
+      paymentScanStartedAt: { not: null },
+    },
+    select: { tenantId: true, paymentScanStartedAt: true },
   })
 
   const results = []
   for (const setting of settings) {
     try {
-      const result = await scanPaymentEmails(setting.tenantId)
+      const result = await scanPaymentEmails(setting.tenantId, { startedAt: setting.paymentScanStartedAt })
       results.push({ tenantId: setting.tenantId, ...result })
     } catch (error) {
       results.push({

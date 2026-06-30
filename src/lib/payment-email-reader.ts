@@ -1,5 +1,7 @@
 import { google } from "googleapis"
 import { prisma } from "@/lib/prisma"
+import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
+import { ensurePaymentAliasSchema, normalizePaymentAlias } from "@/lib/payment-alias-schema"
 
 const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
@@ -118,13 +120,159 @@ function extractLabel(subject: string, text: string) {
   return cleanText(labelMatch?.[1] || subject).slice(0, 180) || null
 }
 
-export async function scanPaymentEmails(tenantId: string) {
+function normalizeEmail(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase()
+}
+
+function headerValue(headers: Array<{ name?: string | null; value?: string | null }>, name: string) {
+  return headers.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value ?? ""
+}
+
+function similarity(left: string, right: string) {
+  const a = normalizePaymentAlias(left)
+  const b = normalizePaymentAlias(right)
+  if (!a || !b) return 0
+  if (a === b) return 1
+  const aWords = new Set(a.split(" ").filter(Boolean))
+  const bWords = new Set(b.split(" ").filter(Boolean))
+  const common = [...aWords].filter((word) => bWords.has(word)).length
+  const total = new Set([...aWords, ...bWords]).size
+  return total ? common / total : 0
+}
+
+async function suggestStudentForPayment(tenantId: string, source: string, payerName: string | null, label: string | null) {
+  await ensurePaymentAliasSchema()
+  const candidates = await prisma.paymentAlias.findMany({
+    where: {
+      tenantId,
+      OR: [{ type: source }, { type: "ANY" }],
+    },
+    include: { student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true } } },
+  })
+
+  let best: { studentId: string; score: number; reason: string } | null = null
+  for (const candidate of candidates) {
+    const payerScore = payerName ? similarity(payerName, candidate.alias) : 0
+    const labelScore = label ? similarity(label, candidate.alias) * 0.7 : 0
+    const score = Math.max(payerScore, labelScore)
+    if (!best || score > best.score) {
+      best = {
+        studentId: candidate.studentId,
+        score,
+        reason: payerScore >= labelScore
+          ? `Nom proche : ${candidate.alias}`
+          : `Libellé proche : ${candidate.alias}`,
+      }
+    }
+  }
+  return best && best.score >= 0.45 ? best : null
+}
+
+async function autoConfirmIfCertain({
+  tenantId,
+  source,
+  reference,
+  amount,
+  paymentDate,
+  detectedPayerName,
+  studentId,
+  score,
+}: {
+  tenantId: string
+  source: string
+  reference: string
+  amount: number
+  paymentDate: Date | null
+  detectedPayerName: string | null
+  studentId: string | undefined
+  score: number | undefined
+}) {
+  if (!studentId || score !== 1) return null
+
+  const pendingPayments = await prisma.payment.findMany({
+    where: {
+      tenantId,
+      studentId,
+      status: { in: ["EXPECTED", "EMAIL_SENT", "REMINDED", "PENDING"] },
+      expectedAmount: { not: null },
+    },
+    include: {
+      student: { select: { payerName: true, monthlyFee: true } },
+      lessonSession: { select: { id: true, number: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  })
+
+  const matchingAmount = pendingPayments.filter((payment) => {
+    const expected = payment.expectedAmount ?? payment.student.monthlyFee
+    return Math.abs(expected - amount) < 0.01
+  })
+
+  if (matchingAmount.length !== 1) return null
+
+  const payment = matchingAmount[0]
+  const paidAt = paymentDate ?? new Date()
+  const invoiceNumber = payment.invoiceNumber || `FAC-${paidAt.getFullYear()}${String(paidAt.getMonth() + 1).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
+  const confirmed = await prisma.payment.update({
+    where: { id: payment.id },
+    data: {
+      amount,
+      status: "CONFIRMED",
+      method: source === "PAYPAL" ? "PayPal" : "Virement",
+      source,
+      reference,
+      paidDate: paidAt,
+      month: paidAt.getMonth() + 1,
+      year: paidAt.getFullYear(),
+      dueDate: payment.dueDate ?? new Date(paidAt.getFullYear(), paidAt.getMonth(), 5),
+      invoiceNumber,
+      sessionNumber: payment.lessonSession?.number ?? payment.sessionNumber,
+      receivedAmount: amount,
+      detectedPayerName,
+      confirmedAt: new Date(),
+      notes: "Validation automatique : payeur, montant et paiement attendu concordants.",
+    },
+  })
+
+  return confirmed
+}
+
+type ScanPaymentEmailsOptions = {
+  requireEnabled?: boolean
+  startedAt?: Date | null
+}
+
+function afterDateQuery(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `after:${year}/${month}/${day}`
+}
+
+export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEmailsOptions = {}) {
+  await ensurePaymentScanSettingsColumns()
+  await ensurePaymentAliasSchema()
+  const requireEnabled = options.requireEnabled ?? true
+  const scanSettings = await prisma.tenantSettings.findUnique({
+    where: { tenantId },
+    select: { paymentScanEnabled: true, paymentScanStartedAt: true },
+  })
+  const startedAt = options.startedAt ?? scanSettings?.paymentScanStartedAt ?? null
+  if (requireEnabled && !scanSettings?.paymentScanEnabled) {
+    return { ok: true, disabled: true, created: 0, skipped: 0, scanned: 0 }
+  }
+  if (requireEnabled && !startedAt) {
+    return { ok: true, disabled: true, created: 0, skipped: 0, scanned: 0 }
+  }
+
   const gmail = await getGmailClient(tenantId)
   const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.FACTURATION_EMAIL ?? DEFAULT_FACTURATION_EMAIL
   const query = [
-    "newer_than:45d",
+    startedAt ? afterDateQuery(startedAt) : "newer_than:45d",
     "(paypal OR wise OR transferwise OR virement OR paiement OR payment)",
     paymentEmail ? `to:${paymentEmail}` : "",
+    paymentEmail ? `-from:${paymentEmail}` : "",
+    "-in:sent",
   ].filter(Boolean).join(" ")
 
   const list = await gmail.users.messages.list({
@@ -143,9 +291,19 @@ export async function scanPaymentEmails(tenantId: string) {
       id: message.id,
       format: "full",
     })
+    const internalDate = full.data.internalDate ? new Date(Number(full.data.internalDate)) : null
+    if (startedAt && internalDate && internalDate < startedAt) {
+      skipped += 1
+      continue
+    }
     const headers = full.data.payload?.headers ?? []
-    const subject = headers.find((header) => header.name?.toLowerCase() === "subject")?.value ?? ""
-    const dateHeader = headers.find((header) => header.name?.toLowerCase() === "date")?.value ?? ""
+    const subject = headerValue(headers, "subject")
+    const dateHeader = headerValue(headers, "date")
+    const fromHeader = headerValue(headers, "from")
+    if (paymentEmail && normalizeEmail(fromHeader).includes(normalizeEmail(paymentEmail))) {
+      skipped += 1
+      continue
+    }
     const bodyText = cleanText(readPayloadText(full.data.payload))
     const combined = `${subject}\n${full.data.snippet ?? ""}\n${bodyText}`
     const source = detectSource(combined)
@@ -163,18 +321,39 @@ export async function scanPaymentEmails(tenantId: string) {
       skipped += 1
       continue
     }
+    const detectedPayerName = extractPayerName(combined)
+    const paymentLabel = extractLabel(subject, combined)
+    const suggestion = await suggestStudentForPayment(tenantId, source, detectedPayerName, paymentLabel)
+    const autoConfirmedPayment = await autoConfirmIfCertain({
+      tenantId,
+      source,
+      reference,
+      amount,
+      paymentDate: dateHeader ? new Date(dateHeader) : null,
+      detectedPayerName,
+      studentId: suggestion?.studentId,
+      score: suggestion?.score,
+    })
     await prisma.paymentMatch.create({
       data: {
         tenantId,
         source,
         gmailMessageId: reference,
         receivedAmount: amount,
-        detectedPayerName: extractPayerName(combined),
-        paymentLabel: extractLabel(subject, combined),
+        detectedPayerName,
+        paymentLabel,
         paymentDate: dateHeader ? new Date(dateHeader) : null,
-        status: "TO_VERIFY",
-        reason: "Paiement détecté par email, à associer.",
+        studentId: suggestion?.studentId,
+        status: autoConfirmedPayment ? "AUTO_CONFIRMED" : "TO_VERIFY",
+        score: suggestion?.score,
+        reason: autoConfirmedPayment
+          ? "Validé automatiquement : concordance exacte nom + montant + une seule demande en attente."
+          : suggestion?.reason || "Paiement détecté par email, à associer.",
         rawSubject: subject || null,
+        confirmedAt: autoConfirmedPayment ? new Date() : null,
+        allocations: autoConfirmedPayment
+          ? { create: { paymentId: autoConfirmedPayment.id, amount } }
+          : undefined,
       },
     })
     created += 1

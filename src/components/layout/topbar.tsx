@@ -1,9 +1,17 @@
 "use client"
 import { signOut } from "next-auth/react"
 import Link from "next/link"
-import { Bell, LogOut, Menu } from "lucide-react"
+import { Bell, Loader2, LogOut, Menu } from "lucide-react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getInitials } from "@/lib/utils"
+
+type ViewAsOption = {
+  id: string
+  label: string
+  role: string
+}
 
 interface TopbarProps {
   userName: string
@@ -11,9 +19,41 @@ interface TopbarProps {
   title: string
   unreadNotifications?: number
   onMenuClick?: () => void
+  viewAsOptions?: ViewAsOption[]
+  currentViewAsId?: string
 }
 
-export function Topbar({ userName, userEmail, title, unreadNotifications = 0, onMenuClick }: TopbarProps) {
+function roleLabel(role: string) {
+  if (role === "DIRECTOR") return "Directeur"
+  if (role === "SECRETARY") return "Secrétaire"
+  return "Professeur"
+}
+
+export function Topbar({
+  userName,
+  userEmail,
+  title,
+  unreadNotifications = 0,
+  onMenuClick,
+  viewAsOptions = [],
+  currentViewAsId = "DIRECTOR",
+}: TopbarProps) {
+  const [switching, setSwitching] = useState(false)
+
+  async function switchView(value: string) {
+    setSwitching(true)
+    if (value === "DIRECTOR") {
+      await fetch("/api/view-as", { method: "DELETE" })
+    } else {
+      await fetch("/api/view-as", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: value }),
+      })
+    }
+    window.location.href = "/dashboard"
+  }
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-gray-100 bg-white px-3 sm:px-5 lg:px-6">
       <div className="flex min-w-0 items-center gap-2">
@@ -31,6 +71,25 @@ export function Topbar({ userName, userEmail, title, unreadNotifications = 0, on
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+        {viewAsOptions.length > 0 && (
+          <div className="hidden items-center gap-2 lg:flex">
+            {switching && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+            <Select value={currentViewAsId} onValueChange={switchView} disabled={switching}>
+              <SelectTrigger className="h-9 w-56">
+                <SelectValue placeholder="Changer de vue" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72 overflow-y-auto">
+                <SelectItem value="DIRECTOR">Directeur</SelectItem>
+                {viewAsOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {roleLabel(option.role)} · {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <Button variant="ghost" size="icon" className="relative" asChild>
           <Link href="/dashboard/notifications" aria-label="Ouvrir les notifications">
             <Bell className="h-4 w-4" />

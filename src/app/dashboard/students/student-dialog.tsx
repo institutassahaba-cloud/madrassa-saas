@@ -25,6 +25,7 @@ const EMPTY_IDENTITY = {
 
 const EMPTY_SHARED = {
   address: "", city: "", subject: "", monthlyFee: "",
+  paymentGraceAllowed: false,
   hourlyRate: "", lessonsPerWeek: "", duration: "", startSession: "",
   groupId: "", notes: "", status: "ACTIVE", recontactDate: "",
 }
@@ -69,6 +70,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
         city: student.city ?? "",
         subject: student.subject ?? "",
         monthlyFee: String(student.monthlyFee ?? ""),
+        paymentGraceAllowed: Boolean(student.paymentGraceAllowed),
         hourlyRate: student.hourlyRate != null ? String(student.hourlyRate) : "",
         lessonsPerWeek: student.lessonsPerWeek != null ? String(student.lessonsPerWeek) : "",
         duration: student.duration ?? "",
@@ -109,7 +111,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
     setIdentities((prev) => prev.map((item, i) => i === idx ? { ...item, [key]: value } : item))
   }
 
-  function setSharedField(key: string, value: string) {
+  function setSharedField(key: string, value: string | boolean) {
     setShared((f) => ({ ...f, [key]: value }))
   }
 
@@ -289,6 +291,17 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                 <Label>Tarif mensuel (€) *</Label>
                 <Input type="number" min="0" step="0.01" value={shared.monthlyFee} onChange={(e) => setSharedField("monthlyFee", e.target.value)} required />
               </div>
+              <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-amber-300"
+                  checked={shared.paymentGraceAllowed}
+                  onChange={(e) => setSharedField("paymentGraceAllowed", e.target.checked)}
+                />
+                <span>
+                  Cours autorisé malgré absence ou retard de paiement
+                </span>
+              </label>
             </div>
           </div>
 

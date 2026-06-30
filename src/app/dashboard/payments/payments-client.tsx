@@ -1,6 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -27,9 +27,11 @@ interface Payment {
   paidDate: Date | null
   method: string | null
   reference: string | null
+  createdAt: Date | string
+  emailSentAt?: Date | string | null
   sessionNumber: number | null
   lessonSession: { id: string; number: number; subject: string; teacherId: string } | null
-  student: { id: string; firstName: string; lastName: string; group: { name: string; teacherId: string | null } | null }
+  student: { id: string; firstName: string; lastName: string; paymentGraceAllowed?: boolean; group: { name: string; teacherId: string | null } | null }
 }
 
 interface Student {
@@ -84,18 +86,24 @@ export function PaymentsClient({
   teachers,
   lessonSessions,
   paymentMatches,
+  autoPaymentMatches,
+  pendingPayments,
   currentMonth,
   currentYear,
   isDirector,
+  scanControl,
 }: {
   payments: Payment[]
   students: Student[]
   teachers: Teacher[]
   lessonSessions: LessonSessionOption[]
   paymentMatches: PaymentMatch[]
+  autoPaymentMatches: PaymentMatch[]
+  pendingPayments: Payment[]
   currentMonth: number
   currentYear: number
   isDirector: boolean
+  scanControl: { enabled: boolean; startedAt: string | null }
 }) {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
@@ -104,6 +112,10 @@ export function PaymentsClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<PaymentMatch | null>(null)
+  const [scanState, setScanState] = useState(scanControl)
+  const [scanLoading, setScanLoading] = useState(false)
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [nowTime] = useState(() => Date.now())
 
   const filtered = payments.filter((p) => {
     const name = `${p.student.firstName} ${p.student.lastName}`.toLowerCase()
@@ -118,6 +130,54 @@ export function PaymentsClient({
     paid: filtered.filter((p) => ["PAID", "CONFIRMED"].includes(p.status)).reduce((sum, p) => sum + p.amount, 0),
     late: filtered.filter((p) => p.status === "LATE").length,
     pending: filtered.filter((p) => p.status === "PENDING").length,
+  }
+
+  function pendingAgeDays(payment: Payment) {
+    const start = new Date(payment.emailSentAt || payment.createdAt).getTime()
+    return Math.max(1, Math.floor((nowTime - start) / 86400000) + 1)
+  }
+
+  function pendingTone(days: number) {
+    if (days >= 6) return "border-red-200 bg-red-50 text-red-900"
+    if (days >= 4) return "border-orange-200 bg-orange-50 text-orange-900"
+    return "border-emerald-200 bg-emerald-50 text-emerald-900"
+  }
+
+  async function updateScanControl(action: "activate" | "pause") {
+    const confirmed = action === "activate"
+      ? window.confirm("Activer le scan automatique à partir de maintenant ? Les anciens mails seront ignorés.")
+      : window.confirm("Mettre le scan automatique en pause ? Apps Script continuera d'appeler le site, mais aucun mail ne sera lu.")
+    if (!confirmed) return
+    setScanLoading(true)
+    try {
+      const res = await fetch("/api/payments/scan-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Impossible de modifier le scan.")
+      setScanState({ enabled: data.enabled, startedAt: data.startedAt })
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Impossible de modifier le scan.")
+    } finally {
+      setScanLoading(false)
+    }
+  }
+
+  async function syncTdbAliases() {
+    setSyncLoading(true)
+    try {
+      const res = await fetch("/api/payments/sync-tdb-aliases", { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Synchronisation impossible.")
+      alert(`Synchronisation terminée : ${data.upsertedAliases} nom(s) associé(s), ${data.updatedStudents} fiche(s) élève mise(s) à jour.`)
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Synchronisation impossible.")
+    } finally {
+      setSyncLoading(false)
+    }
   }
 
   return (
@@ -167,6 +227,36 @@ export function PaymentsClient({
       {/* Calcul paie secrétaire (directeur) */}
       {isDirector && <SecretaryPayBlock />}
 
+      {isDirector && (
+        <Card className={scanState.enabled ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"}>
+          <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900">Scan automatique des paiements</h3>
+              <p className="text-sm text-gray-600">
+                {scanState.enabled
+                  ? `Actif uniquement pour les mails reçus depuis ${scanState.startedAt ? formatDate(scanState.startedAt) : "l'activation"}.`
+                  : "En pause : les mails reçus ne sont pas consommés automatiquement."}
+              </p>
+            </div>
+            <div className="grid gap-2 sm:flex">
+              <Button variant="outline" onClick={syncTdbAliases} disabled={syncLoading} className="w-full sm:w-auto">
+                {syncLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Synchroniser NEW TDB
+              </Button>
+              <Button
+                variant={scanState.enabled ? "outline" : "default"}
+                onClick={() => updateScanControl(scanState.enabled ? "pause" : "activate")}
+                disabled={scanLoading}
+                className="w-full sm:w-auto"
+              >
+                {scanLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : scanState.enabled ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
+                {scanState.enabled ? "Mettre en pause" : "Activer à partir de maintenant"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {paymentMatches.length > 0 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="space-y-3 p-4">
@@ -208,6 +298,77 @@ export function PaymentsClient({
                   </Button>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {autoPaymentMatches.length > 0 && (
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardContent className="space-y-3 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-semibold text-emerald-900">Paiements auto-validés</h3>
+                <p className="text-sm text-emerald-700">
+                  Validés automatiquement. En cas d&apos;erreur, vous pouvez corriger l&apos;association.
+                </p>
+              </div>
+              <Badge variant="success">{autoPaymentMatches.length} validé(s)</Badge>
+            </div>
+            <div className="space-y-2">
+              {autoPaymentMatches.map((match) => (
+                <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-emerald-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Validé pour : {match.student ? `${match.student.firstName} ${match.student.lastName}` : "élève non renseigné"}
+                      {match.reason ? ` · ${match.reason}` : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setSelectedMatch(match)}>
+                    Corriger
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {pendingPayments.length > 0 && (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div>
+              <h3 className="font-semibold text-gray-900">Paiements en attente</h3>
+              <p className="text-sm text-gray-500">Vert : 1 à 3 jours · Orange : 4 à 5 jours · Rouge : 6 jours et plus.</p>
+            </div>
+            <div className="grid gap-2 lg:grid-cols-2">
+              {pendingPayments.map((payment) => {
+                const days = pendingAgeDays(payment)
+                return (
+                  <div key={payment.id} className={`rounded-xl border p-3 ${pendingTone(days)}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{payment.student.firstName} {payment.student.lastName}</p>
+                        {payment.student.paymentGraceAllowed && (
+                          <p className="mt-0.5 text-xs font-medium text-amber-700">Cours autorisé par le directeur</p>
+                        )}
+                        <p className="text-xs opacity-80">
+                          {payment.lessonSession?.subject || "Session"} · Session {payment.sessionNumber ?? payment.lessonSession?.number ?? "—"}
+                          {payment.student.group?.name ? ` · ${payment.student.group.name}` : ""}
+                        </p>
+                      </div>
+                      <Badge variant={days >= 6 ? "destructive" : days >= 4 ? "warning" : "success"}>{days} j</Badge>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold">{formatCurrency(payment.amount)}</p>
+                  </div>
+                )
+              })}
             </div>
           </CardContent>
         </Card>

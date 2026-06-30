@@ -21,7 +21,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (allocations.length === 0) return NextResponse.json({ error: "Ajoutez au moins une session à valider." }, { status: 400 })
 
   const match = await prisma.paymentMatch.findFirst({
-    where: { id, tenantId: user.tenantId, status: "TO_VERIFY" },
+    where: { id, tenantId: user.tenantId, status: { in: ["TO_VERIFY", "AUTO_CONFIRMED"] } },
+    include: { allocations: { include: { payment: true } } },
   })
   if (!match) return NextResponse.json({ error: "Paiement à vérifier introuvable." }, { status: 404 })
 
@@ -41,6 +42,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const providerReference = match.gmailMessageId
   const createdPayments = []
   const methodChangeNotifications: Array<{ studentName: string; previous: string | null; next: string }> = []
+
+  if (match.status === "AUTO_CONFIRMED" && match.allocations.length > 0) {
+    for (const allocation of match.allocations) {
+      await prisma.payment.update({
+        where: { id: allocation.paymentId },
+        data: {
+          status: allocation.payment.emailSentAt ? "EMAIL_SENT" : "EXPECTED",
+          paidDate: null,
+          method: null,
+          reference: null,
+          source: "MANUAL",
+          receivedAmount: null,
+          detectedPayerName: null,
+          confirmedAt: null,
+          notes: "Validation automatique annulée puis corrigée manuellement.",
+        },
+      })
+    }
+    await prisma.paymentAllocation.deleteMany({ where: { paymentMatchId: match.id } })
+  }
 
   for (const item of allocations) {
     const amount = Number(item.amount)

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
+import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { getEffectiveUser } from "@/lib/view-as"
 import { CahierClient } from "./cahier-client"
 
@@ -9,6 +10,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
   await ensureLessonLegacyPayrollBoundaryColumn()
+  await ensureStudentPaymentColumns()
 
   const [students, lessonSessions, payments] = await Promise.all([
     prisma.student.findMany({
@@ -35,6 +37,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
         groupId: true,
         lessonsPerWeek: true,
         duration: true,
+        paymentGraceAllowed: true,
         status: true,
         group: { select: { name: true, teacherId: true } },
       },

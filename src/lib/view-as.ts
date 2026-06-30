@@ -11,7 +11,7 @@ export type EffectiveUser = {
   email: string
   tenantId: string
   tenantName: string
-  /** true quand le directeur consulte l'espace d'un professeur. */
+  /** true quand le directeur consulte l'espace d'un autre rôle. */
   impersonating: boolean
   realRole: string
   realName: string
@@ -19,7 +19,7 @@ export type EffectiveUser = {
 
 /**
  * Renvoie l'utilisateur "effectif" pour le filtrage des pages.
- * Si le directeur a activé "Voir comme <prof>", renvoie le prof (rôle TEACHER)
+ * Si le directeur a activé "Voir comme", renvoie l'utilisateur choisi
  * tout en conservant le rôle réel (realRole) pour l'affichage du bandeau.
  * Renvoie null si non connecté.
  */
@@ -40,25 +40,25 @@ export async function getEffectiveUser(): Promise<EffectiveUser | null> {
     realName: u.name ?? "",
   }
 
-  // Seul le directeur peut consulter l'espace d'un professeur.
+  // Seul le directeur peut consulter l'espace d'un autre rôle.
   if (u.role !== "DIRECTOR") return base
 
   const cookieStore = await cookies()
-  const teacherId = cookieStore.get(VIEW_AS_COOKIE)?.value
-  if (!teacherId) return base
+  const targetId = cookieStore.get(VIEW_AS_COOKIE)?.value
+  if (!targetId) return base
 
-  const teacher = await prisma.user.findFirst({
-    where: { id: teacherId, tenantId: u.tenantId, role: "TEACHER", isActive: true },
-    select: { id: true, name: true, email: true },
+  const target = await prisma.user.findFirst({
+    where: { id: targetId, tenantId: u.tenantId, role: { in: ["TEACHER", "SECRETARY"] }, isActive: true },
+    select: { id: true, name: true, email: true, role: true },
   })
-  if (!teacher) return base
+  if (!target) return base
 
   return {
     ...base,
-    id: teacher.id,
-    role: "TEACHER",
-    name: teacher.name,
-    email: teacher.email,
+    id: target.id,
+    role: target.role,
+    name: target.name,
+    email: target.email,
     impersonating: true,
   }
 }

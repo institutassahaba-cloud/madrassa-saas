@@ -38,6 +38,7 @@ model Tenant {
   lessons              Lesson[]
   timeSlots            TimeSlot[]
   paymentMatches       PaymentMatch[]
+  paymentAliases       PaymentAlias[]
   secretaryCommissions SecretaryCommission[]
   teacherContracts     TeacherContract[]
   books                Book[]
@@ -52,6 +53,8 @@ model TenantSettings {
   paypalClientId      String?
   paypalClientSecret  String?
   gmailRefreshToken   String?
+  paymentScanEnabled  Boolean @default(false)
+  paymentScanStartedAt DateTime?
   whatsappApiKey      String?
   whatsappPhoneNumber String?
   smtpHost            String?
@@ -161,6 +164,7 @@ model Student {
   // ── Facturation (col M des Sheets) ──
   payerName      String? // nom du payeur attendu (parent/virement)
   paymentType    String? // "PAYPAL" | "WISE"
+  paymentGraceAllowed Boolean @default(false) // cours autorisé malgré retard/absence de paiement
   hourlyRate     Float? // tarif horaire
   lessonsPerWeek Int? // nombre de cours par semaine
   duration       String? // durée d'un cours ("30 min", "1h")
@@ -178,8 +182,29 @@ model Student {
   grades         Grade[]
   lessonSessions LessonSession[]
   paymentMatches PaymentMatch[]
+  paymentAliases PaymentAlias[]
 
   @@index([tenantId, legacyId])
+}
+
+model PaymentAlias {
+  id         String    @id @default(cuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type       String   @default("ANY") // PAYPAL | WISE | ANY si mode non forcé
+  alias      String
+  normalized String
+  source     String    @default("MANUAL") // TDB | MANUAL
+  confidence String    @default("EXACT") // EXACT | ALTERNATIVE | LABEL
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([tenantId, studentId, type, normalized])
+  @@index([tenantId, normalized])
+  @@index([tenantId, type])
 }
 
 // ─── SCHEDULE ────────────────────────────────────────────────────────────────

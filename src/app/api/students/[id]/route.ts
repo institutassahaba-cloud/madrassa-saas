@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
+import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 
 async function recalcGroupRate(groupId: string, tenantId: string) {
   const count = await prisma.student.count({
@@ -20,6 +21,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  await ensureStudentPaymentColumns()
 
   const { id } = await params
   const body = await req.json()
@@ -45,6 +47,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       level: body.level || null,
       subject: body.subject || null,
       monthlyFee: Number(body.monthlyFee),
+      paymentGraceAllowed: user.role === "DIRECTOR" ? body.paymentGraceAllowed === true : undefined,
       hourlyRate: body.hourlyRate === "" || body.hourlyRate == null ? null : Number(body.hourlyRate),
       lessonsPerWeek: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
       duration: body.duration || null,
@@ -73,9 +76,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  await ensureStudentPaymentColumns()
 
   const { id } = await params
   const body = await req.json()
+  if (body.paymentGraceAllowed !== undefined && user.role !== "DIRECTOR") {
+    return NextResponse.json({ error: "Réservé au directeur." }, { status: 403 })
+  }
 
   const student = await prisma.student.findFirst({ where: { id, tenantId: user.tenantId } })
   if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -87,6 +94,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       recontactDate: body.recontactDate ? new Date(body.recontactDate) : undefined,
       notes: body.notes ?? undefined,
       monthlyFee: body.monthlyFee !== undefined ? Number(body.monthlyFee) : undefined,
+      paymentGraceAllowed: body.paymentGraceAllowed !== undefined ? Boolean(body.paymentGraceAllowed) : undefined,
       groupId: body.groupId ?? undefined,
     },
   })

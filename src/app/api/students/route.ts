@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
+import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { z } from "zod"
 
 const studentSchema = z.object({
@@ -32,6 +33,7 @@ export async function GET() {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const tenantId = (session.user).tenantId
+  await ensureStudentPaymentColumns()
 
   const students = await prisma.student.findMany({
     where: { tenantId },
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  await ensureStudentPaymentColumns()
 
   const body = await req.json()
   const parsed = studentSchema.safeParse(body)

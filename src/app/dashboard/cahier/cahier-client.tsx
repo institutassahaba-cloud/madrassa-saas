@@ -48,6 +48,7 @@ interface Student {
   groupId: string | null
   lessonsPerWeek: number | null
   duration: string | null
+  paymentGraceAllowed: boolean
   status: string
   group: { name: string; teacherId: string | null } | null
 }
@@ -549,6 +550,11 @@ function StudentCahier({
               <span className="inline-flex items-center gap-1 text-gray-600">
                 <Clock className="h-3 w-3 text-emerald-600" />
                 {planning}
+              </span>
+            )}
+            {student.paymentGraceAllowed && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700">
+                Cours autorisé malgré paiement
               </span>
             )}
           </div>

@@ -14,6 +14,8 @@ interface DashboardShellProps {
   userEmail: string
   unreadNotifications?: number
   impersonating?: boolean
+  viewAsOptions?: { id: string; label: string; role: string }[]
+  currentViewAsId?: string
 }
 
 export function DashboardShell({
@@ -24,6 +26,8 @@ export function DashboardShell({
   userEmail,
   unreadNotifications = 0,
   impersonating = false,
+  viewAsOptions = [],
+  currentViewAsId = "DIRECTOR",
 }: DashboardShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -63,6 +67,8 @@ export function DashboardShell({
           title="MadrassaApp"
           unreadNotifications={unreadNotifications}
           onMenuClick={() => setMenuOpen(true)}
+          viewAsOptions={viewAsOptions}
+          currentViewAsId={currentViewAsId}
         />
         <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
           {children}
