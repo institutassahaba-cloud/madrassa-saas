@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { sendPaymentThanks } from "@/lib/payment-thanks"
 
 type ManualAllocationInput = {
   studentId: string
@@ -16,7 +17,12 @@ type ValidatedManualAllocation = {
   lessonSession: {
     id: string
     number: number
+    subject: string
+    teacher: { name: string | null }
     student: {
+      firstName: string
+      lastName: string
+      email: string | null
       monthlyFee: number
       payerName: string | null
     }
@@ -71,7 +77,10 @@ export async function POST(req: Request) {
           studentId: item.studentId,
           teacherId: item.teacherId,
         },
-        include: { student: { select: { monthlyFee: true, payerName: true } } },
+        include: {
+          teacher: { select: { name: true } },
+          student: { select: { firstName: true, lastName: true, email: true, monthlyFee: true, payerName: true } },
+        },
       })
       if (!lessonSession) return NextResponse.json({ error: "Une session sélectionnée est introuvable." }, { status: 404 })
       if (amount !== lessonSession.student.monthlyFee && !item.amountOverrideReason) {
@@ -113,6 +122,20 @@ export async function POST(req: Request) {
       return payments
     })
 
+    for (let index = 0; index < createdPayments.length; index += 1) {
+      const payment = createdPayments[index]
+      const lessonSession = validated[index].lessonSession
+      sendPaymentThanks({
+        studentEmail: lessonSession.student.email,
+        studentName: `${lessonSession.student.firstName} ${lessonSession.student.lastName}`,
+        teacherName: lessonSession.teacher.name,
+        subject: lessonSession.subject,
+        amount: payment.amount,
+        paidDate: payment.paidDate,
+        method: payment.method,
+      }).catch((err) => console.error("[mail] Erreur envoi remerciement paiement:", err))
+    }
+
     return NextResponse.json({ ok: true, paymentCount: createdPayments.length }, { status: 201 })
   }
 
@@ -131,7 +154,10 @@ export async function POST(req: Request) {
       studentId: body.studentId,
       teacherId: body.teacherId,
     },
-    include: { student: { select: { monthlyFee: true, payerName: true } } },
+    include: {
+      teacher: { select: { name: true } },
+      student: { select: { firstName: true, lastName: true, email: true, monthlyFee: true, payerName: true } },
+    },
   })
   if (!lessonSession) return NextResponse.json({ error: "Session introuvable pour ce professeur et cet élève." }, { status: 404 })
   if (amount !== lessonSession.student.monthlyFee && !body.amountOverrideReason) {
@@ -168,5 +194,14 @@ export async function POST(req: Request) {
       confirmedAt: new Date(),
     },
   })
+  sendPaymentThanks({
+    studentEmail: lessonSession.student.email,
+    studentName: `${lessonSession.student.firstName} ${lessonSession.student.lastName}`,
+    teacherName: lessonSession.teacher.name,
+    subject: lessonSession.subject,
+    amount: payment.amount,
+    paidDate: payment.paidDate,
+    method: payment.method,
+  }).catch((err) => console.error("[mail] Erreur envoi remerciement paiement:", err))
   return NextResponse.json(payment, { status: 201 })
 }

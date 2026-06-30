@@ -227,6 +227,116 @@ export function sessionEndEmailHtml({
 </html>`
 }
 
+export function paymentThanksEmailHtml({
+  studentName,
+  teacherName,
+  subject,
+  amount,
+  paidDate,
+  method,
+}: {
+  studentName: string
+  teacherName: string
+  subject: string
+  amount: string
+  paidDate: string
+  method: string
+}) {
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Merci pour votre paiement</title>
+  <style type="text/css">
+    *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+    body{margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;}
+    table{border-collapse:collapse;margin:0 auto;}
+    div,a,li,td{-webkit-text-size-adjust:none;}
+    @media only screen and (max-width:600px){table[class=full]{width:100%!important;}}
+  </style>
+</head>
+<body bgcolor="#F4EFE3" style="margin:0;padding:0;background:#F4EFE3;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4EFE3" style="background:#F4EFE3;">
+  <tbody>
+  <tr>
+    <td align="center" style="padding:28px 12px;">
+
+      <table class="full" width="620" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:620px;max-width:620px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(12,36,60,.08);">
+        <tbody>
+
+        <tr>
+          <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
+            <img src="https://www.institut-assahaba.com/embleme-white.png" alt="Institut As-Sahaba" width="78" style="display:block;margin:0 auto 12px;width:78px;max-width:78px;height:auto;border:0;" />
+            <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
+            <div style="font-size:11px;letter-spacing:2px;color:#9CC0DD;margin-top:5px;text-transform:uppercase;">Comprendre · Apprendre · Progresser</div>
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:36px 32px 8px;font-size:22px;line-height:30px;color:#17456C;font-weight:700;">
+            Paiement bien reçu
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:6px 32px 0;font-size:17px;line-height:28px;color:#235A86;font-weight:600;" dir="rtl">
+            السلام عليكم ورحمة الله وبركاته
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
+            Nous vous confirmons avec plaisir que votre paiement a bien été reçu et validé par la comptabilité.<br /><br />
+            Qu&apos;Allah vous récompense pour votre confiance, vous mette la baraka dans vos biens, et facilite à ${studentName} un apprentissage bénéfique et sincère.
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:18px 36px 8px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F9FC;border-radius:10px;border:1px solid #E9F1F8;">
+              <tbody>
+              <tr><td style="padding:16px 20px 4px;font-size:14px;font-weight:700;color:#17456C;">Détail du paiement</td></tr>
+              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">Élève concerné : <strong>${studentName}</strong></td></tr>
+              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">Enseignant(e) : <strong>${teacherName}</strong></td></tr>
+              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">Matière : <strong>${subject}</strong></td></tr>
+              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">Moyen : <strong>${method}</strong></td></tr>
+              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">Date : <strong>${paidDate}</strong></td></tr>
+              <tr><td style="padding:6px 20px 16px;font-size:14px;line-height:24px;color:#1A2440;">Montant reçu : <strong>${amount} €</strong></td></tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
+            Nous restons disponibles pour toute question.<br /><br />
+            Qu&apos;Allah vous préserve.
+          </td>
+        </tr>
+
+        <tr><td height="14"></td></tr>
+
+        <tr>
+          <td align="center" bgcolor="#F4EFE3" style="background:#F4EFE3;padding:20px 32px;font-size:12px;line-height:20px;color:#5C6577;">
+            <strong style="color:#17456C;">Institut As-Sahaba</strong> — Sur la voie des Compagnons<br />
+            <a href="https://www.institut-assahaba.com" target="_blank" style="color:#235A86;text-decoration:none;">www.institut-assahaba.com</a>
+          </td>
+        </tr>
+
+        </tbody>
+      </table>
+
+    </td>
+  </tr>
+  </tbody>
+</table>
+</body>
+</html>`
+}
+
 export function generatePassword(length = 10): string {
   const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
   let pwd = ""

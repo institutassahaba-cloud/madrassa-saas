@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { sendPaymentThanks } from "@/lib/payment-thanks"
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -28,7 +29,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       studentId: body.studentId,
       teacherId: body.teacherId,
     },
-    include: { student: { select: { monthlyFee: true, payerName: true } } },
+    include: {
+      teacher: { select: { name: true } },
+      student: { select: { firstName: true, lastName: true, email: true, monthlyFee: true, payerName: true } },
+    },
   })
   if (!lessonSession) return NextResponse.json({ error: "Session introuvable pour ce professeur et cet élève." }, { status: 404 })
   if (amount !== lessonSession.student.monthlyFee && !body.amountOverrideReason) {
@@ -61,5 +65,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       confirmedAt: new Date(),
     },
   })
+  if (payment.status !== "CONFIRMED") {
+    sendPaymentThanks({
+      studentEmail: lessonSession.student.email,
+      studentName: `${lessonSession.student.firstName} ${lessonSession.student.lastName}`,
+      teacherName: lessonSession.teacher.name,
+      subject: lessonSession.subject,
+      amount: updated.amount,
+      paidDate: updated.paidDate,
+      method: updated.method,
+    }).catch((err) => console.error("[mail] Erreur envoi remerciement paiement:", err))
+  }
   return NextResponse.json(updated)
 }

@@ -115,12 +115,10 @@ export default async function PaymentsPage() {
   const paymentPeriods = [
     {
       id: "CURRENT",
-      start: latestPeriodEnd?.toISOString() ?? null,
+      start: scanSettings?.paymentScanStartedAt?.toISOString() ?? null,
       end: null,
       isCurrent: true,
-      label: latestPeriodEnd
-        ? `Période en cours depuis le ${latestPeriodEnd.toLocaleDateString("fr-FR")}`
-        : "Période en cours",
+      label: "Période en cours",
     },
     ...Array.from(periodMap.values()),
   ]

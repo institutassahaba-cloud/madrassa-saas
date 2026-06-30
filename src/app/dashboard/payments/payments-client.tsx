@@ -1,6 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PaymentDialog } from "./payment-dialog"
-import { formatCurrency, formatDate, getMonthName } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
 
 const STATUS_CONFIG = {
   PAID: { label: "Payé", variant: "success" as const, icon: CheckCircle2, color: "text-emerald-600" },
@@ -121,6 +121,9 @@ export function PaymentsClient({
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [periodFilter, setPeriodFilter] = useState("CURRENT")
+  const [teacherFilter, setTeacherFilter] = useState("ALL")
+  const [sortKey, setSortKey] = useState<PaymentSortKey>("paidDate")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<PaymentMatch | null>(null)
@@ -130,24 +133,51 @@ export function PaymentsClient({
   const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
   const [trashOpen, setTrashOpen] = useState(false)
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
+  const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [nowTime] = useState(() => Date.now())
+
+  function paymentTeacherId(payment: Payment) {
+    return payment.lessonSession?.teacherId ?? payment.student.group?.teacherId ?? null
+  }
+
+  function paymentTeacherName(payment: Payment) {
+    const teacherId = paymentTeacherId(payment)
+    return teachers.find((teacher) => teacher.id === teacherId)?.name ?? "—"
+  }
+
+  function paymentDateValue(payment: Payment) {
+    return new Date(payment.confirmedAt || payment.paidDate || payment.createdAt).getTime()
+  }
 
   const filtered = payments.filter((p) => {
     const name = `${p.student.firstName} ${p.student.lastName}`.toLowerCase()
-    const matchSearch = name.includes(search.toLowerCase()) || (p.reference ?? "").includes(search)
+    const teacherName = paymentTeacherName(p).toLowerCase()
+    const matchSearch = name.includes(search.toLowerCase()) || teacherName.includes(search.toLowerCase()) || (p.reference ?? "").includes(search)
     const matchStatus = statusFilter === "ALL" || p.status === statusFilter
+    const matchTeacher = teacherFilter === "ALL" || paymentTeacherId(p) === teacherFilter
     const period = paymentPeriods.find((item) => item.id === periodFilter)
-    const paymentDate = new Date(p.confirmedAt || p.paidDate || p.createdAt).getTime()
+    const paymentDate = paymentDateValue(p)
     const matchPeriod = !period || periodFilter === "ALL"
       ? true
+      : period.isCurrent && !period.start
+        ? false
       : (!period.start || paymentDate > new Date(period.start).getTime()) && (!period.end || paymentDate <= new Date(period.end).getTime())
-    return matchSearch && matchStatus && matchPeriod
+    return matchSearch && matchStatus && matchTeacher && matchPeriod
+  }).sort((a, b) => {
+    const direction = sortDirection === "asc" ? 1 : -1
+    if (sortKey === "student") {
+      return `${a.student.lastName} ${a.student.firstName}`.localeCompare(`${b.student.lastName} ${b.student.firstName}`, "fr") * direction
+    }
+    if (sortKey === "teacher") return paymentTeacherName(a).localeCompare(paymentTeacherName(b), "fr") * direction
+    if (sortKey === "amount") return (a.amount - b.amount) * direction
+    if (sortKey === "method") return (a.method ?? "").localeCompare(b.method ?? "", "fr") * direction
+    return (paymentDateValue(a) - paymentDateValue(b)) * direction
   })
 
   const summary = {
     paid: filtered.filter((p) => ["PAID", "CONFIRMED"].includes(p.status)).reduce((sum, p) => sum + p.amount, 0),
-    late: filtered.filter((p) => p.status === "LATE").length,
-    pending: filtered.filter((p) => p.status === "PENDING").length,
+    sentRequests: pendingPayments.length,
+    toVerify: paymentMatches.length,
   }
 
   function pendingAgeDays(payment: Payment) {
@@ -159,6 +189,28 @@ export function PaymentsClient({
     if (days >= 6) return "border-red-200 bg-red-50 text-red-900"
     if (days >= 4) return "border-orange-200 bg-orange-50 text-orange-900"
     return "border-emerald-200 bg-emerald-50 text-emerald-900"
+  }
+
+  function updateSort(nextKey: PaymentSortKey) {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => current === "asc" ? "desc" : "asc")
+    } else {
+      setSortKey(nextKey)
+      setSortDirection(nextKey === "paidDate" ? "desc" : "asc")
+    }
+  }
+
+  function toggleMatchSelection(matchId: string, checked: boolean) {
+    setSelectedMatchIds((current) => {
+      const next = new Set(current)
+      if (checked) next.add(matchId)
+      else next.delete(matchId)
+      return next
+    })
+  }
+
+  function toggleAllMatches(checked: boolean) {
+    setSelectedMatchIds(checked ? new Set(paymentMatches.map((match) => match.id)) : new Set())
   }
 
   async function updateScanControl(action: "activate" | "pause") {
@@ -205,6 +257,28 @@ export function PaymentsClient({
     }
   }
 
+  async function trashSelectedMatches() {
+    if (selectedMatchIds.size === 0) return
+    const confirmed = window.confirm(`Mettre ${selectedMatchIds.size} paiement(s) non traité(s) dans la corbeille ? Vous pourrez les restaurer ensuite.`)
+    if (!confirmed) return
+    setMatchActionLoading("bulk-trash")
+    try {
+      for (const matchId of selectedMatchIds) {
+        const res = await fetch(`/api/payment-matches/${matchId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "trash" }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || "Action impossible.")
+      }
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Action impossible.")
+      setMatchActionLoading(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -224,17 +298,8 @@ export function PaymentsClient({
           <CardContent className="p-4 flex items-center gap-3">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
             <div>
-              <p className="text-xs text-gray-500">Payés (filtrés)</p>
+              <p className="text-xs text-gray-500">Paiements validés</p>
               <p className="text-lg font-bold text-gray-900">{formatCurrency(summary.paid)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <AlertTriangle className="h-8 w-8 text-red-500" />
-            <div>
-              <p className="text-xs text-gray-500">En retard</p>
-              <p className="text-lg font-bold text-gray-900">{summary.late} élève(s)</p>
             </div>
           </CardContent>
         </Card>
@@ -242,8 +307,17 @@ export function PaymentsClient({
           <CardContent className="p-4 flex items-center gap-3">
             <Clock className="h-8 w-8 text-amber-500" />
             <div>
-              <p className="text-xs text-gray-500">En attente</p>
-              <p className="text-lg font-bold text-gray-900">{summary.pending} élève(s)</p>
+              <p className="text-xs text-gray-500">Demandes envoyées</p>
+              <p className="text-lg font-bold text-gray-900">{summary.sentRequests}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertTriangle className="h-8 w-8 text-red-500" />
+            <div>
+              <p className="text-xs text-gray-500">À vérifier / non traités</p>
+              <p className="text-lg font-bold text-gray-900">{summary.toVerify}</p>
             </div>
           </CardContent>
         </Card>
@@ -299,26 +373,56 @@ export function PaymentsClient({
             </button>
 
             {unprocessedOpen && <div className="space-y-2">
+              <div className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-sm font-medium text-amber-900">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-amber-300"
+                    checked={paymentMatches.length > 0 && selectedMatchIds.size === paymentMatches.length}
+                    onChange={(event) => toggleAllMatches(event.target.checked)}
+                  />
+                  Tout sélectionner
+                </label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={trashSelectedMatches}
+                  disabled={selectedMatchIds.size === 0 || matchActionLoading === "bulk-trash"}
+                  className="border-amber-300 text-amber-900 hover:bg-amber-100"
+                >
+                  {matchActionLoading === "bulk-trash" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Mettre la sélection à la corbeille
+                </Button>
+              </div>
               {paymentMatches.map((match) => (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
-                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
-                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {match.student
-                        ? `Élève pressenti : ${match.student.firstName} ${match.student.lastName}`
-                        : "Aucun élève pressenti"}
-                      {match.reason ? ` · ${match.reason}` : ""}
-                    </p>
-                    {(match.paymentLabel || match.rawSubject) && (
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        Libellé : {match.paymentLabel || match.rawSubject}
+                  <div className="flex min-w-0 gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-amber-300"
+                      checked={selectedMatchIds.has(match.id)}
+                      onChange={(event) => toggleMatchSelection(match.id, event.target.checked)}
+                      aria-label="Sélectionner ce paiement non traité"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                        <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                        <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400">
+                        {match.student
+                          ? `Élève pressenti : ${match.student.firstName} ${match.student.lastName}`
+                          : "Aucun élève pressenti"}
+                        {match.reason ? ` · ${match.reason}` : ""}
                       </p>
-                    )}
-                    <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
+                      {(match.paymentLabel || match.rawSubject) && (
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          Libellé : {match.paymentLabel || match.rawSubject}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
+                    </div>
                   </div>
                   <div className="grid gap-2 sm:flex sm:items-center">
                     <Button size="sm" onClick={() => setSelectedMatch(match)}>
@@ -462,11 +566,20 @@ export function PaymentsClient({
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_minmax(16rem,18rem)]">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_12rem_10rem_minmax(16rem,18rem)]">
             <div className="relative min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input placeholder="Rechercher..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
+            <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Professeur" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tous professeurs</SelectItem>
+                {teachers.map((teacher) => (
+                  <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full"><SelectValue placeholder="Statut" /></SelectTrigger>
               <SelectContent>
@@ -497,11 +610,21 @@ export function PaymentsClient({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Élève</TableHead>
-                <TableHead>Session</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Moyen</TableHead>
-                <TableHead>Date paiement</TableHead>
+                <TableHead>
+                  <SortButton label="Élève" active={sortKey === "student"} direction={sortDirection} onClick={() => updateSort("student")} />
+                </TableHead>
+                <TableHead>
+                  <SortButton label="Professeur" active={sortKey === "teacher"} direction={sortDirection} onClick={() => updateSort("teacher")} />
+                </TableHead>
+                <TableHead>
+                  <SortButton label="Montant" active={sortKey === "amount"} direction={sortDirection} onClick={() => updateSort("amount")} />
+                </TableHead>
+                <TableHead>
+                  <SortButton label="Moyen" active={sortKey === "method"} direction={sortDirection} onClick={() => updateSort("method")} />
+                </TableHead>
+                <TableHead>
+                  <SortButton label="Date paiement" active={sortKey === "paidDate"} direction={sortDirection} onClick={() => updateSort("paidDate")} />
+                </TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-20">Actions</TableHead>
               </TableRow>
@@ -520,12 +643,7 @@ export function PaymentsClient({
                         <p className="font-medium text-gray-900">{p.student.firstName} {p.student.lastName}</p>
                         {p.student.group && <p className="text-xs text-gray-500">{p.student.group.name}</p>}
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {p.sessionNumber ?? p.lessonSession?.number
-                          ? `Session ${p.sessionNumber ?? p.lessonSession?.number}`
-                          : `${getMonthName(p.month)} ${p.year}`}
-                        {p.lessonSession?.subject && <p className="text-xs text-gray-400">{p.lessonSession.subject}</p>}
-                      </TableCell>
+                      <TableCell className="text-sm text-gray-700">{paymentTeacherName(p)}</TableCell>
                       <TableCell><span className="font-semibold">{formatCurrency(p.amount)}</span></TableCell>
                       <TableCell className="text-sm text-gray-600">{p.method ?? "—"}</TableCell>
                       <TableCell className="text-sm">{p.paidDate ? formatDate(p.paidDate) : "—"}</TableCell>
@@ -577,6 +695,29 @@ type AllocationRow = {
   studentId: string
   lessonSessionId: string
   amount: string
+}
+
+type PaymentSortKey = "student" | "teacher" | "amount" | "method" | "paidDate"
+type SortDirection = "asc" | "desc"
+
+function SortButton({
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  direction: SortDirection
+  onClick: () => void
+}) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex items-center gap-1 font-medium text-gray-600 hover:text-gray-900">
+      {label}
+      <ArrowUpDown className={`h-3.5 w-3.5 ${active ? "text-emerald-600" : "text-gray-300"}`} />
+      {active && <span className="sr-only">{direction === "asc" ? "tri croissant" : "tri décroissant"}</span>}
+    </button>
+  )
 }
 
 function newAllocationRow(student?: Student | null): AllocationRow {

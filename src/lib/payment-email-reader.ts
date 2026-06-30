@@ -1,5 +1,6 @@
 import { google } from "googleapis"
 import { prisma } from "@/lib/prisma"
+import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { ensurePaymentAliasSchema, normalizePaymentAlias } from "@/lib/payment-alias-schema"
 
@@ -197,8 +198,8 @@ async function autoConfirmIfCertain({
       expectedAmount: { not: null },
     },
     include: {
-      student: { select: { payerName: true, monthlyFee: true } },
-      lessonSession: { select: { id: true, number: true } },
+      student: { select: { firstName: true, lastName: true, email: true, payerName: true, monthlyFee: true } },
+      lessonSession: { select: { id: true, number: true, subject: true, teacher: { select: { name: true } } } },
     },
     orderBy: { createdAt: "asc" },
   })
@@ -233,6 +234,16 @@ async function autoConfirmIfCertain({
       notes: "Validation automatique : payeur, montant et paiement attendu concordants.",
     },
   })
+
+  sendPaymentThanks({
+    studentEmail: payment.student.email,
+    studentName: `${payment.student.firstName} ${payment.student.lastName}`,
+    teacherName: payment.lessonSession?.teacher.name,
+    subject: payment.lessonSession?.subject,
+    amount: confirmed.amount,
+    paidDate: confirmed.paidDate,
+    method: confirmed.method,
+  }).catch((err) => console.error("[mail] Erreur envoi remerciement paiement:", err))
 
   return confirmed
 }

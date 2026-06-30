@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 import { useState, useRef } from "react"
 import { Plus, Search, Upload, Edit, Archive, X, MessageCircle, Clock } from "lucide-react"
 import { gmailComposeLink } from "@/lib/contact-links"
@@ -10,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StudentDialog } from "./student-dialog"
-import { formatDate, formatCurrency } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 
 const STATUS_CONFIG = {
   ACTIVE:   { label: "Actif",    variant: "success"   as const },
@@ -160,7 +161,8 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
 
   function toggleFilter(set: Set<string>, value: string, setter: (s: Set<string>) => void) {
     const next = new Set(set)
-    next.has(value) ? next.delete(value) : next.add(value)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
     setter(next)
   }
 
@@ -233,7 +235,8 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
             parentPhone: row.parentPhone || "",
           }),
         })
-        res.ok ? ok++ : fail++
+        if (res.ok) ok++
+        else fail++
       }
       setImportResult(`${ok} élève(s) importé(s)${fail ? `, ${fail} erreur(s)` : ""}.`)
       if (ok > 0) setTimeout(() => window.location.reload(), 1500)
@@ -485,6 +488,11 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button asChild variant="ghost" size="icon" title="Voir les sessions et demandes de paiement">
+                            <Link href={`/dashboard/cahier?q=${encodeURIComponent(student.displayName || `${student.firstName} ${student.lastName}`)}`}>
+                              <Clock className="h-4 w-4" />
+                            </Link>
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => { setEdit(student); setDialogOpen(true) }} title="Modifier">
                             <Edit className="h-4 w-4" />
                           </Button>

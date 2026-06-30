@@ -1,9 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Bell, Check, Clock, Inbox, Mail, ShieldAlert } from "lucide-react"
+import { Bell, Check, Clock, Inbox, Loader2, Mail, Send, ShieldAlert, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 const PSEUDO_REQUEST_SEPARATOR = "\n\n---\n"
 
@@ -22,6 +23,20 @@ type NotificationItem = {
   createdAt: string
 }
 
+type TeacherRecipient = {
+  id: string
+  name: string
+}
+
+type StudentRecipient = {
+  id: string
+  firstName: string
+  lastName: string
+  displayName: string | null
+  email: string | null
+  parentEmail: string | null
+}
+
 const typeStyles: Record<string, { label: string; icon: typeof Bell; badge: "default" | "warning" | "info" | "secondary" }> = {
   TEACHER_MONTHLY_TIMESHEET_REMINDER: {
     label: "Rappel paie",
@@ -38,6 +53,11 @@ const typeStyles: Record<string, { label: string; icon: typeof Bell; badge: "def
     icon: ShieldAlert,
     badge: "warning",
   },
+  DIRECTOR_MESSAGE: {
+    label: "Message",
+    icon: Mail,
+    badge: "info",
+  },
 }
 
 function formatDate(value: string) {
@@ -50,9 +70,26 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-export function NotificationsClient({ notifications: initialNotifications }: { notifications: NotificationItem[] }) {
+export function NotificationsClient({
+  notifications: initialNotifications,
+  canSend = false,
+  teachers = [],
+  students = [],
+}: {
+  notifications: NotificationItem[]
+  canSend?: boolean
+  teachers?: TeacherRecipient[]
+  students?: StudentRecipient[]
+}) {
   const [notifications, setNotifications] = useState(initialNotifications)
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [title, setTitle] = useState("")
+  const [message, setMessage] = useState("")
+  const [teacherIds, setTeacherIds] = useState<Set<string>>(new Set())
+  const [studentIds, setStudentIds] = useState<Set<string>>(new Set())
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => notification.status !== "READ").length,
@@ -70,6 +107,42 @@ export function NotificationsClient({ notifications: initialNotifications }: { n
     }
   }
 
+  function toggleSelection(setter: (value: Set<string>) => void, current: Set<string>, id: string, checked: boolean) {
+    const next = new Set(current)
+    if (checked) next.add(id)
+    else next.delete(id)
+    setter(next)
+  }
+
+  async function sendMessage() {
+    setSending(true)
+    setSendResult(null)
+    setSendError(null)
+    try {
+      const res = await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          message,
+          teacherIds: Array.from(teacherIds),
+          studentIds: Array.from(studentIds),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Envoi impossible.")
+      setTitle("")
+      setMessage("")
+      setTeacherIds(new Set())
+      setStudentIds(new Set())
+      setSendResult(`${data.appNotifications ?? 0} notification(s) professeur · ${data.studentEmailsSent ?? 0} email(s) élève envoyé(s)${data.studentEmailsSkipped ? ` · ${data.studentEmailsSkipped} sans email` : ""}.`)
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "Envoi impossible.")
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -81,6 +154,116 @@ export function NotificationsClient({ notifications: initialNotifications }: { n
           {unreadCount > 0 ? `${unreadCount} non lue${unreadCount > 1 ? "s" : ""}` : "Tout est lu"}
         </Badge>
       </div>
+
+      {canSend && (
+        <section className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm sm:p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Send className="h-5 w-5 text-emerald-600" />
+            <h2 className="font-semibold text-gray-900">Envoyer un message</h2>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Titre</label>
+                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Objet du message" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Message</label>
+                <textarea
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                  className="min-h-36 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  placeholder="Écrivez le message à envoyer..."
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+                  <p className="text-sm font-semibold text-gray-800">Professeurs</p>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-emerald-700"
+                    onClick={() => setTeacherIds(teacherIds.size === teachers.length ? new Set() : new Set(teachers.map((teacher) => teacher.id)))}
+                  >
+                    {teacherIds.size === teachers.length ? "Tout retirer" : "Tout sélectionner"}
+                  </button>
+                </div>
+                <div className="max-h-44 space-y-1 overflow-y-auto p-2">
+                  {teachers.map((teacher) => (
+                    <label key={teacher.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300"
+                        checked={teacherIds.has(teacher.id)}
+                        onChange={(event) => toggleSelection(setTeacherIds, teacherIds, teacher.id, event.target.checked)}
+                      />
+                      {teacher.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+                  <p className="text-sm font-semibold text-gray-800">Élèves</p>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-emerald-700"
+                    onClick={() => {
+                      const emailableStudents = students.filter((student) => student.email || student.parentEmail)
+                      setStudentIds(studentIds.size === emailableStudents.length ? new Set() : new Set(emailableStudents.map((student) => student.id)))
+                    }}
+                  >
+                    {studentIds.size === students.filter((student) => student.email || student.parentEmail).length ? "Tout retirer" : "Tout sélectionner"}
+                  </button>
+                </div>
+                <div className="max-h-56 space-y-1 overflow-y-auto p-2">
+                  {students.map((student) => {
+                    const hasEmail = Boolean(student.email || student.parentEmail)
+                    const name = student.displayName || `${student.firstName} ${student.lastName}`
+                    return (
+                      <label key={student.id} className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm ${hasEmail ? "text-gray-700 hover:bg-gray-50" : "text-gray-300"}`}>
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                          checked={studentIds.has(student.id)}
+                          disabled={!hasEmail}
+                          onChange={(event) => toggleSelection(setStudentIds, studentIds, student.id, event.target.checked)}
+                        />
+                        <span>
+                          <span className="block">{name}</span>
+                          {!hasEmail && <span className="text-xs">Sans email</span>}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-gray-500">
+              <Users className="mr-1 inline h-4 w-4" />
+              {teacherIds.size + studentIds.size} destinataire(s) sélectionné(s)
+            </div>
+            <Button
+              type="button"
+              onClick={sendMessage}
+              disabled={sending || title.trim().length < 2 || message.trim().length < 2 || teacherIds.size + studentIds.size === 0}
+              className="w-full sm:w-auto"
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Envoyer
+            </Button>
+          </div>
+          {sendResult && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{sendResult}</p>}
+          {sendError && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{sendError}</p>}
+        </section>
+      )}
 
       {notifications.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center">

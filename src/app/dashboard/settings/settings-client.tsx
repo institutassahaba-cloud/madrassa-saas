@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle2, Loader2, Mail, Phone, Plus, ShieldCheck, UserCog } from "lucide-react"
+import { CheckCircle2, ChevronDown, Loader2, Mail, Phone, Plus, ShieldCheck, UserCog } from "lucide-react"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,6 +46,15 @@ function passwordValid(password: string) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password)
 }
 
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-gray-50 px-3 py-2">
+      <p className="text-xs font-medium text-gray-400">{label}</p>
+      <p className="mt-0.5 break-words text-sm font-medium text-gray-800">{value}</p>
+    </div>
+  )
+}
+
 export function SettingsClient({
   users,
   currentUser,
@@ -64,6 +73,12 @@ export function SettingsClient({
   const [loading, setLoading] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null)
   const [requests, setRequests] = useState(pseudoRequests)
+  const [openSection, setOpenSection] = useState<string | null>(currentUser.mustChangePassword ? "password" : null)
+  const [accountInfo, setAccountInfo] = useState({
+    name: currentUser.name,
+    contactEmail: currentUser.contactEmail ?? "",
+    phone: currentUser.phone ?? "",
+  })
 
   const [pseudo, setPseudo] = useState(currentUser.name)
   const [requestedPseudo, setRequestedPseudo] = useState("")
@@ -98,6 +113,17 @@ export function SettingsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Erreur")
+      if (typeof data.name === "string") setAccountInfo((info) => ({ ...info, name: data.name }))
+      if (typeof data.contactEmail === "string" || data.contactEmail === null) {
+        setAccountInfo((info) => ({ ...info, contactEmail: data.contactEmail ?? "" }))
+        setEmailForm({ currentContactEmail: data.contactEmail ?? "", contactEmail: "", confirmContactEmail: "" })
+        setOpenSection(null)
+      }
+      if (typeof data.phone === "string" || data.phone === null) {
+        setAccountInfo((info) => ({ ...info, phone: data.phone ?? "" }))
+        setPhoneForm({ currentPhone: data.phone ?? "", phone: "", confirmPhone: "" })
+        setOpenSection(null)
+      }
       setMessage({ type: "ok", text: successText })
     } catch (err) {
       setMessage({ type: "err", text: err instanceof Error ? err.message : "Erreur" })
@@ -148,12 +174,17 @@ export function SettingsClient({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Erreur")
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" })
+      setOpenSection(null)
       setMessage({ type: "ok", text: "Mot de passe modifié." })
     } catch (err) {
       setMessage({ type: "err", text: err instanceof Error ? err.message : "Erreur" })
     } finally {
       setLoading(null)
     }
+  }
+
+  function toggleSection(section: string) {
+    setOpenSection((current) => current === section ? null : section)
   }
 
   async function handleCreateUser(e: React.FormEvent) {
@@ -221,14 +252,31 @@ export function SettingsClient({
           <CardContent>
             {isTeacher ? (
               <form onSubmit={requestPseudo} className="space-y-3">
-                <div className="space-y-1.5"><Label>Pseudo actuel</Label><Input value={currentUser.name} disabled /></div>
-                <div className="space-y-1.5"><Label>Demander un changement de pseudo</Label><Input value={requestedPseudo} onChange={(e) => setRequestedPseudo(e.target.value)} /></div>
-                <Button type="submit" disabled={loading === "pseudo" || requestedPseudo.trim().length < 2}>{loading === "pseudo" && <Loader2 className="h-4 w-4 animate-spin" />}Envoyer la demande</Button>
+                <InfoLine label="Pseudo actuel" value={accountInfo.name} />
+                <button type="button" onClick={() => toggleSection("pseudo")} className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Demander un changement de pseudo
+                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${openSection === "pseudo" ? "rotate-180" : ""}`} />
+                </button>
+                {openSection === "pseudo" && (
+                  <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+                    <div className="space-y-1.5"><Label>Nouveau pseudo souhaité</Label><Input value={requestedPseudo} onChange={(e) => setRequestedPseudo(e.target.value)} /></div>
+                    <Button type="submit" disabled={loading === "pseudo" || requestedPseudo.trim().length < 2}>{loading === "pseudo" && <Loader2 className="h-4 w-4 animate-spin" />}Envoyer la demande</Button>
+                  </div>
+                )}
               </form>
             ) : (
               <form onSubmit={(e) => { e.preventDefault(); submitProfile({ name: pseudo }, "Pseudo modifié.") }} className="space-y-3">
-                <div className="space-y-1.5"><Label>Changer de pseudo</Label><Input value={pseudo} onChange={(e) => setPseudo(e.target.value)} /></div>
-                <Button type="submit" disabled={loading === "Pseudo modifié." || pseudo.trim().length < 2}>{loading === "Pseudo modifié." && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer</Button>
+                <InfoLine label="Pseudo actuel" value={accountInfo.name} />
+                <button type="button" onClick={() => toggleSection("pseudo")} className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Changer le pseudo
+                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${openSection === "pseudo" ? "rotate-180" : ""}`} />
+                </button>
+                {openSection === "pseudo" && (
+                  <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+                    <div className="space-y-1.5"><Label>Nouveau pseudo</Label><Input value={pseudo} onChange={(e) => setPseudo(e.target.value)} /></div>
+                    <Button type="submit" disabled={loading === "Pseudo modifié." || pseudo.trim().length < 2}>{loading === "Pseudo modifié." && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer</Button>
+                  </div>
+                )}
               </form>
             )}
           </CardContent>
@@ -238,10 +286,19 @@ export function SettingsClient({
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Mail className="h-4 w-4 text-blue-600" />Email de contact</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={(e) => { e.preventDefault(); submitProfile(emailForm, "Email de contact modifié.") }} className="space-y-3">
-              <div className="space-y-1.5"><Label>Email de contact actuel</Label><Input type="email" value={emailForm.currentContactEmail} onChange={(e) => setEmailForm((f) => ({ ...f, currentContactEmail: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Nouvelle adresse</Label><Input type="email" value={emailForm.contactEmail} onChange={(e) => setEmailForm((f) => ({ ...f, contactEmail: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Vérification de la nouvelle adresse</Label><Input type="email" value={emailForm.confirmContactEmail} onChange={(e) => setEmailForm((f) => ({ ...f, confirmContactEmail: e.target.value }))} /></div>
-              <Button type="submit" disabled={loading === "Email de contact modifié."}>{loading === "Email de contact modifié." && <Loader2 className="h-4 w-4 animate-spin" />}Changer l&apos;email de contact</Button>
+              <InfoLine label="Adresse actuelle" value={accountInfo.contactEmail || "Non renseignée"} />
+              <button type="button" onClick={() => toggleSection("email")} className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Changer l&apos;email de contact
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${openSection === "email" ? "rotate-180" : ""}`} />
+              </button>
+              {openSection === "email" && (
+                <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+                  <div className="space-y-1.5"><Label>Email de contact actuel</Label><Input type="email" value={emailForm.currentContactEmail} onChange={(e) => setEmailForm((f) => ({ ...f, currentContactEmail: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>Nouvelle adresse</Label><Input type="email" value={emailForm.contactEmail} onChange={(e) => setEmailForm((f) => ({ ...f, contactEmail: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>Vérification de la nouvelle adresse</Label><Input type="email" value={emailForm.confirmContactEmail} onChange={(e) => setEmailForm((f) => ({ ...f, confirmContactEmail: e.target.value }))} /></div>
+                  <Button type="submit" disabled={loading === "Email de contact modifié."}>{loading === "Email de contact modifié." && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer</Button>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
@@ -250,10 +307,19 @@ export function SettingsClient({
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Phone className="h-4 w-4 text-pink-600" />Téléphone</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={(e) => { e.preventDefault(); submitProfile(phoneForm, "Téléphone modifié.") }} className="space-y-3">
-              <div className="space-y-1.5"><Label>Numéro de téléphone actuel</Label><Input value={phoneForm.currentPhone} onChange={(e) => setPhoneForm((f) => ({ ...f, currentPhone: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Nouveau numéro de téléphone</Label><Input value={phoneForm.phone} onChange={(e) => setPhoneForm((f) => ({ ...f, phone: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Vérification du nouveau téléphone</Label><Input value={phoneForm.confirmPhone} onChange={(e) => setPhoneForm((f) => ({ ...f, confirmPhone: e.target.value }))} /></div>
-              <Button type="submit" disabled={loading === "Téléphone modifié."}>{loading === "Téléphone modifié." && <Loader2 className="h-4 w-4 animate-spin" />}Changer le numéro</Button>
+              <InfoLine label="Numéro actuel" value={accountInfo.phone || "Non renseigné"} />
+              <button type="button" onClick={() => toggleSection("phone")} className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Changer le numéro de téléphone
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${openSection === "phone" ? "rotate-180" : ""}`} />
+              </button>
+              {openSection === "phone" && (
+                <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+                  <div className="space-y-1.5"><Label>Numéro de téléphone actuel</Label><Input value={phoneForm.currentPhone} onChange={(e) => setPhoneForm((f) => ({ ...f, currentPhone: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>Nouveau numéro de téléphone</Label><Input value={phoneForm.phone} onChange={(e) => setPhoneForm((f) => ({ ...f, phone: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>Vérification du nouveau téléphone</Label><Input value={phoneForm.confirmPhone} onChange={(e) => setPhoneForm((f) => ({ ...f, confirmPhone: e.target.value }))} /></div>
+                  <Button type="submit" disabled={loading === "Téléphone modifié."}>{loading === "Téléphone modifié." && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer</Button>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
@@ -262,11 +328,20 @@ export function SettingsClient({
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-4 w-4 text-emerald-600" />Mot de passe</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={changePassword} className="space-y-3">
-              {!currentUser.mustChangePassword && <div className="space-y-1.5"><Label>Mot de passe actuel</Label><PasswordInput value={passwordForm.currentPassword} onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))} /></div>}
-              <div className="space-y-1.5"><Label>Nouveau mot de passe</Label><PasswordInput value={passwordForm.newPassword} onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Confirmation du nouveau mot de passe</Label><PasswordInput value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))} /></div>
-              <p className="text-xs text-gray-400">Minimum 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.</p>
-              <Button type="submit" disabled={loading === "password"}>{loading === "password" && <Loader2 className="h-4 w-4 animate-spin" />}Changer le mot de passe</Button>
+              <InfoLine label="Mot de passe" value="••••••••" />
+              <button type="button" onClick={() => toggleSection("password")} className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Changer le mot de passe
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${openSection === "password" ? "rotate-180" : ""}`} />
+              </button>
+              {openSection === "password" && (
+                <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+                  {!currentUser.mustChangePassword && <div className="space-y-1.5"><Label>Mot de passe actuel</Label><PasswordInput value={passwordForm.currentPassword} onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))} /></div>}
+                  <div className="space-y-1.5"><Label>Nouveau mot de passe</Label><PasswordInput value={passwordForm.newPassword} onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>Confirmation du nouveau mot de passe</Label><PasswordInput value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))} /></div>
+                  <p className="text-xs text-gray-400">Minimum 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.</p>
+                  <Button type="submit" disabled={loading === "password"}>{loading === "password" && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer</Button>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>

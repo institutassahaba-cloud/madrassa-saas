@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { sendPaymentThanks } from "@/lib/payment-thanks"
 
 type AllocationInput = {
   studentId: string
@@ -77,7 +78,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         teacherId: item.teacherId,
       },
       include: {
-        student: { select: { firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+        teacher: { select: { name: true } },
+        student: { select: { firstName: true, lastName: true, email: true, monthlyFee: true, payerName: true, paymentType: true } },
       },
     })
     if (!lessonSession) return NextResponse.json({ error: "Une session sélectionnée est introuvable." }, { status: 404 })
@@ -109,6 +111,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
     })
     createdPayments.push(payment)
+    sendPaymentThanks({
+      studentEmail: lessonSession.student.email,
+      studentName: `${lessonSession.student.firstName} ${lessonSession.student.lastName}`,
+      teacherName: lessonSession.teacher.name,
+      subject: lessonSession.subject,
+      amount: payment.amount,
+      paidDate: payment.paidDate,
+      method: payment.method,
+    }).catch((err) => console.error("[mail] Erreur envoi remerciement paiement:", err))
 
     await prisma.paymentAllocation.create({
       data: {
