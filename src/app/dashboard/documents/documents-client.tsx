@@ -225,7 +225,7 @@ function TeacherDocSection({
                             <td className="px-3 py-2 text-right">
                               {s.status === "PAID" ? (
                                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                  Payé{s.paidDate ? ` ${new Date(s.paidDate).toLocaleDateString("fr-FR")}` : ""}
+                                  Payé{s.paidDate ? ` le ${new Date(s.paidDate).toLocaleDateString("fr-FR")}` : ""}
                                 </span>
                               ) : s.status === "CONFIRMED" ? (
                                 <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Confirmé</span>

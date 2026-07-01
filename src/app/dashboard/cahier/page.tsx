@@ -98,13 +98,28 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
       ...(user.role === "TEACHER" ? { teacherId: user.id } : {}),
       groupId: { not: null },
     },
-    select: { groupId: true, dayOfWeek: true, startTime: true, endTime: true },
+    select: {
+      id: true,
+      groupId: true,
+      teacherId: true,
+      dayOfWeek: true,
+      startTime: true,
+      endTime: true,
+      teacher: { select: { timezone: true } },
+    },
     orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
   })
-  const scheduleByGroup: Record<string, { day: number; start: string; end: string }[]> = {}
+  const scheduleByGroup: Record<string, { id: string; day: number; start: string; end: string; teacherId: string; teacherTimezone: string }[]> = {}
   for (const s of slots) {
     if (!s.groupId) continue
-    ;(scheduleByGroup[s.groupId] ||= []).push({ day: s.dayOfWeek, start: s.startTime, end: s.endTime })
+    ;(scheduleByGroup[s.groupId] ||= []).push({
+      id: s.id,
+      day: s.dayOfWeek,
+      start: s.startTime,
+      end: s.endTime,
+      teacherId: s.teacherId,
+      teacherTimezone: s.teacher.timezone,
+    })
   }
 
   // map "studentId:sessionNumber" -> date de paiement (la plus récente)

@@ -5,7 +5,7 @@ import type React from "react"
 import {
   Users, BookOpen, UserCheck, ChevronDown, ChevronUp, Mail, Phone,
   MessageCircle, Plus, Check, Clock, X, CheckCircle2,
-  Bell, Eye, Video, ExternalLink, Pencil,
+  Bell, Eye, Video, ExternalLink, Pencil, AlertTriangle,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { gmailComposeLink } from "@/lib/contact-links"
@@ -78,11 +78,19 @@ interface Teacher {
   teacherGroups: Group[]
 }
 
-interface Slot { day: number; start: string; end: string }
+interface Slot {
+  id: string
+  day: number
+  start: string
+  end: string
+  teacherId: string
+  teacherTimezone: string
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const DAYS_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
+const DEFAULT_LESSON_COUNT = 8
 const SUBJECTS = ["Apprentissage du Coran", "Nouraniya", "Langue arabe", "Tajwid", "Fiqh", "Moutoun", "Autre"]
 
 const STATUS_CYCLE: Record<string, string> = {
@@ -152,9 +160,28 @@ function formatTime(time: string): string {
   return minutes === "00" ? `${Number(hours)}h` : `${Number(hours)}h${minutes}`
 }
 
-function formatSchedule(slots: Slot[] | undefined): string | null {
-  if (!slots || slots.length === 0) return null
-  return slots.map((s) => `${DAYS_SHORT[s.day]} ${formatTime(s.start)}`).join(" · ")
+function getUTCOffset(tz: string): number {
+  try {
+    const now = new Date()
+    const utcStr = now.toLocaleString("en-US", { timeZone: "UTC" })
+    const tzStr = now.toLocaleString("en-US", { timeZone: tz })
+    return (new Date(tzStr).getTime() - new Date(utcStr).getTime()) / 60000
+  } catch { return 0 }
+}
+
+function convertTime(time: string, fromTz: string, toTz: string): string {
+  const [h, m] = time.split(":").map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return time
+  const diff = getUTCOffset(toTz) - getUTCOffset(fromTz || toTz)
+  const total = h * 60 + m + diff
+  const normalized = ((total % 1440) + 1440) % 1440
+  return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
+}
+
+function scheduleLabel(slot: Slot): string {
+  const start = convertTime(slot.start, slot.teacherTimezone, "Europe/Paris")
+  const end = convertTime(slot.end, slot.teacherTimezone, "Europe/Paris")
+  return `${DAYS_SHORT[slot.day]} ${formatTime(start)}-${formatTime(end)}`
 }
 
 function normalizeMeetingLink(value: string): string {
@@ -444,10 +471,11 @@ function SessionCard({
           {session.number}
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-gray-900">Session {session.number}</span>
             {session.isComplete && <span className="flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600"><CheckCircle2 className="h-3 w-3" /> Terminée</span>}
             {paidAt && <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}</span>}
+            {!paidAt && <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"><AlertTriangle className="h-3 w-3" /> Session pas encore payée</span>}
           </div>
           <div className="mt-0.5 flex gap-3 text-xs text-gray-400">
             {session.duration && <span>{session.duration}</span>}
@@ -529,14 +557,17 @@ function StudentCahier({
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
-  onNewSession: (studentId: string, subject: string, teacherId: string) => void
+  onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const [newSubject, setNewSubject] = useState("")
   const [newTeacher, setNewTeacher] = useState(currentUserId)
+  const [newLessonCount, setNewLessonCount] = useState(String(DEFAULT_LESSON_COUNT))
+  const [choosingSessionModel, setChoosingSessionModel] = useState(false)
   const [creating, setCreating] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [creationError, setCreationError] = useState<string | null>(null)
 
   const sortedSessions = [...sessions].sort((a, b) => b.number - a.number)
   const selected =
@@ -545,7 +576,7 @@ function StudentCahier({
     sortedSessions[0]
   const name = student.displayName || `${student.firstName} ${student.lastName}`.trim()
   const forfait = formatForfait(student.lessonsPerWeek, student.duration)
-  const planning = formatSchedule(schedule)
+  const planning = schedule && schedule.length > 0
 
   return (
     <div className="rounded-xl border border-gray-100 bg-gray-50/50">
@@ -561,12 +592,17 @@ function StudentCahier({
           </p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             {forfait && <span className="font-medium text-gray-600">{forfait}</span>}
-            {planning && (
-              <span className="inline-flex items-center gap-1 text-gray-600">
+            {planning && schedule?.map((slot) => (
+              <a
+                key={slot.id}
+                href={`/dashboard/schedule?teacherId=${slot.teacherId}`}
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-emerald-100"
+                title="Modifier ce créneau dans le planning"
+              >
                 <Clock className="h-3 w-3 text-emerald-600" />
-                {planning}
-              </span>
-            )}
+                🇫🇷 {scheduleLabel(slot)}
+              </a>
+            ))}
           </div>
         </div>
         {sessions.length > 0 && (
@@ -611,7 +647,73 @@ function StudentCahier({
           {selected && (
             <SessionCard key={selected.id} session={selected} paidAt={paidBySession[`${student.id}:${selected.number}`]} canSetLegacyBoundary={canSetLegacyBoundary} onUpdateLesson={onUpdateLesson} onAddLesson={onAddLesson} onCloseSession={onCloseSession} onDeleteLesson={onDeleteLesson} />
           )}
-          {creating ? (
+          {choosingSessionModel ? (
+            <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 space-y-3">
+              <p className="text-sm font-medium text-emerald-700">Choisir le type de session</p>
+              {creationError && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                  {creationError}
+                </p>
+              )}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!selected}
+                  className="h-auto justify-start border-emerald-200 bg-white px-3 py-3 text-left"
+                  onClick={async () => {
+                    if (!selected) return
+                    setCreationError(null)
+                    const newSessionId = await onNewSession(
+                      student.id,
+                      selected.subject,
+                      selected.teacher.id,
+                      selected.lessons.length || DEFAULT_LESSON_COUNT,
+                      selected.frequency,
+                      selected.duration
+                    )
+                    if (!newSessionId) {
+                      setCreationError("La session n'a pas pu être créée. Réessayez dans un instant.")
+                      return
+                    }
+                    setSelectedId(newSessionId)
+                    setChoosingSessionModel(false)
+                  }}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900">Continuer avec le même modèle</span>
+                    <span className="mt-0.5 block text-xs font-normal text-gray-500">
+                      Même matière, même professeur et même nombre de cours.
+                    </span>
+                  </span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto justify-start border-emerald-200 bg-white px-3 py-3 text-left"
+                  onClick={() => {
+                    setCreationError(null)
+                    setNewSubject(selected?.subject ?? student.subject ?? "")
+                    setNewTeacher(selected?.teacher.id ?? currentUserId)
+                    setNewLessonCount(String(selected?.lessons.length || DEFAULT_LESSON_COUNT))
+                    setChoosingSessionModel(false)
+                    setCreating(true)
+                  }}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900">Créer une session personnalisée</span>
+                    <span className="mt-0.5 block text-xs font-normal text-gray-500">
+                      Modifier la matière ou le nombre de cours.
+                    </span>
+                  </span>
+                </Button>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => {
+                setChoosingSessionModel(false)
+                setCreationError(null)
+              }}>Annuler</Button>
+            </div>
+          ) : creating ? (
             <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 space-y-3">
               <p className="text-sm font-medium text-emerald-700">Nouvelle session</p>
               <Select value={newSubject} onValueChange={setNewSubject}>
@@ -624,13 +726,55 @@ function StudentCahier({
                   <SelectContent>{teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
                 </Select>
               )}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-emerald-700" htmlFor={`teacher-lesson-count-${student.id}`}>
+                  Nombre de cours
+                </label>
+                <Input
+                  id={`teacher-lesson-count-${student.id}`}
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={newLessonCount}
+                  onChange={(e) => setNewLessonCount(e.target.value)}
+                  className="bg-white"
+                />
+              </div>
+              {creationError && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                  {creationError}
+                </p>
+              )}
               <div className="flex gap-2">
-                <Button size="sm" disabled={!newSubject} onClick={() => { onNewSession(student.id, newSubject, newTeacher); setCreating(false); setNewSubject("") }}>Créer</Button>
-                <Button size="sm" variant="outline" onClick={() => setCreating(false)}>Annuler</Button>
+                <Button size="sm" disabled={!newSubject || !newLessonCount} onClick={async () => {
+                  setCreationError(null)
+                  const count = Number(newLessonCount)
+                  if (!Number.isInteger(count) || count < 1 || count > 100) {
+                    setCreationError("Le nombre de cours doit être entre 1 et 100.")
+                    return
+                  }
+                  const newSessionId = await onNewSession(student.id, newSubject, newTeacher, count, student.lessonsPerWeek, student.duration)
+                  if (!newSessionId) {
+                    setCreationError("La session n'a pas pu être créée. Réessayez dans un instant.")
+                    return
+                  }
+                  setSelectedId(newSessionId)
+                  setCreating(false)
+                  setNewSubject("")
+                  setNewLessonCount(String(DEFAULT_LESSON_COUNT))
+                }}>Créer</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  setCreating(false)
+                  setCreationError(null)
+                }}>Annuler</Button>
               </div>
             </div>
           ) : (
-            <Button variant="outline" className="w-full border-dashed" onClick={() => setCreating(true)}>
+            <Button variant="outline" className="w-full border-dashed" onClick={() => {
+              setCreationError(null)
+              setChoosingSessionModel(true)
+            }}>
               <Plus className="h-4 w-4" /> Nouvelle session
             </Button>
           )}
@@ -769,7 +913,7 @@ function GroupCard({
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
-  onNewSession: (studentId: string, subject: string, teacherId: string) => void
+  onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
 }) {
   const [removing, setRemoving] = useState<string | null>(null)
@@ -865,7 +1009,7 @@ function TeacherCard({
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
-  onNewSession: (studentId: string, subject: string, teacherId: string) => void
+  onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
   onUpdateRates: (teacherId: string, rates: { individualRate?: number; binomeRate?: number; groupRate?: number }) => void
 }) {
@@ -1193,10 +1337,16 @@ export function TeachersClient({
     setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, isComplete: true } : s))
   }
 
-  async function handleNewSession(studentId: string, subject: string, teacherId: string) {
-    const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId, subject, teacherId }) })
+  async function handleNewSession(studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) {
+    const res = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, subject, teacherId, lessonCount, frequency, duration }),
+    })
+    if (!res.ok) return null
     const newSession = await res.json()
     setSessions((prev) => [...prev, newSession])
+    return newSession.id ?? null
   }
 
   async function handleUpdateRates(teacherId: string, ratesData: { individualRate?: number; binomeRate?: number; groupRate?: number }) {

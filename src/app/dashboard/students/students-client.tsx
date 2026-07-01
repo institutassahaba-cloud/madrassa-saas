@@ -60,9 +60,12 @@ interface Student {
 }
 
 interface Slot {
+  id: string
   day: number
   start: string
   end: string
+  teacherId: string
+  teacherTimezone: string
 }
 
 // "Individuel" (1 élève) / "Binôme" (2) / "Groupe" (3+) — déduit du nb d'élèves actifs du groupe.
@@ -90,9 +93,28 @@ function formatTime(time: string): string {
   return minutes === "00" ? `${Number(hours)}h` : `${Number(hours)}h${minutes}`
 }
 
-function formatSchedule(slots: Slot[]): string | null {
-  if (slots.length === 0) return null
-  return slots.map((s) => `${DAYS_SHORT[s.day]} ${formatTime(s.start)}`).join(" · ")
+function getUTCOffset(tz: string): number {
+  try {
+    const now = new Date()
+    const utcStr = now.toLocaleString("en-US", { timeZone: "UTC" })
+    const tzStr = now.toLocaleString("en-US", { timeZone: tz })
+    return (new Date(tzStr).getTime() - new Date(utcStr).getTime()) / 60000
+  } catch { return 0 }
+}
+
+function convertTime(time: string, fromTz: string, toTz: string): string {
+  const [h, m] = time.split(":").map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return time
+  const diff = getUTCOffset(toTz) - getUTCOffset(fromTz || toTz)
+  const total = h * 60 + m + diff
+  const normalized = ((total % 1440) + 1440) % 1440
+  return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
+}
+
+function scheduleLabel(slot: Slot): string {
+  const start = convertTime(slot.start, slot.teacherTimezone, "Europe/Paris")
+  const end = convertTime(slot.end, slot.teacherTimezone, "Europe/Paris")
+  return `${DAYS_SHORT[slot.day]} ${formatTime(start)}-${formatTime(end)}`
 }
 
 function subjectLabel(subject: string): string {
@@ -388,7 +410,7 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                   const cfg = STATUS_CONFIG[student.status as keyof typeof STATUS_CONFIG]
                   const subjectColor = student.subject ? (SUBJECT_COLORS[student.subject] ?? "bg-gray-100 text-gray-600") : ""
                   const type = courseType(student.groupSize)
-                  const schedule = formatSchedule(student.schedule)
+                  const hasSchedule = student.schedule.length > 0
                   return (
                     <TableRow key={student.id} className={student.status === "ARCHIVED" ? "opacity-60" : ""}>
                       <TableCell>
@@ -456,11 +478,20 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                           {` · ${formatDuration(student.duration)}`}
                           {student.hourlyRate ? ` · ${formatCurrency(student.hourlyRate)}/h` : ""}
                         </p>
-                        {schedule && (
-                          <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-gray-600">
-                            <Clock className="h-3 w-3 text-emerald-600" />
-                            {schedule}
-                          </p>
+                        {hasSchedule && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {student.schedule.map((slot) => (
+                              <a
+                                key={slot.id}
+                                href={`/dashboard/schedule?teacherId=${slot.teacherId}`}
+                                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-emerald-100"
+                                title="Modifier ce créneau dans le planning"
+                              >
+                                <Clock className="h-3 w-3 text-emerald-600" />
+                                🇫🇷 {scheduleLabel(slot)}
+                              </a>
+                            ))}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="max-w-56 text-xs text-gray-600">

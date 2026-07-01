@@ -33,10 +33,15 @@ export async function POST(req: Request) {
   const user = session.user
 
   const body = await req.json()
-  const { studentId, teacherId, subject, number, frequency, duration } = body
+  const { studentId, teacherId, subject, number, frequency, duration, lessonCount } = body
 
   if (!studentId || !subject) {
     return NextResponse.json({ error: "studentId and subject required" }, { status: 400 })
+  }
+
+  const resolvedLessonCount = lessonCount == null || lessonCount === "" ? 8 : Number(lessonCount)
+  if (!Number.isInteger(resolvedLessonCount) || resolvedLessonCount < 1 || resolvedLessonCount > 100) {
+    return NextResponse.json({ error: "lessonCount must be between 1 and 100" }, { status: 400 })
   }
 
   const student = await prisma.student.findFirst({
@@ -44,8 +49,17 @@ export async function POST(req: Request) {
     include: { group: { select: { teacherId: true } } },
   })
   if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
-  if (user.role === "TEACHER" && student.group?.teacherId !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (user.role === "TEACHER") {
+    const canManageStudent =
+      student.group?.teacherId === user.id ||
+      await prisma.lessonSession.findFirst({
+        where: { tenantId: user.tenantId, studentId, teacherId: user.id },
+        select: { id: true },
+      })
+
+    if (!canManageStudent) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
   }
 
   const resolvedTeacherId = user.role === "TEACHER" ? user.id : (teacherId ?? student.group?.teacherId)
@@ -84,14 +98,18 @@ export async function POST(req: Request) {
       frequency: frequency ? Number(frequency) : null,
       duration: duration || null,
       lessons: {
-        create: Array.from({ length: 8 }, (_, i) => ({
+        create: Array.from({ length: resolvedLessonCount }, (_, i) => ({
           tenantId: user.tenantId,
           number: i + 1,
           status: "PENDING",
         })),
       },
     },
-    include: { lessons: { orderBy: { number: "asc" } } },
+    include: {
+      student: { select: { id: true, firstName: true, lastName: true } },
+      teacher: { select: { id: true, name: true } },
+      lessons: { orderBy: { number: "asc" } },
+    },
   })
 
   return NextResponse.json(newSession, { status: 201 })

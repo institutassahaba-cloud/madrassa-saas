@@ -52,6 +52,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       prisma.student.findUnique({ where: { id: existing.studentId } }),
       prisma.user.findUnique({ where: { id: existing.teacherId } }),
     ])
+    let paymentSessionNumber = existing.number + 1
     if (student) {
       const nextSessionNumber = existing.number + 1
       const paymentSession = await prisma.lessonSession.upsert({
@@ -74,6 +75,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         },
         update: { paymentRequestedAt: closingAt },
       })
+      paymentSessionNumber = paymentSession.number
       const amount = student.monthlyFee || 0
       const requestData = {
         amount,
@@ -124,6 +126,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         studentName,
         teacherName,
         subject: existing.subject,
+        completedSessionNumber: existing.number,
+        paymentSessionNumber,
         amount,
         paypalLink: PAYPAL_LINK,
         paypalEmail: PAYPAL_EMAIL,
@@ -132,7 +136,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       })
       sendComptaMail({
         to: student.email,
-        subject: `Demande de paiement — ${existing.subject} — Institut As-Sahaba`,
+        subject: `Demande de paiement — Session ${paymentSessionNumber} — ${existing.subject}`,
         html,
       }).catch((err) => console.error("[mail] Erreur envoi demande de paiement:", err))
     }

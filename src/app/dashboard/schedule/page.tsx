@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { getEffectiveUser } from "@/lib/view-as"
 import { ScheduleClient } from "./schedule-client"
 
-export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
-  const { week } = await searchParams
+export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ teacherId?: string; week?: string }> }) {
+  const { teacherId, week } = await searchParams
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
 
@@ -53,6 +53,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       currentUser={currentUser as any}
       role={user.role}
+      initialTeacherId={teacherId ?? ""}
       initialWeek={week ?? ""}
     />
   )

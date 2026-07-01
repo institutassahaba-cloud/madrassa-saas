@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import type React from "react"
 import { Clock, Plus, X, Globe, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -141,6 +142,7 @@ interface Props {
   teachers: { id: string; name: string; timezone: string }[]
   currentUser: { id: string; name: string; timezone: string }
   role: string
+  initialTeacherId: string
   initialWeek: string
 }
 
@@ -155,6 +157,7 @@ function OccurrenceBlock({
   onDeleteSlot,
   onColorChange,
   onDragStart,
+  onDragEnd,
 }: {
   slot: TimeSlot
   date: Date
@@ -164,6 +167,7 @@ function OccurrenceBlock({
   onDeleteSlot: (slotId: string) => void
   onColorChange: (slotId: string, color: string) => void
   onDragStart: (slot: TimeSlot, date: Date) => void
+  onDragEnd: () => void
 }) {
   const [showPalette, setShowPalette] = useState(false)
   const recurrence = parseScheduleLabel(slot.label).recurrence
@@ -182,6 +186,7 @@ function OccurrenceBlock({
     <div
       draggable
       onDragStart={() => onDragStart(slot, date)}
+      onDragEnd={onDragEnd}
       className={`absolute left-0.5 right-0.5 cursor-move rounded-lg px-1.5 py-1 text-white text-xs overflow-hidden group ${isToday ? "ring-2 ring-yellow-300" : ""}`}
       style={{
         top: `${top}%`,
@@ -205,6 +210,15 @@ function OccurrenceBlock({
           <button onClick={(e) => { e.stopPropagation(); onEdit(slot) }} title="Modifier le créneau">
             <Pencil className="h-3 w-3" />
           </button>
+          {!slot.group && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(slot) }}
+              title="Associer à un élève ou une classe"
+              className="rounded bg-white/20 px-1 text-[9px] font-semibold"
+            >
+              Associer
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -315,7 +329,7 @@ function SlotForm({
           <Input type="time" value={endTime} onChange={e => setEnd(e.target.value)} className="h-7 text-xs" />
         </div>
       </div>
-      <Input placeholder="Libellé (ex: Coran débutants)" value={label} onChange={e => setLabel(e.target.value)} className="h-7 text-xs" />
+      <Input placeholder="Libellé visible (ex: nom de l'élève)" value={label} onChange={e => setLabel(e.target.value)} className="h-7 text-xs" />
       <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
         <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
           <input
@@ -347,13 +361,23 @@ function SlotForm({
         </Select>
       )}
       {availableGroups.length > 0 && (
+        <div className="space-y-1">
+        <label className="text-xs text-gray-500">Associer à un élève ou une classe</label>
         <Select value={groupId} onValueChange={setGroup}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Groupe (optionnel)" /></SelectTrigger>
+          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Élève ou classe" /></SelectTrigger>
           <SelectContent className="max-h-72 overflow-y-auto">
-            <SelectItem value="NONE">Aucun groupe</SelectItem>
+            <SelectItem value="NONE">Aucune association</SelectItem>
             {availableGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        {role !== "TEACHER" && (
+          <div className="flex flex-wrap gap-2 text-xs">
+            <a href="/dashboard/students" className="font-medium text-emerald-700 hover:underline">Créer une fiche élève</a>
+            <span className="text-gray-300">·</span>
+            <a href="/dashboard/groups" className="font-medium text-emerald-700 hover:underline">Créer une classe</a>
+          </div>
+        )}
+        </div>
       )}
       {availableGroups.length === 0 && (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">Aucun groupe actif pour ce professeur.</p>
@@ -523,7 +547,7 @@ function AvailabilityDialog({
 
 // ─── Main ScheduleClient ──────────────────────────────────────────────────────
 
-export function ScheduleClient({ slots: initialSlots, groups, teachers, currentUser, role, initialWeek }: Props) {
+export function ScheduleClient({ slots: initialSlots, groups, teachers, currentUser, role, initialTeacherId, initialWeek }: Props) {
   const sortedTeachers = [...teachers].sort((a, b) => {
     const aIsSamia = a.name.toLowerCase().includes("samia") ? 0 : 1
     const bIsSamia = b.name.toLowerCase().includes("samia") ? 0 : 1
@@ -532,11 +556,18 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   })
   const [slots, setSlots] = useState<TimeSlot[]>(initialSlots)
   const [viewTz, setViewTz] = useState(currentUser.timezone)
-  const [filterTeacher, setFilter] = useState(role === "TEACHER" ? currentUser.id : (sortedTeachers[0]?.id ?? ""))
+  const [filterTeacher, setFilter] = useState(role === "TEACHER" ? currentUser.id : (initialTeacherId || sortedTeachers[0]?.id || ""))
   const [addingDate, setAddingDate] = useState<Date | null>(null)
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null)
   const [editingDate, setEditingDate] = useState<Date | null>(null)
   const [draggedOccurrence, setDraggedOccurrence] = useState<{ slot: TimeSlot; date: Date } | null>(null)
+  const [dragPreview, setDragPreview] = useState<{
+    dateKey: string
+    startTime: string
+    endTime: string
+    top: number
+    height: number
+  } | null>(null)
   const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false)
   const [savingTz, setSavingTz] = useState(false)
   const activeTeacherId = role === "TEACHER"
@@ -619,6 +650,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
     const meta = parseScheduleLabel(slot.label)
 
     setDraggedOccurrence(null)
+    setDragPreview(null)
 
     if (
       targetDateKey === sourceDateKey &&
@@ -656,6 +688,24 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
       groupId: slot.group?.id ?? null,
       teacherId: slot.teacher.id,
     })
+  }
+
+  function getDragTarget(date: Date, event: React.DragEvent<HTMLDivElement>) {
+    if (!draggedOccurrence) return null
+    const rect = event.currentTarget.getBoundingClientRect()
+    const ratio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1)
+    const duration = getSlotDuration(draggedOccurrence.slot)
+    const minutes = snapMinutes(7 * 60 + ratio * (14 * 60))
+    const latestStart = 21 * 60 - duration
+    const startMin = Math.min(Math.max(minutes, 7 * 60), latestStart)
+    const endMin = Math.min(startMin + duration, 21 * 60)
+    return {
+      dateKey: dateKey(date),
+      startTime: minutesToTime(startMin),
+      endTime: minutesToTime(endMin),
+      top: ((startMin - 7 * 60) / (14 * 60)) * 100,
+      height: Math.max((duration / (14 * 60)) * 100, 2),
+    }
   }
 
   async function handleCancel(slotId: string, date: Date) {
@@ -895,15 +945,20 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                     key={i}
                     className={`border-r border-gray-100 last:border-0 relative ${isToday ? "bg-emerald-50/30" : ""}`}
                     style={{ height: `${HOURS.length * 56}px` }}
-                    onDragOver={(event) => event.preventDefault()}
+                    onDragOver={(event) => {
+                      event.preventDefault()
+                      const target = getDragTarget(d, event)
+                      if (target) setDragPreview(target)
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                        setDragPreview(null)
+                      }
+                    }}
                     onDrop={(event) => {
                       event.preventDefault()
-                      const rect = event.currentTarget.getBoundingClientRect()
-                      const ratio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1)
-                      const duration = draggedOccurrence ? getSlotDuration(draggedOccurrence.slot) : 30
-                      const minutes = snapMinutes(7 * 60 + ratio * (14 * 60))
-                      const latestStart = 21 * 60 - duration
-                      handleMoveOccurrence(d, minutesToTime(Math.min(Math.max(minutes, 7 * 60), latestStart)))
+                      const target = getDragTarget(d, event)
+                      if (target) handleMoveOccurrence(d, target.startTime)
                     }}
                   >
                     {HOURS.map(h => (
@@ -913,6 +968,21 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                       <div key={`${h}h`} className="border-b border-dashed border-gray-50 absolute w-full opacity-50"
                         style={{ top: `${((h - 7 + 0.5) / 14) * 100}%` }} />
                     ))}
+
+                    {draggedOccurrence && dragPreview?.dateKey === dateKey(d) && (
+                      <div
+                        className="pointer-events-none absolute left-1 right-1 z-20 rounded-lg border-2 border-emerald-500 bg-emerald-500/15 shadow-lg"
+                        style={{
+                          top: `${dragPreview.top}%`,
+                          height: `${dragPreview.height}%`,
+                          minHeight: "34px",
+                        }}
+                      >
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-emerald-700 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                          {dragPreview.startTime} – {dragPreview.endTime}
+                        </div>
+                      </div>
+                    )}
 
                     {daySlots.map(slot => (
                       <OccurrenceBlock
@@ -926,9 +996,14 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                         onColorChange={handleColorChange}
                         onDragStart={(slotToMove, occurrenceDate) => {
                           setDraggedOccurrence({ slot: slotToMove, date: occurrenceDate })
+                          setDragPreview(null)
                           setAddingDate(null)
                           setEditingSlot(null)
                           setEditingDate(null)
+                        }}
+                        onDragEnd={() => {
+                          setDraggedOccurrence(null)
+                          setDragPreview(null)
                         }}
                       />
                     ))}
