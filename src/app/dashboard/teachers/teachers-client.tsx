@@ -443,26 +443,45 @@ function LessonRow({
 // ─── SessionCard ──────────────────────────────────────────────────────────────
 
 function SessionCard({
-  session, paidAt, canSetLegacyBoundary, onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson,
+  session, paidAt, hasUndatedPayment, canSetLegacyBoundary, canMarkPaymentDate,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate,
 }: {
   session: LessonSession
   paidAt?: string | null
+  hasUndatedPayment?: boolean
   canSetLegacyBoundary: boolean
+  canMarkPaymentDate: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
   onDeleteLesson: (lessonId: string) => void
+  onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
 }) {
   const [open, setOpen] = useState(!session.isComplete)
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [savingPaymentDate, setSavingPaymentDate] = useState(false)
+  const [paymentDateError, setPaymentDateError] = useState<string | null>(null)
 
   const done = session.lessons.filter((l) => l.status !== "PENDING").length
   const total = session.lessons.length
   const present = session.lessons.filter((l) => l.status === "PRESENT").length
   const totalMakeup = session.lessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
   const canRequestPayment = !paidAt
+
+  async function savePaymentDate() {
+    setSavingPaymentDate(true)
+    setPaymentDateError(null)
+    const ok = await onMarkPaymentDate(session, paymentDate)
+    setSavingPaymentDate(false)
+    if (!ok) {
+      setPaymentDateError("La date n'a pas pu être enregistrée.")
+      return
+    }
+    setPaymentDateError(null)
+  }
 
   return (
     <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-emerald-200 bg-white shadow-sm"}`}>
@@ -475,7 +494,12 @@ function SessionCard({
             <span className="font-semibold text-gray-900">Session {session.number}</span>
             {session.isComplete && <span className="flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600"><CheckCircle2 className="h-3 w-3" /> Terminée</span>}
             {paidAt && <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}</span>}
-            {!paidAt && <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"><AlertTriangle className="h-3 w-3" /> Session pas encore payée</span>}
+            {!paidAt && (
+              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                <AlertTriangle className="h-3 w-3" />
+                {hasUndatedPayment ? "Paiement sans date" : "Session pas encore payée"}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 flex gap-3 text-xs text-gray-400">
             {session.duration && <span>{session.duration}</span>}
@@ -521,16 +545,38 @@ function SessionCard({
             )}
           </div>
           {canRequestPayment && (
-            <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs text-amber-700">
-                <Bell className="h-3.5 w-3.5" />
-                {session.isComplete
-                  ? "Envoyer la demande de paiement à l'élève"
-                  : "Terminer la session et envoyer la demande de paiement à l'élève"}
+            <div className="space-y-2">
+              {canMarkPaymentDate && (
+                <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Marquer la date du paiement
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      type="date"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      className="h-8 bg-white text-xs sm:w-40"
+                    />
+                    <Button size="sm" className="h-8 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700" disabled={savingPaymentDate || !paymentDate} onClick={savePaymentDate}>
+                      {savingPaymentDate ? "Enregistrement..." : "OK"}
+                    </Button>
+                  </div>
+                  {paymentDateError && <p className="text-xs text-red-600 sm:basis-full">{paymentDateError}</p>}
+                </div>
+              )}
+              <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-xs text-amber-700">
+                  <Bell className="h-3.5 w-3.5" />
+                  {session.isComplete
+                    ? "Envoyer la demande de paiement à l'élève"
+                    : "Terminer la session et envoyer la demande de paiement à l'élève"}
+                </div>
+                <Button size="sm" className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3" onClick={() => onCloseSession(session.id)}>
+                  {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
+                </Button>
               </div>
-              <Button size="sm" className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3" onClick={() => onCloseSession(session.id)}>
-                {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
-              </Button>
             </div>
           )}
         </div>
@@ -542,23 +588,26 @@ function SessionCard({
 // ─── StudentCahier ────────────────────────────────────────────────────────────
 
 function StudentCahier({
-  student, sessions, paidBySession, schedule, teachers, currentUserId,
-  canSetLegacyBoundary,
-  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson,
+  student, sessions, paidBySession, undatedPaymentBySession, schedule, teachers, currentUserId,
+  canSetLegacyBoundary, canMarkPaymentDate,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate,
 }: {
   student: Student
   sessions: LessonSession[]
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   schedule: Slot[] | undefined
   teachers: { id: string; name: string }[]
   currentUserId: string
   canSetLegacyBoundary: boolean
+  canMarkPaymentDate: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
+  onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
 }) {
   const [open, setOpen] = useState(false)
   const [newSubject, setNewSubject] = useState("")
@@ -645,7 +694,19 @@ function StudentCahier({
             </div>
           )}
           {selected && (
-            <SessionCard key={selected.id} session={selected} paidAt={paidBySession[`${student.id}:${selected.number}`]} canSetLegacyBoundary={canSetLegacyBoundary} onUpdateLesson={onUpdateLesson} onAddLesson={onAddLesson} onCloseSession={onCloseSession} onDeleteLesson={onDeleteLesson} />
+            <SessionCard
+              key={selected.id}
+              session={selected}
+              paidAt={paidBySession[`${student.id}:${selected.number}`]}
+              hasUndatedPayment={undatedPaymentBySession[`${student.id}:${selected.number}`]}
+              canSetLegacyBoundary={canSetLegacyBoundary}
+              canMarkPaymentDate={canMarkPaymentDate && !paidBySession[`${student.id}:${selected.number}`]}
+              onUpdateLesson={onUpdateLesson}
+              onAddLesson={onAddLesson}
+              onCloseSession={onCloseSession}
+              onDeleteLesson={onDeleteLesson}
+              onMarkPaymentDate={onMarkPaymentDate}
+            />
           )}
           {choosingSessionModel ? (
             <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 space-y-3">
@@ -887,16 +948,20 @@ function GroupCard({
   rate,
   sessions,
   paidBySession,
+  undatedPaymentBySession,
   scheduleByGroup,
   teachers,
   currentUserId,
   canRemoveStudent,
   canSetLegacyBoundary,
+  canMarkPaymentDate,
+  filteringSessionsWithoutPaymentDate,
   onUpdateLesson,
   onAddLesson,
   onCloseSession,
   onNewSession,
   onDeleteLesson,
+  onMarkPaymentDate,
 }: {
   group: Group
   activeStudents: Student[]
@@ -904,17 +969,21 @@ function GroupCard({
   rate: number
   sessions: LessonSession[]
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   scheduleByGroup: Record<string, Slot[]>
   teachers: { id: string; name: string }[]
   currentUserId: string
   canRemoveStudent: boolean
   canSetLegacyBoundary: boolean
+  canMarkPaymentDate: boolean
+  filteringSessionsWithoutPaymentDate: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
+  onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
 }) {
   const [removing, setRemoving] = useState<string | null>(null)
 
@@ -956,7 +1025,9 @@ function GroupCard({
         </div>
       </div>
       {activeStudents.length === 0 ? (
-        <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-400">Aucun élève actif dans cette classe.</p>
+        <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-400">
+          {filteringSessionsWithoutPaymentDate ? "Aucune session à vérifier dans cette classe." : "Aucun élève actif dans cette classe."}
+        </p>
       ) : (
         <div className="space-y-2">
           {activeStudents.map((student) => (
@@ -975,15 +1046,18 @@ function GroupCard({
                 student={student}
                 sessions={getStudentSessions(student.id)}
                 paidBySession={paidBySession}
+                undatedPaymentBySession={undatedPaymentBySession}
                 schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                 teachers={teachers}
                 currentUserId={currentUserId}
                 canSetLegacyBoundary={canSetLegacyBoundary}
+                canMarkPaymentDate={canMarkPaymentDate}
                 onUpdateLesson={onUpdateLesson}
                 onAddLesson={onAddLesson}
                 onCloseSession={onCloseSession}
                 onNewSession={onNewSession}
                 onDeleteLesson={onDeleteLesson}
+                onMarkPaymentDate={onMarkPaymentDate}
               />
             </div>
           ))}
@@ -994,23 +1068,27 @@ function GroupCard({
 }
 
 function TeacherCard({
-  teacher, teacherStudents, sessions, paidBySession, scheduleByGroup, teachers, currentUserId, currentRole,
-  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onUpdateRates,
+  teacher, teacherStudents, sessions, paidBySession, undatedPaymentBySession, scheduleByGroup, teachers, currentUserId, currentRole,
+  showSessionsWithoutPaymentDate,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onUpdateRates,
 }: {
   teacher: Teacher
   teacherStudents: Student[]
   sessions: LessonSession[]
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   scheduleByGroup: Record<string, Slot[]>
   teachers: { id: string; name: string }[]
   currentUserId: string
   currentRole: string
+  showSessionsWithoutPaymentDate: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
+  onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onUpdateRates: (teacherId: string, rates: { individualRate?: number; binomeRate?: number; groupRate?: number }) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -1025,12 +1103,20 @@ function TeacherCard({
   const totalStudents = teacher.teacherGroups.reduce((sum, g) => sum + g.students.filter(s => s.status === "ACTIVE").length, 0)
   const totalGroups = teacher.teacherGroups.length
 
-  const activeStudents = teacherStudents.filter(s => s.status === "ACTIVE")
-  const pausedStudents = teacherStudents.filter(s => s.status === "PAUSED")
-  const stoppedStudents = teacherStudents.filter(s => s.status === "STOPPED")
+  const visibleSessions = showSessionsWithoutPaymentDate
+    ? sessions.filter((session) => !paidBySession[`${session.student.id}:${session.number}`])
+    : sessions
+  const visibleStudentIds = new Set(visibleSessions.map((session) => session.student.id))
+  const visibleTeacherStudents = showSessionsWithoutPaymentDate
+    ? teacherStudents.filter((student) => visibleStudentIds.has(student.id))
+    : teacherStudents
+
+  const activeStudents = visibleTeacherStudents.filter(s => s.status === "ACTIVE")
+  const pausedStudents = visibleTeacherStudents.filter(s => s.status === "PAUSED")
+  const stoppedStudents = visibleTeacherStudents.filter(s => s.status === "STOPPED")
 
   function getStudentSessions(studentId: string) {
-    return sessions.filter(s => s.student.id === studentId)
+    return visibleSessions.filter(s => s.student.id === studentId)
   }
 
   async function startTeacherView() {
@@ -1189,18 +1275,22 @@ function TeacherCard({
                         activeStudents={activeInGroup}
                         groupType={groupType}
                         rate={rate}
-                        sessions={sessions}
+                        sessions={visibleSessions}
                         paidBySession={paidBySession}
+                        undatedPaymentBySession={undatedPaymentBySession}
                         scheduleByGroup={scheduleByGroup}
                         teachers={teachers}
                         currentUserId={currentUserId}
                         canRemoveStudent={currentRole === "DIRECTOR"}
                         canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                        canMarkPaymentDate={currentRole === "DIRECTOR"}
+                        filteringSessionsWithoutPaymentDate={showSessionsWithoutPaymentDate}
                         onUpdateLesson={onUpdateLesson}
                         onAddLesson={onAddLesson}
                         onCloseSession={onCloseSession}
                         onNewSession={onNewSession}
                         onDeleteLesson={onDeleteLesson}
+                        onMarkPaymentDate={onMarkPaymentDate}
                       />
                     )
                   })}
@@ -1223,15 +1313,18 @@ function TeacherCard({
                     student={student}
                     sessions={getStudentSessions(student.id)}
                     paidBySession={paidBySession}
+                    undatedPaymentBySession={undatedPaymentBySession}
                     schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                     teachers={teachers}
                     currentUserId={currentUserId}
                     canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                    canMarkPaymentDate={currentRole === "DIRECTOR"}
                     onUpdateLesson={onUpdateLesson}
                     onAddLesson={onAddLesson}
                     onCloseSession={onCloseSession}
                     onNewSession={onNewSession}
                     onDeleteLesson={onDeleteLesson}
+                    onMarkPaymentDate={onMarkPaymentDate}
                   />
                 </div>
               ))}
@@ -1252,23 +1345,28 @@ function TeacherCard({
                     student={student}
                     sessions={getStudentSessions(student.id)}
                     paidBySession={paidBySession}
+                    undatedPaymentBySession={undatedPaymentBySession}
                     schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                     teachers={teachers}
                     currentUserId={currentUserId}
                     canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                    canMarkPaymentDate={currentRole === "DIRECTOR"}
                     onUpdateLesson={onUpdateLesson}
                     onAddLesson={onAddLesson}
                     onCloseSession={onCloseSession}
                     onNewSession={onNewSession}
                     onDeleteLesson={onDeleteLesson}
+                    onMarkPaymentDate={onMarkPaymentDate}
                   />
                 </div>
               ))}
             </div>
           )}
 
-          {teacherStudents.length === 0 && (
-            <p className="text-sm text-gray-400 italic">Aucun élève assigné</p>
+          {visibleTeacherStudents.length === 0 && (
+            <p className="text-sm text-gray-400 italic">
+              {showSessionsWithoutPaymentDate ? "Aucune session à vérifier pour ce professeur" : "Aucun élève assigné"}
+            </p>
           )}
         </div>
       )}
@@ -1279,22 +1377,34 @@ function TeacherCard({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function TeachersClient({
-  teachers: initialTeachers, students, lessonSessions, paidBySession, scheduleByGroup, currentUserId, currentRole,
+  teachers: initialTeachers,
+  students,
+  lessonSessions,
+  paidBySession: initialPaidBySession,
+  undatedPaymentBySession: initialUndatedPaymentBySession,
+  scheduleByGroup,
+  currentUserId,
+  currentRole,
 }: {
   teachers: Teacher[]
   students: Student[]
   lessonSessions: LessonSession[]
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   scheduleByGroup: Record<string, Slot[]>
   currentUserId: string
   currentRole: string
 }) {
   const [teachers, setTeachers] = useState(initialTeachers)
   const [sessions, setSessions] = useState<LessonSession[]>(lessonSessions)
+  const [paidBySession, setPaidBySession] = useState(initialPaidBySession)
+  const [undatedPaymentBySession, setUndatedPaymentBySession] = useState(initialUndatedPaymentBySession)
+  const [showSessionsWithoutPaymentDate, setShowSessionsWithoutPaymentDate] = useState(false)
 
   const totalStudents = teachers.reduce(
     (sum, t) => sum + t.teacherGroups.reduce((s, g) => s + g.students.filter(st => st.status === "ACTIVE").length, 0), 0
   )
+  const sessionsWithoutPaymentDate = sessions.filter((session) => !paidBySession[`${session.student.id}:${session.number}`]).length
 
   async function reload() {
     const res = await fetch("/api/teachers")
@@ -1349,6 +1459,24 @@ export function TeachersClient({
     return newSession.id ?? null
   }
 
+  async function handleMarkPaymentDate(session: LessonSession, paidDate: string) {
+    const res = await fetch(`/api/sessions/${session.id}/payment-date`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paidDate }),
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    const key = `${session.student.id}:${session.number}`
+    setPaidBySession((prev) => ({ ...prev, [key]: data.paidDate }))
+    setUndatedPaymentBySession((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+    return true
+  }
+
   async function handleUpdateRates(teacherId: string, ratesData: { individualRate?: number; binomeRate?: number; groupRate?: number }) {
     await fetch("/api/teachers", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ teacherId, ...ratesData }) })
     setTeachers((prev) => prev.map((t) => t.id === teacherId ? { ...t, ...ratesData } : t))
@@ -1399,6 +1527,23 @@ export function TeachersClient({
         <AddMemberForm onAdded={reload} canAddSecretary={currentRole === "DIRECTOR"} />
       </div>
 
+      {currentRole === "DIRECTOR" && (
+        <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <input
+            type="checkbox"
+            checked={showSessionsWithoutPaymentDate}
+            onChange={(e) => setShowSessionsWithoutPaymentDate(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+          />
+          <span>
+            <span className="block font-semibold">Afficher les sessions sans date de paiement</span>
+            <span className="block text-xs text-amber-700">
+              {sessionsWithoutPaymentDate} session{sessionsWithoutPaymentDate > 1 ? "s" : ""} à vérifier
+            </span>
+          </span>
+        </label>
+      )}
+
       {/* Teacher list */}
       {teachers.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 p-12 text-center">
@@ -1414,15 +1559,18 @@ export function TeachersClient({
               teacherStudents={getTeacherStudents(teacher.id)}
               sessions={getTeacherSessions(teacher.id)}
               paidBySession={paidBySession}
+              undatedPaymentBySession={undatedPaymentBySession}
               scheduleByGroup={scheduleByGroup}
               teachers={teachersList}
               currentUserId={currentUserId}
               currentRole={currentRole}
+              showSessionsWithoutPaymentDate={showSessionsWithoutPaymentDate}
               onUpdateLesson={handleUpdateLesson}
               onAddLesson={handleAddLesson}
               onCloseSession={handleCloseSession}
               onNewSession={handleNewSession}
               onDeleteLesson={handleDeleteLesson}
+              onMarkPaymentDate={handleMarkPaymentDate}
               onUpdateRates={handleUpdateRates}
             />
           ))}

@@ -70,9 +70,8 @@ export default async function TeachersPage() {
     prisma.payment.findMany({
       where: {
         tenantId: user.tenantId,
-        status: "CONFIRMED",
         sessionNumber: { not: null },
-        paidDate: { not: null },
+        status: { not: "REJECTED" },
       },
       select: { studentId: true, sessionNumber: true, paidDate: true },
     }),
@@ -124,10 +123,15 @@ export default async function TeachersPage() {
 
   // Paiements par session
   const paidBySession: Record<string, string> = {}
+  const undatedPaymentBySession: Record<string, boolean> = {}
   for (const p of payments) {
     const key = `${p.studentId}:${p.sessionNumber}`
-    const iso = p.paidDate!.toISOString()
-    if (!paidBySession[key] || iso > paidBySession[key]) paidBySession[key] = iso
+    if (p.paidDate) {
+      const iso = p.paidDate.toISOString()
+      if (!paidBySession[key] || iso > paidBySession[key]) paidBySession[key] = iso
+    } else {
+      undatedPaymentBySession[key] = true
+    }
   }
 
   return (
@@ -139,6 +143,7 @@ export default async function TeachersPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lessonSessions={lessonSessionsWithLessons as any}
       paidBySession={paidBySession}
+      undatedPaymentBySession={undatedPaymentBySession}
       scheduleByGroup={scheduleByGroup}
       currentUserId={user.id}
       currentRole={user.role}
