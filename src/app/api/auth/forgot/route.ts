@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
 import { wrap } from "@/lib/api"
+import { isRateLimited, registerAttempt, getClientIp } from "@/lib/rate-limit"
 
 const TOKEN_TTL_MS = 60 * 60 * 1000 // 1 h
 // Anti-abus : pas de nouveau lien si un lien émis il y a moins de 15 min est encore actif.
@@ -14,6 +15,19 @@ function hashToken(raw: string) {
 }
 
 export const POST = wrap(async (req: Request) => {
+  // Limitation par IP : au plus 5 demandes toutes les 15 min.
+  const ip = getClientIp(req)
+  if (ip) {
+    const key = `forgot:${ip}`
+    if (isRateLimited(key, 5, 15 * 60 * 1000).limited) {
+      return NextResponse.json(
+        { message: "Trop de demandes de réinitialisation. Réessayez dans quelques minutes." },
+        { status: 429 },
+      )
+    }
+    registerAttempt(key, 15 * 60 * 1000)
+  }
+
   const { identifier } = await req.json().catch(() => ({}))
   const id = typeof identifier === "string" ? identifier.trim().toLowerCase() : ""
 

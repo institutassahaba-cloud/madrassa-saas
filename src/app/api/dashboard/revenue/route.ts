@@ -19,7 +19,7 @@ export const GET = wrap(async () => {
 
   const payments = await prisma.payment.groupBy({
     by: ["month", "year"],
-    where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] }, year },
+    where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] }, year, paidDate: { lte: new Date() } },
     _sum: { amount: true },
     orderBy: { month: "asc" },
   })

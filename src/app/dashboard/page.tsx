@@ -44,7 +44,7 @@ async function getStats(tenantId: string) {
       where: { tenantId, status: { in: [...PAYMENT_AWAITING_STATUSES] }, dueDate: { lt: now } },
     }),
     prisma.payment.aggregate({
-      where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] }, paidDate: { gte: startOfBillingMonth } },
+      where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] }, paidDate: { gte: startOfBillingMonth, lte: now } },
       _sum: { amount: true },
     }),
     prisma.user.count({ where: { tenantId, role: "TEACHER", isActive: true } }),
