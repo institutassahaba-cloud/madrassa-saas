@@ -46,3 +46,8 @@ google-drive-credentials.json
 # base locale (données réelles, ne pas pousser)
 prisma/dev.db
 prisma/dev.db-journal
+
+# sauvegardes Turso (données réelles RGPD, ne jamais pousser)
+backups/
+# Added by code-review-graph
+.code-review-graph/
