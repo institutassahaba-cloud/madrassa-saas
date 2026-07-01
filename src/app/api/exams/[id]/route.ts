@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { deleteFromDrive } from "@/lib/google-drive"
 import { unlink } from "fs/promises"
 import path from "path"
+import { wrap } from "@/lib/api"
 
 function extractDriveFileId(url: string) {
   const match = url.match(/\/file\/d\/([^/]+)/)
@@ -16,7 +17,7 @@ function extractDriveFileId(url: string) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -37,4 +38,4 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   await prisma.examFile.delete({ where: { id } })
   return NextResponse.json({ ok: true })
-}
+})

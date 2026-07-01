@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { notificationVisibilityWhere } from "@/lib/notifications"
+import { wrap } from "@/lib/api"
 
-export async function PATCH(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -23,4 +24,4 @@ export async function PATCH(_req: Request, { params }: { params: Promise<{ id: s
   })
 
   return NextResponse.json(updated)
-}
+})

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
 import { formatCurrency, getMonthName } from "@/lib/utils"
+import { PAYMENT_PAID_STATUSES, PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Users, UserCheck, AlertCircle, TrendingUp,
@@ -37,9 +38,13 @@ async function getStats(tenantId: string) {
   ] = await Promise.all([
     prisma.student.count({ where: { tenantId } }),
     prisma.student.count({ where: { tenantId, status: "ACTIVE" } }),
-    prisma.payment.count({ where: { tenantId, status: "LATE" } }),
+    // Un retard = paiement encore attendu dont l'échéance est passée
+    // (il n'existe pas de statut "LATE" en base).
+    prisma.payment.count({
+      where: { tenantId, status: { in: [...PAYMENT_AWAITING_STATUSES] }, dueDate: { lt: now } },
+    }),
     prisma.payment.aggregate({
-      where: { tenantId, status: "PAID", paidDate: { gte: startOfBillingMonth } },
+      where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] }, paidDate: { gte: startOfBillingMonth } },
       _sum: { amount: true },
     }),
     prisma.user.count({ where: { tenantId, role: "TEACHER", isActive: true } }),

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
+import { wrap } from "@/lib/api"
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -27,4 +28,4 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     duration: first.duration,
     newRate: rateForSize(newCount),
   })
-}
+})

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { prisma } from "@/lib/prisma"
+import { wrap } from "@/lib/api"
 
 function parseDurationToMinutes(d: string | null): number {
   if (!d) return 60
@@ -10,7 +11,7 @@ function parseDurationToMinutes(d: string | null): number {
   return isFinite(h) && h > 0 ? Math.round(h * 60) : 60
 }
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -199,4 +200,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(results)
-}
+})

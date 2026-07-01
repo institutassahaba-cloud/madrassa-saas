@@ -2,8 +2,9 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { deleteFromDrive } from "@/lib/google-drive"
 import { NextResponse } from "next/server"
+import { wrap } from "@/lib/api"
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
@@ -19,4 +20,4 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   }
 
   return NextResponse.json({ ok: true })
-}
+})

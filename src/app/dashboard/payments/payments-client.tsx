@@ -9,10 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PaymentDialog } from "./payment-dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import { PAYMENT_PAID_STATUSES, PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 
 const STATUS_CONFIG = {
+  // Statuts canoniques
+  EXPECTED: { label: "Attendu", variant: "warning" as const, icon: Clock, color: "text-amber-600" },
+  EMAIL_SENT: { label: "Demande envoyée", variant: "warning" as const, icon: Clock, color: "text-amber-600" },
+  REMINDED: { label: "Relancé", variant: "warning" as const, icon: AlertTriangle, color: "text-orange-600" },
+  CONFIRMED: { label: "Payé", variant: "success" as const, icon: CheckCircle2, color: "text-emerald-600" },
+  REJECTED: { label: "Rejeté", variant: "destructive" as const, icon: Ban, color: "text-red-600" },
+  // Statuts hérités (affichage rétrocompatible)
   PAID: { label: "Payé", variant: "success" as const, icon: CheckCircle2, color: "text-emerald-600" },
-  CONFIRMED: { label: "Payé OK", variant: "success" as const, icon: CheckCircle2, color: "text-emerald-600" },
   PENDING: { label: "En attente", variant: "warning" as const, icon: Clock, color: "text-amber-600" },
   LATE: { label: "En retard", variant: "destructive" as const, icon: AlertTriangle, color: "text-red-600" },
   EXEMPTED: { label: "Exonéré", variant: "secondary" as const, icon: Ban, color: "text-gray-500" },
@@ -153,7 +160,11 @@ export function PaymentsClient({
     const name = `${p.student.firstName} ${p.student.lastName}`.toLowerCase()
     const teacherName = paymentTeacherName(p).toLowerCase()
     const matchSearch = name.includes(search.toLowerCase()) || teacherName.includes(search.toLowerCase()) || (p.reference ?? "").includes(search)
-    const matchStatus = statusFilter === "ALL" || p.status === statusFilter
+    const matchStatus =
+      statusFilter === "ALL" ? true
+      : statusFilter === "PAID" ? (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)
+      : statusFilter === "AWAITING" ? (PAYMENT_AWAITING_STATUSES as readonly string[]).includes(p.status)
+      : p.status === statusFilter
     const matchTeacher = teacherFilter === "ALL" || paymentTeacherId(p) === teacherFilter
     const period = paymentPeriods.find((item) => item.id === periodFilter)
     const paymentDate = paymentDateValue(p)
@@ -175,7 +186,7 @@ export function PaymentsClient({
   })
 
   const summary = {
-    paid: filtered.filter((p) => ["PAID", "CONFIRMED"].includes(p.status)).reduce((sum, p) => sum + p.amount, 0),
+    paid: filtered.filter((p) => (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)).reduce((sum, p) => sum + p.amount, 0),
     sentRequests: pendingPayments.length,
     toVerify: paymentMatches.length,
   }
@@ -584,11 +595,9 @@ export function PaymentsClient({
               <SelectTrigger className="w-full"><SelectValue placeholder="Statut" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tous statuts</SelectItem>
-                <SelectItem value="CONFIRMED">Payé OK</SelectItem>
                 <SelectItem value="PAID">Payé</SelectItem>
-                <SelectItem value="PENDING">En attente</SelectItem>
-                <SelectItem value="LATE">En retard</SelectItem>
-                <SelectItem value="EXEMPTED">Exonéré</SelectItem>
+                <SelectItem value="AWAITING">En attente</SelectItem>
+                <SelectItem value="REJECTED">Rejeté</SelectItem>
               </SelectContent>
             </Select>
             <Select value={periodFilter} onValueChange={setPeriodFilter}>

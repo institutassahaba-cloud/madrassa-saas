@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
+import { wrap } from "@/lib/api"
 import { z } from "zod"
 
 const studentSchema = z.object({
@@ -34,7 +35,7 @@ const studentSchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function GET() {
+export const GET = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const tenantId = (session.user).tenantId
@@ -46,9 +47,9 @@ export async function GET() {
     orderBy: { lastName: "asc" },
   })
   return NextResponse.json(students)
-}
+})
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -138,4 +139,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(student, { status: 201 })
-}
+})

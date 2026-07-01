@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
+import { wrap } from "@/lib/api"
 
 async function recalcGroupRate(groupId: string, tenantId: string) {
   const count = await prisma.student.count({
@@ -17,7 +18,7 @@ async function recalcGroupRate(groupId: string, tenantId: string) {
   }
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -72,9 +73,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   return NextResponse.json(updated)
-}
+})
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -105,9 +106,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await recalcGroupRate(student.groupId, user.tenantId)
   }
   return NextResponse.json(updated)
-}
+})
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -121,4 +122,4 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   await prisma.student.delete({ where: { id } })
   if (groupId) await recalcGroupRate(groupId, user.tenantId)
   return NextResponse.json({ ok: true })
-}
+})

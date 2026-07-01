@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendPaymentThanks } from "@/lib/payment-thanks"
+import { wrap } from "@/lib/api"
 
 type ManualAllocationInput = {
   studentId: string
@@ -29,7 +30,7 @@ type ValidatedManualAllocation = {
   }
 }
 
-export async function GET() {
+export const GET = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const tenantId = (session.user).tenantId
@@ -40,9 +41,9 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   })
   return NextResponse.json(payments)
-}
+})
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -204,4 +205,4 @@ export async function POST(req: Request) {
     method: payment.method,
   }).catch((err) => console.error("[mail] Erreur envoi remerciement paiement:", err))
   return NextResponse.json(payment, { status: 201 })
-}
+})

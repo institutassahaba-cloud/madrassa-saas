@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { prisma } from "@/lib/prisma"
+import { wrap } from "@/lib/api"
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -54,9 +55,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     : await prisma.lesson.update({ where: { id }, data })
 
   return NextResponse.json(updated)
-}
+})
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -73,4 +74,4 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   await prisma.lesson.delete({ where: { id } })
   return NextResponse.json({ ok: true })
-}
+})

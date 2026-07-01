@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { scanPaymentEmails } from "@/lib/payment-email-reader"
+import { wrap } from "@/lib/api"
 
 function isAuthorized(req: Request) {
   const secret = process.env.PAYMENT_SCAN_SECRET || process.env.CRON_SECRET
@@ -13,7 +14,7 @@ function isAuthorized(req: Request) {
   return authHeader === `Bearer ${secret}` || url.searchParams.get("secret") === secret
 }
 
-export async function GET(req: Request) {
+export const GET = wrap(async (req: Request) => {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -49,4 +50,4 @@ export async function GET(req: Request) {
     scannedTenants: settings.length,
     results,
   })
-}
+})

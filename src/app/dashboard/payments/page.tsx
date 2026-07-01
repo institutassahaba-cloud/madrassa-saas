@@ -4,6 +4,7 @@ import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { getEffectiveUser } from "@/lib/view-as"
+import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 import { PaymentsClient } from "./payments-client"
 
 export default async function PaymentsPage() {
@@ -76,7 +77,7 @@ export default async function PaymentsPage() {
       take: 50,
     }),
     prisma.payment.findMany({
-      where: { tenantId: user.tenantId, status: { in: ["EXPECTED", "EMAIL_SENT", "REMINDED", "PENDING"] } },
+      where: { tenantId: user.tenantId, status: { in: [...PAYMENT_AWAITING_STATUSES] } },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, group: { select: { name: true, teacherId: true } } } },
         lessonSession: { select: { id: true, number: true, subject: true, teacherId: true } },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { wrap } from "@/lib/api"
 
 function parsePaidDate(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return null
@@ -17,7 +18,7 @@ function paymentMethodFromStudent(type?: string | null) {
   return "Virement"
 }
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -90,4 +91,4 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     paymentId: payment.id,
     paidDate: payment.paidDate?.toISOString() ?? null,
   })
-}
+})

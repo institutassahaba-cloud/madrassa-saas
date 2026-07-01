@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 
 export const PSEUDO_REQUEST_SEPARATOR = "\n\n---\n"
 
@@ -90,7 +91,7 @@ export async function createDailyPendingPaymentReminders(date = new Date()) {
     const pending = await prisma.payment.findMany({
       where: {
         tenantId: tenant.id,
-        status: { in: ["EXPECTED", "EMAIL_SENT", "REMINDED", "PENDING"] },
+        status: { in: [...PAYMENT_AWAITING_STATUSES] },
       },
       include: {
         student: { select: { firstName: true, lastName: true, paymentGraceAllowed: true, group: { select: { teacherId: true } } } },

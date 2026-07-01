@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { scanPaymentEmails } from "@/lib/payment-email-reader"
 import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
+import { wrap } from "@/lib/api"
 
-export async function POST() {
+export const POST = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
   if (!["DIRECTOR", "SECRETARY"].includes(session.user.role)) {
@@ -21,4 +22,4 @@ export async function POST() {
       { status: 500 },
     )
   }
-}
+})

@@ -2,8 +2,9 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { uploadToDrive } from "@/lib/google-drive"
 import { NextResponse } from "next/server"
+import { wrap } from "@/lib/api"
 
-export async function GET() {
+export const GET = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json([], { status: 401 })
   const user = session.user
@@ -14,9 +15,9 @@ export async function GET() {
     orderBy: { uploadedAt: "desc" },
   })
   return NextResponse.json(contracts)
-}
+})
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
   const user = session.user
@@ -63,4 +64,4 @@ export async function POST(req: Request) {
   })
 
   return NextResponse.json(contract)
-}
+})

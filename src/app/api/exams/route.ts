@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { uploadToDrive } from "@/lib/google-drive"
+import { wrap } from "@/lib/api"
 
 const MAX_PDF_SIZE = 25 * 1024 * 1024
 
@@ -14,7 +15,7 @@ function isGoogleDriveUrl(value: string) {
   }
 }
 
-export async function GET() {
+export const GET = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -24,9 +25,9 @@ export async function GET() {
     orderBy: [{ level: "asc" }, { createdAt: "desc" }],
   })
   return NextResponse.json(exams)
-}
+})
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -103,4 +104,4 @@ export async function POST(req: Request) {
   })
 
   return NextResponse.json(examFile, { status: 201 })
-}
+})

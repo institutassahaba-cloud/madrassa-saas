@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { wrap } from "@/lib/api"
 
 // Détail de présence d'un élève : toutes ses sessions, chaque cours daté + statut,
 // et la date de paiement par session (jamais le montant). Depuis le début.
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -67,4 +68,4 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       })),
     })),
   })
-}
+})

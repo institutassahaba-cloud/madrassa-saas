@@ -3,9 +3,10 @@ import { cookies } from "next/headers"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { VIEW_AS_COOKIE } from "@/lib/view-as"
+import { wrap } from "@/lib/api"
 
 /** Active "Voir comme <membre>" (directeur uniquement). */
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (session?.user?.role !== "DIRECTOR") {
     return NextResponse.json({ error: "Réservé au directeur." }, { status: 403 })
@@ -32,11 +33,11 @@ export async function POST(req: Request) {
   })
 
   return NextResponse.json({ ok: true })
-}
+})
 
 /** Quitte le mode "Voir comme". */
-export async function DELETE() {
+export const DELETE = wrap(async () => {
   const cookieStore = await cookies()
   cookieStore.delete(VIEW_AS_COOKIE)
   return NextResponse.json({ ok: true })
-}
+})

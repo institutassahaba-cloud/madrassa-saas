@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { createDailyPendingPaymentReminders } from "@/lib/notifications"
+import { wrap } from "@/lib/api"
 
-export async function GET(req: Request) {
+export const GET = wrap(async (req: Request) => {
   const secret = process.env.CRON_SECRET
   const authHeader = req.headers.get("authorization")
   if (!secret || authHeader !== `Bearer ${secret}`) {
@@ -10,4 +11,4 @@ export async function GET(req: Request) {
 
   const result = await createDailyPendingPaymentReminders()
   return NextResponse.json({ message: "Rappels paiements en attente vérifiés", ...result })
-}
+})

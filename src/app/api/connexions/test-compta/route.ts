@@ -2,10 +2,11 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendComptaMail } from "@/lib/mail"
+import { wrap } from "@/lib/api"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
   const user = session.user
@@ -50,4 +51,4 @@ export async function POST(req: Request) {
     console.error("[connexions] Test email compta failed:", error)
     return NextResponse.json({ error: "L'envoi du test a échoué." }, { status: 500 })
   }
-}
+})

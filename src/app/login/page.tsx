@@ -75,7 +75,7 @@ export default function LoginPage() {
             <>
               <CardHeader>
                 <CardTitle>Mot de passe oublié</CardTitle>
-                <CardDescription>Entrez votre identifiant. Un nouveau mot de passe sera envoyé à votre adresse email.</CardDescription>
+                <CardDescription>Entrez votre identifiant. Un lien de réinitialisation sera envoyé à votre adresse email.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleForgot} className="space-y-4">
@@ -97,7 +97,7 @@ export default function LoginPage() {
 
                   <Button type="submit" className="w-full" disabled={forgotLoading}>
                     {forgotLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Envoyer un nouveau mot de passe
+                    Envoyer le lien de réinitialisation
                   </Button>
 
                   <button

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { ensurePaymentAliasSchema, normalizePaymentAlias } from "@/lib/payment-alias-schema"
+import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 
 const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
@@ -207,7 +208,7 @@ async function findCertainPendingPayment({
     where: {
       tenantId,
       studentId,
-      status: { in: ["EXPECTED", "EMAIL_SENT", "REMINDED", "PENDING"] },
+      status: { in: [...PAYMENT_AWAITING_STATUSES] },
       expectedAmount: { not: null },
     },
     include: {

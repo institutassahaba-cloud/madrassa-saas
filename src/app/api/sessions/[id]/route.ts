@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendComptaMail, sessionEndEmailHtml } from "@/lib/mail"
+import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
+import { wrap } from "@/lib/api"
 
 const PAYPAL_LINK = process.env.PAYPAL_LINK ?? ""
 const PAYPAL_EMAIL = process.env.PAYPAL_EMAIL ?? process.env.PAYMENT_EMAIL ?? process.env.FACTURATION_EMAIL ?? "facturation.institutassahaba@gmail.com"
@@ -14,7 +16,7 @@ function paymentMethodFromStudent(type?: string | null) {
   return null
 }
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -98,7 +100,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         where: {
           tenantId: existing.tenantId,
           lessonSessionId: paymentSession.id,
-          status: { in: ["EXPECTED", "EMAIL_SENT", "REMINDED", "PENDING"] },
+          status: { in: [...PAYMENT_AWAITING_STATUSES] },
         },
         select: { id: true },
       })
@@ -143,9 +145,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   return NextResponse.json(updated)
-}
+})
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -160,4 +162,4 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   await prisma.lessonSession.delete({ where: { id } })
   return NextResponse.json({ ok: true })
-}
+})

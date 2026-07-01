@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
+import { wrap } from "@/lib/api"
 
-export async function GET() {
+export const GET = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   if (session.user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -18,9 +19,9 @@ export async function GET() {
     enabled: Boolean(settings?.paymentScanEnabled),
     startedAt: settings?.paymentScanStartedAt ?? null,
   })
-}
+})
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   if (session.user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -59,4 +60,4 @@ export async function POST(req: Request) {
     enabled: settings.paymentScanEnabled,
     startedAt: settings.paymentScanStartedAt,
   })
-}
+})

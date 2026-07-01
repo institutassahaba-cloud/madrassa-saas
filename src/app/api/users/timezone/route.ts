@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { wrap } from "@/lib/api"
 
-export async function PATCH(req: Request) {
+export const PATCH = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -15,4 +16,4 @@ export async function PATCH(req: Request) {
     select: { id: true, timezone: true },
   })
   return NextResponse.json(updated)
-}
+})

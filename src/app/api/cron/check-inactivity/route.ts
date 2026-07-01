@@ -10,8 +10,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendComptaMail } from "@/lib/mail"
+import { wrap } from "@/lib/api"
 
-export async function GET(req: Request) {
+export const GET = wrap(async (req: Request) => {
   const secret = process.env.CRON_SECRET
   const authHeader = req.headers.get("authorization")
   if (!secret || authHeader !== `Bearer ${secret}`) {
@@ -98,4 +99,4 @@ Merci de vérifier qu'ils remplissent bien leur cahier de cours.
   }
 
   return NextResponse.json({ message: "Vérification terminée", inactiveCount: inactiveTeachers.length, emailsSent })
-}
+})

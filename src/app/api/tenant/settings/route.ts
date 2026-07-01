@@ -1,8 +1,9 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { wrap } from "@/lib/api"
 
-export async function PUT(req: Request) {
+export const PUT = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
   const user = session.user
@@ -28,4 +29,4 @@ export async function PUT(req: Request) {
   })
 
   return NextResponse.json({ ok: true })
-}
+})

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { PAYMENT_PAID_STATUSES } from "@/lib/payment-status"
+import { wrap } from "@/lib/api"
 
-export async function POST(req: Request) {
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
     const payments = await prisma.payment.findMany({
       where: {
         tenantId,
-        status: { in: ["PAID", "CONFIRMED"] },
+        status: { in: [...PAYMENT_PAID_STATUSES] },
         OR: [
           { confirmedAt: { gt: since, lte: now } },
           { confirmedAt: null, createdAt: { gt: since, lte: now } },
@@ -141,4 +143,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(results)
-}
+})

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { encodeScheduleLabel } from "@/lib/schedule-meta"
+import { wrap } from "@/lib/api"
 
 const AVAILABILITY_LABEL = "Créneau disponible"
 const AVAILABILITY_COLOR = "#7c3aed"
@@ -29,7 +30,7 @@ function normalizeRange(range: AvailabilityRangeInput) {
   }
 }
 
-export async function PUT(req: Request) {
+export const PUT = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
@@ -90,4 +91,4 @@ export async function PUT(req: Request) {
   })
 
   return NextResponse.json(slots)
-}
+})
