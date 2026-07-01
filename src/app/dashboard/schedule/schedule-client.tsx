@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import type React from "react"
-import { Clock, Plus, X, Globe, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
+import { Clock, Plus, X, Globe, ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -94,6 +94,16 @@ function dateKey(d: Date): string {
 
 function isSameDay(a: Date, b: Date): boolean {
   return dateKey(a) === dateKey(b)
+}
+
+function getDefaultOpenDayKeys(dates: Date[]) {
+  const todayKey = dateKey(new Date())
+  if (dates.some((date) => dateKey(date) === todayKey)) return new Set([todayKey])
+  return new Set(dates[0] ? [dateKey(dates[0])] : [])
+}
+
+function getWeekDates(weekStart: Date) {
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 }
 
 function slotTitle(slot: TimeSlot): string {
@@ -658,13 +668,31 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
   const initialMonday = initialWeek ? getMonday(new Date(initialWeek)) : getMonday(new Date())
   const [weekStart, setWeekStart] = useState(initialMonday)
 
-  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const weekDates = getWeekDates(weekStart)
   // Display order: Lun→Dim (index 0=Mon in weekDates)
   const displayOrder = [0, 1, 2, 3, 4, 5, 6] // Mon Tue Wed Thu Fri Sat Sun
+  const [openDayKeys, setOpenDayKeys] = useState<Set<string>>(() => getDefaultOpenDayKeys(weekDates))
 
-  function prevWeek() { setWeekStart(addDays(weekStart, -7)) }
-  function nextWeek() { setWeekStart(addDays(weekStart, 7)) }
-  function goToday() { setWeekStart(getMonday(new Date())) }
+  function toggleMobileDay(dayKey: string) {
+    setOpenDayKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(dayKey)) next.delete(dayKey)
+      else next.add(dayKey)
+      return next
+    })
+  }
+
+  function setDisplayedWeek(nextWeekStart: Date) {
+    setWeekStart(nextWeekStart)
+    setOpenDayKeys(getDefaultOpenDayKeys(getWeekDates(nextWeekStart)))
+    setAddingDate(null)
+    setEditingSlot(null)
+    setEditingDate(null)
+  }
+
+  function prevWeek() { setDisplayedWeek(addDays(weekStart, -7)) }
+  function nextWeek() { setDisplayedWeek(addDays(weekStart, 7)) }
+  function goToday() { setDisplayedWeek(getMonday(new Date())) }
 
   const filteredSlots = slots.filter(s =>
     role === "TEACHER" || (filterTeacher ? s.teacher.id === filterTeacher : false)
@@ -962,6 +990,8 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
         <div className="space-y-3 md:hidden">
           {displayOrder.map(i => {
             const d = weekDates[i]
+            const dayKey = dateKey(d)
+            const isOpen = openDayKeys.has(dayKey)
             const daySlots = getOccurrences(d).sort((a, b) => {
               const aStart = convertTime(a.startTime, a.teacher.timezone, viewTz)
               const bStart = convertTime(b.startTime, b.teacher.timezone, viewTz)
@@ -975,18 +1005,27 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                 className={`rounded-xl border bg-white shadow-sm ${isToday ? "border-emerald-200 ring-1 ring-emerald-100" : "border-gray-200"}`}
               >
                 <div className={`flex items-center justify-between gap-3 rounded-t-xl px-3 py-3 ${isToday ? "bg-emerald-50" : "bg-gray-50"}`}>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {DAYS_SHORT[d.getDay()]} {d.getDate()} {MONTHS[d.getMonth()].slice(0, 3)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {daySlots.length === 0 ? "Aucun créneau" : `${daySlots.length} créneau${daySlots.length > 1 ? "x" : ""}`}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    onClick={() => toggleMobileDay(dayKey)}
+                    aria-expanded={isOpen}
+                  >
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${isOpen ? "rotate-0" : "-rotate-90"}`} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-gray-900">
+                        {DAYS_SHORT[d.getDay()]} {d.getDate()} {MONTHS[d.getMonth()].slice(0, 3)}
+                      </span>
+                      <span className="block text-xs text-gray-500">
+                        {daySlots.length === 0 ? "Aucun créneau" : `${daySlots.length} créneau${daySlots.length > 1 ? "x" : ""}`}
+                      </span>
+                    </span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
                       if (!activeTeacherId) return
+                      setOpenDayKeys((prev) => new Set(prev).add(dayKey))
                       setAddingDate(d)
                       setEditingSlot(null)
                       setEditingDate(null)
@@ -999,6 +1038,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                   </button>
                 </div>
 
+                {isOpen && (
                 <div className="space-y-2 p-3">
                   {addingDate && dateKey(addingDate) === dateKey(d) && activeTeacherId && (
                     <SlotForm
@@ -1049,6 +1089,7 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
                     ))
                   )}
                 </div>
+                )}
               </section>
             )
           })}
