@@ -138,6 +138,28 @@ function applyLessonUpdate(sessions: LessonSession[], lessonId: string, data: Pa
   })
 }
 
+function paymentKey(session: LessonSession): string {
+  return `${session.student.id}:${session.number}`
+}
+
+function trackingKey(session: LessonSession): string {
+  return `${session.student.id}:${session.teacher.id}:${session.subject}`
+}
+
+function latestSessionsOnly(sessions: LessonSession[]): LessonSession[] {
+  const latestByTracking = new Map<string, LessonSession>()
+  for (const session of sessions) {
+    const key = trackingKey(session)
+    const current = latestByTracking.get(key)
+    if (!current || session.number > current.number) latestByTracking.set(key, session)
+  }
+  return Array.from(latestByTracking.values())
+}
+
+function latestSessionsWithoutPaymentDate(sessions: LessonSession[], paidBySession: Record<string, string>): LessonSession[] {
+  return latestSessionsOnly(sessions).filter((session) => !paidBySession[paymentKey(session)])
+}
+
 function formatForfait(lessonsPerWeek: number | null, duration: string | null): string | null {
   if (!lessonsPerWeek) return null
   let dur = "?"
@@ -1104,7 +1126,7 @@ function TeacherCard({
   const totalGroups = teacher.teacherGroups.length
 
   const visibleSessions = showSessionsWithoutPaymentDate
-    ? sessions.filter((session) => !paidBySession[`${session.student.id}:${session.number}`])
+    ? latestSessionsWithoutPaymentDate(sessions, paidBySession)
     : sessions
   const visibleStudentIds = new Set(visibleSessions.map((session) => session.student.id))
   const visibleTeacherStudents = showSessionsWithoutPaymentDate
@@ -1404,7 +1426,7 @@ export function TeachersClient({
   const totalStudents = teachers.reduce(
     (sum, t) => sum + t.teacherGroups.reduce((s, g) => s + g.students.filter(st => st.status === "ACTIVE").length, 0), 0
   )
-  const sessionsWithoutPaymentDate = sessions.filter((session) => !paidBySession[`${session.student.id}:${session.number}`]).length
+  const sessionsWithoutPaymentDate = latestSessionsWithoutPaymentDate(sessions, paidBySession).length
 
   async function reload() {
     const res = await fetch("/api/teachers")
