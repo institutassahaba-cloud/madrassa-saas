@@ -253,6 +253,82 @@ function OccurrenceBlock({
   )
 }
 
+function MobileOccurrenceCard({
+  slot,
+  date,
+  viewTz,
+  onEdit,
+  onCancel,
+  onDeleteSlot,
+}: {
+  slot: TimeSlot
+  date: Date
+  viewTz: string
+  onEdit: (slot: TimeSlot) => void
+  onCancel: (slotId: string, date: Date) => void
+  onDeleteSlot: (slotId: string) => void
+}) {
+  const recurrence = parseScheduleLabel(slot.label).recurrence
+  const start = convertTime(slot.startTime, slot.teacher.timezone, viewTz)
+  const end = convertTime(slot.endTime, slot.teacher.timezone, viewTz)
+
+  return (
+    <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div
+          className="mt-1 h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: slot.color ?? "#10b981" }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="truncate text-sm font-semibold text-gray-900">{slotTitle(slot)}</p>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+              {start} - {end}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            {slot.group?.name ?? slot.teacher.name}
+          </p>
+          <p className="mt-0.5 text-[11px] text-gray-400">{RECURRENCE_LABELS[recurrence]}</p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 px-2 text-xs"
+          onClick={() => onEdit(slot)}
+        >
+          Modifier
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 px-2 text-xs"
+          onClick={() => {
+            if (confirm(`Annuler ce cours du ${date.toLocaleDateString("fr-FR")} ?\nLes autres occurrences ne seront pas affectées.`)) {
+              onCancel(slot.id, date)
+            }
+          }}
+        >
+          Annuler
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 px-2 text-xs text-red-600 hover:text-red-700"
+          onClick={() => onDeleteSlot(slot.id)}
+        >
+          Supprimer
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 // ─── SlotForm ─────────────────────────────────────────────────────────────────
 
 function SlotForm({
@@ -268,7 +344,7 @@ function SlotForm({
 }: {
   date: Date
   slot?: TimeSlot
-  placement?: "corner" | "column"
+  placement?: "corner" | "column" | "inline"
   groups: { id: string; name: string; teacherId: string | null }[]
   teachers: { id: string; name: string; timezone: string }[]
   role: string
@@ -310,7 +386,9 @@ function SlotForm({
   return (
     <div className={
       "z-30 rounded-xl border border-emerald-300 bg-white p-3 shadow-xl space-y-2 " +
-      (placement === "corner"
+      (placement === "inline"
+        ? "relative"
+        : placement === "corner"
         ? "fixed inset-x-3 top-24 sm:absolute sm:left-0 sm:top-full sm:mt-2 sm:w-72"
         : "absolute inset-x-0 top-0")
     }>
@@ -880,8 +958,104 @@ export function ScheduleClient({ slots: initialSlots, groups, teachers, currentU
           </div>
         )}
 
+        {/* Mobile agenda */}
+        <div className="space-y-3 md:hidden">
+          {displayOrder.map(i => {
+            const d = weekDates[i]
+            const daySlots = getOccurrences(d).sort((a, b) => {
+              const aStart = convertTime(a.startTime, a.teacher.timezone, viewTz)
+              const bStart = convertTime(b.startTime, b.teacher.timezone, viewTz)
+              return aStart.localeCompare(bStart)
+            })
+            const isToday = isSameDay(d, today)
+
+            return (
+              <section
+                key={i}
+                className={`rounded-xl border bg-white shadow-sm ${isToday ? "border-emerald-200 ring-1 ring-emerald-100" : "border-gray-200"}`}
+              >
+                <div className={`flex items-center justify-between gap-3 rounded-t-xl px-3 py-3 ${isToday ? "bg-emerald-50" : "bg-gray-50"}`}>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {DAYS_SHORT[d.getDay()]} {d.getDate()} {MONTHS[d.getMonth()].slice(0, 3)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {daySlots.length === 0 ? "Aucun créneau" : `${daySlots.length} créneau${daySlots.length > 1 ? "x" : ""}`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!activeTeacherId) return
+                      setAddingDate(d)
+                      setEditingSlot(null)
+                      setEditingDate(null)
+                    }}
+                    disabled={!activeTeacherId}
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                    aria-label="Ajouter un événement"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2 p-3">
+                  {addingDate && dateKey(addingDate) === dateKey(d) && activeTeacherId && (
+                    <SlotForm
+                      date={addingDate}
+                      placement="inline"
+                      groups={groups}
+                      teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
+                      role="TEACHER"
+                      currentUserId={activeTeacherId}
+                      onSave={handleSaveSlot}
+                      onClose={() => setAddingDate(null)}
+                    />
+                  )}
+
+                  {editingSlot && editingDate && dateKey(editingDate) === dateKey(d) && (
+                    <SlotForm
+                      date={editingDate}
+                      slot={editingSlot}
+                      placement="inline"
+                      groups={groups}
+                      teachers={teachers.length > 0 ? teachers : [{ id: currentUser.id, name: currentUser.name, timezone: currentUser.timezone }]}
+                      role="TEACHER"
+                      currentUserId={editingSlot.teacher.id}
+                      onSave={handleSaveSlot}
+                      onClose={() => { setEditingSlot(null); setEditingDate(null) }}
+                    />
+                  )}
+
+                  {daySlots.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-200 px-3 py-5 text-center text-sm text-gray-400">
+                      Aucun cours prévu ce jour.
+                    </div>
+                  ) : (
+                    daySlots.map(slot => (
+                      <MobileOccurrenceCard
+                        key={slot.id}
+                        slot={slot}
+                        date={d}
+                        viewTz={viewTz}
+                        onEdit={(slotToEdit) => {
+                          setEditingSlot(slotToEdit)
+                          setEditingDate(d)
+                          setAddingDate(null)
+                        }}
+                        onCancel={handleCancel}
+                        onDeleteSlot={handleDeleteSlot}
+                      />
+                    ))
+                  )}
+                </div>
+              </section>
+            )
+          })}
+        </div>
+
         {/* Grid */}
-        <div className="min-w-0 flex-1 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="hidden min-w-0 flex-1 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm md:block">
           <div className="min-w-[700px]">
             {/* Day headers with real dates */}
             <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
