@@ -64,18 +64,25 @@ function loadEnvFile(file) {
 
 function resolveEnv(args) {
   const files = [
-    ...(args.env ? [String(args.env)] : []),
     ".env.local",
     ".env",
+    ...(args.env ? [String(args.env)] : []),
   ]
   const merged = {}
   for (const file of files) Object.assign(merged, loadEnvFile(path.resolve(file)))
   return {
-    ...merged,
     ...process.env,
+    ...merged,
     ...(args["db-url"] ? { DATABASE_URL: String(args["db-url"]) } : {}),
     ...(args["auth-token"] ? { TURSO_AUTH_TOKEN: String(args["auth-token"]) } : {}),
   }
+}
+
+function normalizeDatabaseUrl(url) {
+  if (!url || !url.startsWith("libsql://")) return url
+  const parsed = new URL(url)
+  parsed.search = ""
+  return parsed.toString()
 }
 
 function norm(value) {
@@ -169,7 +176,7 @@ async function main() {
   const dataDir = path.resolve(String(args.dir || "prisma/data"))
   const only = args._[0] || null
   const env = resolveEnv(args)
-  const databaseUrl = env.DATABASE_URL || `file://${path.resolve("prisma/dev.db")}`
+  const databaseUrl = normalizeDatabaseUrl(env.DATABASE_URL || `file://${path.resolve("prisma/dev.db")}`)
 
   if (databaseUrl.startsWith("libsql://") && !env.TURSO_AUTH_TOKEN) {
     throw new Error("TURSO_AUTH_TOKEN est manquant pour la base en ligne.")
