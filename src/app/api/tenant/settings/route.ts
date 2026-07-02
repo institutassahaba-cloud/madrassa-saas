@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { wrap } from "@/lib/api"
+import { encryptSecret } from "@/lib/secrets"
 
 export const PUT = wrap(async (req: Request) => {
   const session = await auth()
@@ -14,7 +15,7 @@ export const PUT = wrap(async (req: Request) => {
   const data: Record<string, string> = {}
   for (const key of allowed) {
     if (body[key] !== undefined && body[key] !== "") {
-      data[key] = body[key]
+      data[key] = encryptSecret(String(body[key])) as string
     }
   }
 

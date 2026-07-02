@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { useState, useRef } from "react"
-import { Plus, Search, Upload, Edit, Archive, X, MessageCircle, Clock } from "lucide-react"
+import { Plus, Search, Upload, Edit, Archive, ArchiveRestore, Trash2, X, MessageCircle, Clock } from "lucide-react"
 import { gmailComposeLink } from "@/lib/contact-links"
 import { whatsappLink } from "@/lib/phone"
 import { Button } from "@/components/ui/button"
@@ -215,12 +215,38 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
     return a.localeCompare(b, "fr")
   })
 
-  async function handleArchive(id: string) {
+  async function handleArchive(id: string, name: string) {
+    if (!confirm(`Archiver ${name} ? L'élève sortira des listes actives mais son dossier sera conservé (consultable dans « Anciens »).`)) return
     await fetch(`/api/students/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "ARCHIVED" }),
     })
+    window.location.reload()
+  }
+
+  async function handleUnarchive(id: string) {
+    await fetch(`/api/students/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ACTIVE" }),
+    })
+    window.location.reload()
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(
+      `⚠️ EFFACER définitivement ${name} ?\n\n` +
+      `Cette action supprime l'élève ET toutes ses données liées : historique de paiements, présences et notes. Elle est IRRÉVERSIBLE.\n\n` +
+      `Rappel : la comptabilité doit légalement être conservée 10 ans. Pour un simple départ, préférez « Archiver ». N'effacez que sur demande d'oubli (RGPD).`
+    )) return
+    if (!confirm(`Confirmez une dernière fois l'effacement définitif de ${name}.`)) return
+    const res = await fetch(`/api/students/${id}`, { method: "DELETE" })
+    if (!res.ok) {
+      const err = await res.json().catch(() => null)
+      alert(`Échec de l'effacement : ${err?.error ?? res.status}`)
+      return
+    }
     window.location.reload()
   }
 
@@ -527,9 +553,18 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
                           <Button variant="ghost" size="icon" onClick={() => { setEdit(student); setDialogOpen(true) }} title="Modifier">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {student.status !== "ARCHIVED" && (
-                            <Button variant="ghost" size="icon" onClick={() => handleArchive(student.id)} title="Archiver">
+                          {student.status !== "ARCHIVED" ? (
+                            <Button variant="ghost" size="icon" onClick={() => handleArchive(student.id, `${student.firstName} ${student.lastName}`)} title="Archiver">
                               <Archive className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" onClick={() => handleUnarchive(student.id)} title="Désarchiver (remettre en actif)">
+                              <ArchiveRestore className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {role === "DIRECTOR" && (
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id, `${student.firstName} ${student.lastName}`)} title="Effacer définitivement (RGPD)" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>

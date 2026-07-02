@@ -4,6 +4,7 @@ import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { ensurePaymentAliasSchema, normalizePaymentAlias } from "@/lib/payment-alias-schema"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
+import { encryptSecret, decryptSecret } from "@/lib/secrets"
 
 const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
@@ -40,10 +41,11 @@ export async function saveGmailRefreshToken(tenantId: string, code: string) {
   if (!client) throw new Error("Gmail OAuth non configuré.")
   const { tokens } = await client.getToken(code)
   if (!tokens.refresh_token) throw new Error("Google n'a pas renvoyé de refresh token.")
+  const encrypted = encryptSecret(tokens.refresh_token) as string
   await prisma.tenantSettings.upsert({
     where: { tenantId },
-    create: { tenantId, gmailRefreshToken: tokens.refresh_token },
-    update: { gmailRefreshToken: tokens.refresh_token },
+    create: { tenantId, gmailRefreshToken: encrypted },
+    update: { gmailRefreshToken: encrypted },
   })
 }
 
@@ -54,7 +56,7 @@ async function getGmailClient(tenantId: string) {
     where: { tenantId },
     select: { gmailRefreshToken: true },
   })
-  const refreshToken = settings?.gmailRefreshToken || process.env.GMAIL_PAYMENT_REFRESH_TOKEN
+  const refreshToken = decryptSecret(settings?.gmailRefreshToken) || process.env.GMAIL_PAYMENT_REFRESH_TOKEN
   if (!refreshToken) throw new Error("Boîte paiement non connectée.")
   client.setCredentials({ refresh_token: refreshToken })
   return google.gmail({ version: "v1", auth: client })

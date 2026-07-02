@@ -119,7 +119,23 @@ export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ 
   if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const groupId = student.groupId
-  await prisma.student.delete({ where: { id } })
+  // Effacement RGPD complet. L'adaptateur libSQL n'applique pas les cascades FK :
+  // on efface donc explicitement chaque table liée, des feuilles vers la racine,
+  // sans dépendre d'aucun ON DELETE. Les PaymentMatch (relevés PayPal/Wise) sont
+  // conservés mais dissociés (studentId → null) car ils relèvent de la compta.
+  await prisma.$transaction([
+    prisma.paymentAllocation.deleteMany({
+      where: { OR: [{ payment: { studentId: id } }, { paymentMatch: { studentId: id } }] },
+    }),
+    prisma.grade.deleteMany({ where: { studentId: id } }),
+    prisma.attendance.deleteMany({ where: { studentId: id } }),
+    prisma.lesson.deleteMany({ where: { session: { studentId: id } } }),
+    prisma.payment.deleteMany({ where: { studentId: id } }),
+    prisma.lessonSession.deleteMany({ where: { studentId: id } }),
+    prisma.paymentAlias.deleteMany({ where: { studentId: id } }),
+    prisma.paymentMatch.updateMany({ where: { studentId: id }, data: { studentId: null } }),
+    prisma.student.delete({ where: { id } }),
+  ])
   if (groupId) await recalcGroupRate(groupId, user.tenantId)
   return NextResponse.json({ ok: true })
 })

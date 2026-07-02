@@ -42,10 +42,15 @@ export const POST = wrap(async (req: Request) => {
   }[] = []
 
   const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
 
   for (const teacher of teachers) {
+    // Période précédente = fin du dernier bulletin AUTRE que celui du mois en cours.
+    // On exclut le mois courant pour qu'un 2ᵉ calcul dans le même mois recalcule
+    // tout le mois (et non le seul delta), sans écraser/perdre la paie déjà comptée.
     const lastSalary = await prisma.teacherSalary.findFirst({
-      where: { tenantId, teacherId: teacher.id },
+      where: { tenantId, teacherId: teacher.id, NOT: { month, year } },
       orderBy: [{ year: "desc" }, { month: "desc" }],
     })
 
@@ -160,17 +165,14 @@ export const POST = wrap(async (req: Request) => {
   }
 
   if (body.confirm) {
-    const month = now.getMonth() + 1
-    const year = now.getFullYear()
-    for (const r of results) {
-      if (r.lessonsCount === 0 && r.bonus === 0) continue
-      const existing = await prisma.teacherSalary.findUnique({
-        where: { teacherId_month_year: { teacherId: r.teacherId, month, year } },
-      })
-      if (existing) {
-        await prisma.teacherSalary.update({
-          where: { id: existing.id },
-          data: {
+    const toWrite = results.filter((r) => !(r.lessonsCount === 0 && r.bonus === 0))
+    // Tout ou rien : si une écriture échoue, aucune n'est appliquée (pas de
+    // profs payés à moitié ni de périodes désynchronisées).
+    await prisma.$transaction(
+      toWrite.map((r) =>
+        prisma.teacherSalary.upsert({
+          where: { teacherId_month_year: { teacherId: r.teacherId, month, year } },
+          update: {
             hoursWorked: r.totalHours,
             lessonsCount: r.lessonsCount,
             totalAmount: r.grandTotal,
@@ -178,10 +180,7 @@ export const POST = wrap(async (req: Request) => {
             periodEnd: new Date(r.periodEnd),
             notes: r.bonus > 0 ? `Prime : ${r.bonus} €` : null,
           },
-        })
-      } else {
-        await prisma.teacherSalary.create({
-          data: {
+          create: {
             tenantId,
             teacherId: r.teacherId,
             month,
@@ -195,8 +194,8 @@ export const POST = wrap(async (req: Request) => {
             notes: r.bonus > 0 ? `Prime : ${r.bonus} €` : null,
           },
         })
-      }
-    }
+      )
+    )
   }
 
   return NextResponse.json(results)
