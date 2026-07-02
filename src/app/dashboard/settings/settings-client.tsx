@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { SessionProvider, useSession } from "next-auth/react"
 import { CheckCircle2, ChevronDown, Loader2, Mail, Phone, Plus, ShieldCheck, UserCog } from "lucide-react"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Button } from "@/components/ui/button"
@@ -55,17 +56,31 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function SettingsClient({
-  users,
-  currentUser,
-  currentUserId,
-  pseudoRequests,
-}: {
+type SettingsClientProps = {
   users: User[]
   currentUser: CurrentUser
   currentUserId: string
   pseudoRequests: PseudoRequest[]
-}) {
+}
+
+// Wrapper : SessionProvider requis pour rafraîchir le jeton de session
+// (update()) après un changement de mot de passe forcé — même pattern
+// que bienvenue-client.
+export function SettingsClient(props: SettingsClientProps) {
+  return (
+    <SessionProvider>
+      <SettingsClientInner {...props} />
+    </SessionProvider>
+  )
+}
+
+function SettingsClientInner({
+  users,
+  currentUser,
+  currentUserId,
+  pseudoRequests,
+}: SettingsClientProps) {
+  const { update } = useSession()
   const isDirector = currentUser.role === "DIRECTOR"
   const isTeacher = currentUser.role === "TEACHER"
   const [userDialog, setUserDialog] = useState(false)
@@ -176,6 +191,12 @@ export function SettingsClient({
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" })
       setOpenSection(null)
       setMessage({ type: "ok", text: "Mot de passe modifié." })
+      if (currentUser.mustChangePassword) {
+        // Rafraîchit le jeton (mustChangePassword → false) pour lever la
+        // redirection forcée du proxy, puis recharge pour ôter le bandeau.
+        await update()
+        window.location.reload()
+      }
     } catch (err) {
       setMessage({ type: "err", text: err instanceof Error ? err.message : "Erreur" })
     } finally {
