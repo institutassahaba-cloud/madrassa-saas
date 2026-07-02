@@ -185,19 +185,22 @@ function LessonRow({
   onUpdate: (id: string, data: any) => void
   onDelete: (id: string) => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [content, setContent] = useState(lesson.content ?? "")
-  const [date, setDate] = useState(lesson.date ? new Date(lesson.date).toISOString().slice(0, 10) : "")
-  const [durationMin, setDurationMin] = useState(lesson.duration != null ? String(lesson.duration) : "")
-  const [makeupOn, setMakeupOn] = useState(lesson.makeupOnLessonId ?? "")
-
-  // Expected duration from session (in minutes)
+  // Durée attendue selon le forfait de l'élève (en minutes).
   const expectedMin = (() => {
     if (!sessionDuration) return null
     if (/min/i.test(sessionDuration)) return parseInt(sessionDuration)
     const h = parseFloat(sessionDuration.replace(",", "."))
     return isFinite(h) ? Math.round(h * 60) : null
   })()
+
+  const [editing, setEditing] = useState(false)
+  const [content, setContent] = useState(lesson.content ?? "")
+  const [date, setDate] = useState(lesson.date ? new Date(lesson.date).toISOString().slice(0, 10) : "")
+  // Pré-rempli avec la durée du forfait (jamais 0/vide), modifiable.
+  const [durationMin, setDurationMin] = useState(
+    lesson.duration != null ? String(lesson.duration) : (expectedMin != null ? String(expectedMin) : "")
+  )
+  const [makeupOn, setMakeupOn] = useState(lesson.makeupOnLessonId ?? "")
 
   const actualMin = lesson.duration ?? expectedMin
   const diff = expectedMin != null && actualMin != null ? expectedMin - actualMin : 0
