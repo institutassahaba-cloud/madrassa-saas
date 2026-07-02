@@ -5,7 +5,7 @@ import type React from "react"
 import {
   Users, BookOpen, UserCheck, ChevronDown, ChevronUp, Mail, Phone,
   MessageCircle, Plus, Check, Clock, X, CheckCircle2,
-  Bell, Eye, Video, ExternalLink, Pencil, AlertTriangle,
+  Bell, Eye, Video, ExternalLink, Pencil, AlertTriangle, Archive, GraduationCap,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { gmailComposeLink } from "@/lib/contact-links"
@@ -975,6 +975,7 @@ function GroupCard({
   teachers,
   currentUserId,
   canRemoveStudent,
+  canArchive,
   canSetLegacyBoundary,
   canMarkPaymentDate,
   filteringSessionsWithoutPaymentDate,
@@ -996,6 +997,7 @@ function GroupCard({
   teachers: { id: string; name: string }[]
   currentUserId: string
   canRemoveStudent: boolean
+  canArchive: boolean
   canSetLegacyBoundary: boolean
   canMarkPaymentDate: boolean
   filteringSessionsWithoutPaymentDate: boolean
@@ -1008,6 +1010,8 @@ function GroupCard({
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
 }) {
   const [removing, setRemoving] = useState<string | null>(null)
+  const [archiving, setArchiving] = useState<string | null>(null)
+  const [archivingClass, setArchivingClass] = useState(false)
 
   async function handleRemoveStudent(studentId: string) {
     setRemoving(studentId)
@@ -1020,6 +1024,26 @@ function GroupCard({
       window.location.reload()
     }
     setRemoving(null)
+  }
+
+  async function handleArchiveStudent(studentId: string, name: string) {
+    if (!confirm(`Marquer ${name} comme arrêté ? L'élève quitte les listes actives et rejoint « Anciens élèves » (fiche conservée).`)) return
+    setArchiving(studentId)
+    const res = await fetch(`/api/students/${studentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ARCHIVED" }),
+    })
+    if (res.ok) window.location.reload()
+    else setArchiving(null)
+  }
+
+  async function handleArchiveClass() {
+    if (!confirm(`Fin de la classe « ${group.name} » ? Les ${activeStudents.length} élève(s) actif(s) seront archivés dans « Anciens élèves ». Réversible depuis Fiches élèves.`)) return
+    setArchivingClass(true)
+    const res = await fetch(`/api/groups/${group.id}/archive-students`, { method: "POST" })
+    if (res.ok) window.location.reload()
+    else setArchivingClass(false)
   }
 
   function getStudentSessions(studentId: string) {
@@ -1044,6 +1068,18 @@ function GroupCard({
           <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
             {activeStudents.length} élève{activeStudents.length > 1 ? "s" : ""}
           </span>
+          {canArchive && activeStudents.length > 0 && (
+            <button
+              type="button"
+              onClick={handleArchiveClass}
+              disabled={archivingClass}
+              className="flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+              title="Terminer la classe : archiver tous les élèves actifs"
+            >
+              <GraduationCap className="h-3.5 w-3.5" />
+              {archivingClass ? "…" : "Fin de classe"}
+            </button>
+          )}
         </div>
       </div>
       {activeStudents.length === 0 ? (
@@ -1054,16 +1090,28 @@ function GroupCard({
         <div className="space-y-2">
           {activeStudents.map((student) => (
             <div key={student.id} className="relative">
-              {canRemoveStudent && activeStudents.length > 1 && (
-                <button
-                  onClick={() => handleRemoveStudent(student.id)}
-                  disabled={removing === student.id}
-                  className="absolute right-3 top-4 z-10 rounded-full p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                  title="Retirer de la classe"
-                >
-                  {removing === student.id ? "..." : <X className="h-3.5 w-3.5" />}
-                </button>
-              )}
+              <div className="absolute right-3 top-4 z-10 flex items-center gap-1">
+                {canArchive && (
+                  <button
+                    onClick={() => handleArchiveStudent(student.id, student.displayName || `${student.firstName} ${student.lastName}`)}
+                    disabled={archiving === student.id}
+                    className="rounded-full p-1 text-gray-300 hover:bg-orange-50 hover:text-orange-500 disabled:opacity-50"
+                    title="Arrêter cet élève (→ Anciens élèves)"
+                  >
+                    {archiving === student.id ? "…" : <Archive className="h-3.5 w-3.5" />}
+                  </button>
+                )}
+                {canRemoveStudent && activeStudents.length > 1 && (
+                  <button
+                    onClick={() => handleRemoveStudent(student.id)}
+                    disabled={removing === student.id}
+                    className="rounded-full p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                    title="Retirer de la classe"
+                  >
+                    {removing === student.id ? "..." : <X className="h-3.5 w-3.5" />}
+                  </button>
+                )}
+              </div>
               <StudentCahier
                 student={student}
                 sessions={getStudentSessions(student.id)}
@@ -1304,6 +1352,7 @@ function TeacherCard({
                         teachers={teachers}
                         currentUserId={currentUserId}
                         canRemoveStudent={currentRole === "DIRECTOR"}
+                        canArchive={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                         canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                         canMarkPaymentDate={currentRole === "DIRECTOR"}
                         filteringSessionsWithoutPaymentDate={showSessionsWithoutPaymentDate}
