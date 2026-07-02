@@ -103,6 +103,7 @@ export function PaymentsClient({
   lessonSessions,
   paymentMatches,
   autoPaymentMatches,
+  confirmedPaymentMatches,
   trashedPaymentMatches,
   pendingPayments,
   paymentPeriods,
@@ -117,6 +118,7 @@ export function PaymentsClient({
   lessonSessions: LessonSessionOption[]
   paymentMatches: PaymentMatch[]
   autoPaymentMatches: PaymentMatch[]
+  confirmedPaymentMatches: PaymentMatch[]
   trashedPaymentMatches: PaymentMatch[]
   pendingPayments: Payment[]
   paymentPeriods: PaymentPeriod[]
@@ -138,6 +140,7 @@ export function PaymentsClient({
   const [scanLoading, setScanLoading] = useState(false)
   const [unprocessedOpen, setUnprocessedOpen] = useState(paymentMatches.length > 0)
   const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
+  const [confirmedOpen, setConfirmedOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
@@ -263,6 +266,23 @@ export function PaymentsClient({
       window.location.reload()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
+    } finally {
+      setMatchActionLoading(null)
+    }
+  }
+
+  async function cancelMatch(matchId: string) {
+    if (!window.confirm(
+      "Annuler ce paiement validé ? Le(s) paiement(s) créé(s) seront retirés (les sessions concernées repasseront en « non payé ») et le paiement reviendra dans « à valider » pour être ré-attribué."
+    )) return
+    setMatchActionLoading(matchId)
+    try {
+      const res = await fetch(`/api/payment-matches/${matchId}/cancel`, { method: "POST" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Annulation impossible.")
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Annulation impossible.")
     } finally {
       setMatchActionLoading(null)
     }
@@ -493,6 +513,55 @@ export function PaymentsClient({
                   </div>
                   <Button size="sm" variant="outline" onClick={() => setSelectedMatch(match)}>
                     Corriger
+                  </Button>
+                </div>
+              ))}
+            </div>}
+          </CardContent>
+        </Card>
+      )}
+
+      {confirmedPaymentMatches.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/60">
+          <CardContent className="space-y-3 p-4">
+            <button
+              type="button"
+              onClick={() => setConfirmedOpen((value) => !value)}
+              className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <h3 className="font-semibold text-blue-900">Paiements validés (récents)</h3>
+                <p className="text-sm text-blue-700">
+                  En cas d&apos;erreur, annulez pour ré-attribuer : les sessions concernées repasseront en « non payé ».
+                </p>
+              </div>
+              <span className="flex items-center gap-2">
+                <Badge variant="info">{confirmedPaymentMatches.length} validé(s)</Badge>
+                {confirmedOpen ? <ChevronUp className="h-4 w-4 text-blue-700" /> : <ChevronDown className="h-4 w-4 text-blue-700" />}
+              </span>
+            </button>
+            {confirmedOpen && <div className="space-y-2">
+              {confirmedPaymentMatches.map((match) => (
+                <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-blue-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Validé pour : {match.student ? `${match.student.firstName} ${match.student.lastName}` : "élève non renseigné"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => cancelMatch(match.id)}
+                    disabled={matchActionLoading === match.id}
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Annuler / Ré-attribuer"}
                   </Button>
                 </div>
               ))}

@@ -19,7 +19,7 @@ export default async function PaymentsPage() {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [payments, students, teachers, lessonSessions, paymentMatches, autoPaymentMatches, trashedPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
+  const [payments, students, teachers, lessonSessions, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -62,6 +62,14 @@ export default async function PaymentsPage() {
     }),
     prisma.paymentMatch.findMany({
       where: { tenantId: user.tenantId, status: "AUTO_CONFIRMED" },
+      include: {
+        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+      },
+      orderBy: { confirmedAt: "desc" },
+      take: 30,
+    }),
+    prisma.paymentMatch.findMany({
+      where: { tenantId: user.tenantId, status: "CONFIRMED" },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
       },
@@ -136,6 +144,8 @@ export default async function PaymentsPage() {
       paymentMatches={paymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       autoPaymentMatches={autoPaymentMatches as any}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      confirmedPaymentMatches={confirmedPaymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       trashedPaymentMatches={trashedPaymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

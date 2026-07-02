@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendPaymentThanks } from "@/lib/payment-thanks"
+import { learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
 import { wrap } from "@/lib/api"
 
 type AllocationInput = {
@@ -143,6 +144,15 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
         data: { paymentType: match.source },
       })
     }
+
+    // Apprentissage : mémorise le payeur → alias de l'élève pour que le
+    // prochain paiement du même payeur soit suggéré à 100 %.
+    await learnPaymentAliasFromConfirmation(
+      user.tenantId,
+      item.studentId,
+      match.detectedPayerName,
+      match.source,
+    ).catch((err) => console.error("[alias] apprentissage échoué:", err))
   }
 
   await prisma.paymentMatch.update({
