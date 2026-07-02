@@ -5,7 +5,7 @@ import type React from "react"
 import {
   Users, BookOpen, UserCheck, ChevronDown, ChevronUp, Mail, Phone,
   MessageCircle, Plus, Check, Clock, X, CheckCircle2,
-  Bell, Eye, Video, ExternalLink, Pencil, AlertTriangle, Archive, GraduationCap,
+  Bell, Eye, Video, ExternalLink, Pencil, AlertTriangle, Archive, GraduationCap, Trash2, Search,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
 import { gmailComposeLink } from "@/lib/contact-links"
@@ -490,6 +490,7 @@ function SessionCard({
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [savingPaymentDate, setSavingPaymentDate] = useState(false)
   const [paymentDateError, setPaymentDateError] = useState<string | null>(null)
+  const [deletingSession, setDeletingSession] = useState(false)
 
   const done = session.lessons.filter((l) => l.status !== "PENDING").length
   const total = session.lessons.length
@@ -507,6 +508,14 @@ function SessionCard({
       return
     }
     setPaymentDateError(null)
+  }
+
+  async function handleDeleteSession() {
+    if (!confirm(`Supprimer définitivement la Session ${session.number} et tous ses cours ? Les paiements liés sont conservés mais dissociés. Action irréversible.`)) return
+    setDeletingSession(true)
+    const res = await fetch(`/api/sessions/${session.id}`, { method: "DELETE" })
+    if (res.ok) window.location.reload()
+    else setDeletingSession(false)
   }
 
   return (
@@ -603,6 +612,20 @@ function SessionCard({
                   {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
                 </Button>
               </div>
+            </div>
+          )}
+          {canSetLegacyBoundary && (
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleDeleteSession}
+                disabled={deletingSession}
+                className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+                title="Supprimer cette session (directeur/secrétaire)"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deletingSession ? "Suppression…" : "Supprimer la session"}
+              </button>
             </div>
           )}
         </div>
@@ -1016,6 +1039,7 @@ function GroupCard({
   const [removing, setRemoving] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
   const [archivingClass, setArchivingClass] = useState(false)
+  const [deletingClass, setDeletingClass] = useState(false)
 
   async function handleRemoveStudent(studentId: string) {
     setRemoving(studentId)
@@ -1050,6 +1074,21 @@ function GroupCard({
     else setArchivingClass(false)
   }
 
+  async function handleDeleteClass() {
+    if (!confirm(
+      `Supprimer définitivement la classe « ${group.name} » ?\n\n` +
+      `Les élèves NE sont PAS supprimés (ils sont détachés de la classe). En revanche les présences, contrôles/notes et créneaux de cette classe seront effacés. Action irréversible.`
+    )) return
+    setDeletingClass(true)
+    const res = await fetch(`/api/groups/${group.id}`, { method: "DELETE" })
+    if (res.ok) window.location.reload()
+    else {
+      const err = await res.json().catch(() => null)
+      alert(`Suppression impossible : ${err?.error ?? res.status}`)
+      setDeletingClass(false)
+    }
+  }
+
   function getStudentSessions(studentId: string) {
     return sessions.filter(s => s.student.id === studentId)
   }
@@ -1082,6 +1121,18 @@ function GroupCard({
             >
               <GraduationCap className="h-3.5 w-3.5" />
               {archivingClass ? "…" : "Fin de classe"}
+            </button>
+          )}
+          {canArchive && (
+            <button
+              type="button"
+              onClick={handleDeleteClass}
+              disabled={deletingClass}
+              className="flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-50"
+              title="Supprimer la classe (les élèves sont conservés, détachés)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {deletingClass ? "…" : "Supprimer"}
             </button>
           )}
         </div>
@@ -1143,7 +1194,7 @@ function GroupCard({
 
 function TeacherCard({
   teacher, teacherStudents, sessions, paidBySession, undatedPaymentBySession, scheduleByGroup, teachers, currentUserId, currentRole,
-  showSessionsWithoutPaymentDate,
+  showSessionsWithoutPaymentDate, studentSearch = "",
   onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onUpdateRates,
 }: {
   teacher: Teacher
@@ -1156,6 +1207,7 @@ function TeacherCard({
   currentUserId: string
   currentRole: string
   showSessionsWithoutPaymentDate: boolean
+  studentSearch?: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -1167,6 +1219,7 @@ function TeacherCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [classesOpen, setClassesOpen] = useState(false)
+  const [salaryOpen, setSalaryOpen] = useState(false)
   const [editingRates, setEditingRates] = useState(false)
   const [meetingLink, setMeetingLink] = useState(teacher.meetingLink)
   const [rates, setRates] = useState({
@@ -1181,13 +1234,20 @@ function TeacherCard({
     ? latestSessionsWithoutPaymentDate(sessions, paidBySession)
     : sessions
   const visibleStudentIds = new Set(visibleSessions.map((session) => session.student.id))
-  const visibleTeacherStudents = showSessionsWithoutPaymentDate
+  // Filtre de recherche (nom d'élève) venant de la barre du haut.
+  const q = studentSearch.trim().toLowerCase()
+  const matchesQuery = (s: Student) =>
+    !q || `${s.firstName} ${s.lastName} ${s.displayName ?? ""}`.toLowerCase().includes(q)
+  const visibleTeacherStudents = (showSessionsWithoutPaymentDate
     ? teacherStudents.filter((student) => visibleStudentIds.has(student.id))
     : teacherStudents
+  ).filter(matchesQuery)
 
   const activeStudents = visibleTeacherStudents.filter(s => s.status === "ACTIVE")
   const pausedStudents = visibleTeacherStudents.filter(s => s.status === "PAUSED")
   const stoppedStudents = visibleTeacherStudents.filter(s => s.status === "STOPPED")
+  // Déplie automatiquement la fiche quand une recherche est active.
+  const isOpen = expanded || q.length > 0
 
   function getStudentSessions(studentId: string) {
     return visibleSessions.filter(s => s.student.id === studentId)
@@ -1267,16 +1327,23 @@ function TeacherCard({
             </button>
           )}
         </div>
-        {expanded ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />}
+        {isOpen ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />}
       </div>
 
-      {expanded && (
+      {isOpen && (
         <div className="border-t border-gray-100 p-5 space-y-4">
           {/* Tarifs horaires (directeur uniquement) */}
           {currentRole === "DIRECTOR" && (
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <div className="flex items-center justify-between mb-2">
+              <button type="button" onClick={() => setSalaryOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
                 <p className="text-sm font-semibold text-gray-700">Salaire à l&apos;heure</p>
+                <span className="flex items-center gap-1 text-xs text-gray-400">
+                  {salaryOpen ? "Masquer" : "Afficher"}
+                  {salaryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </span>
+              </button>
+              {salaryOpen && (<div className="mt-3">
+              <div className="mb-2 flex items-center justify-end">
                 {!editingRates ? (
                   <button onClick={() => setEditingRates(true)} className="text-xs text-blue-600 hover:underline">Modifier</button>
                 ) : (
@@ -1319,6 +1386,7 @@ function TeacherCard({
                   )}
                 </div>
               </div>
+              </div>)}
             </div>
           )}
 
@@ -1475,6 +1543,7 @@ export function TeachersClient({
   const [paidBySession, setPaidBySession] = useState(initialPaidBySession)
   const [undatedPaymentBySession, setUndatedPaymentBySession] = useState(initialUndatedPaymentBySession)
   const [showSessionsWithoutPaymentDate, setShowSessionsWithoutPaymentDate] = useState(false)
+  const [search, setSearch] = useState("")
 
   const totalStudents = teachers.reduce(
     (sum, t) => sum + t.teacherGroups.reduce((s, g) => s + g.students.filter(st => st.status === "ACTIVE").length, 0), 0
@@ -1619,15 +1688,53 @@ export function TeachersClient({
         </label>
       )}
 
+      {/* Recherche élève */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un élève (nom)…"
+          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            title="Effacer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Teacher list */}
       {teachers.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 p-12 text-center">
           <Users className="mx-auto h-10 w-10 text-gray-300 mb-3" />
           <p className="text-gray-500">Aucun professeur enregistré</p>
         </div>
-      ) : (
+      ) : (() => {
+        const q = search.trim().toLowerCase()
+        const shownTeachers = q
+          ? teachers.filter((t) =>
+              getTeacherStudents(t.id).some((s) =>
+                `${s.firstName} ${s.lastName} ${s.displayName ?? ""}`.toLowerCase().includes(q)
+              )
+            )
+          : teachers
+        if (shownTeachers.length === 0) {
+          return (
+            <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+              <p className="text-gray-500">Aucun élève ne correspond à « {search} ».</p>
+            </div>
+          )
+        }
+        return (
         <div className="space-y-3">
-          {teachers.map((teacher) => (
+          {shownTeachers.map((teacher) => (
             <TeacherCard
               key={teacher.id}
               teacher={teacher}
@@ -1640,6 +1747,7 @@ export function TeachersClient({
               currentUserId={currentUserId}
               currentRole={currentRole}
               showSessionsWithoutPaymentDate={showSessionsWithoutPaymentDate}
+              studentSearch={search}
               onUpdateLesson={handleUpdateLesson}
               onAddLesson={handleAddLesson}
               onCloseSession={handleCloseSession}
@@ -1650,7 +1758,8 @@ export function TeachersClient({
             />
           ))}
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

@@ -151,7 +151,7 @@ export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ 
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
-  if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   const { id } = await params
 
   const existing = await prisma.lessonSession.findFirst({
@@ -160,6 +160,12 @@ export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ 
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  await prisma.lessonSession.delete({ where: { id } })
+  // libSQL n'applique pas les cascades : on supprime explicitement les cours,
+  // et on dissocie (sans supprimer) les paiements liés pour préserver la compta.
+  await prisma.$transaction([
+    prisma.lesson.deleteMany({ where: { sessionId: id } }),
+    prisma.payment.updateMany({ where: { lessonSessionId: id, tenantId: user.tenantId }, data: { lessonSessionId: null } }),
+    prisma.lessonSession.delete({ where: { id } }),
+  ])
   return NextResponse.json({ ok: true })
 })
