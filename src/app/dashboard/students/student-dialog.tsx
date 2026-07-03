@@ -20,11 +20,11 @@ interface StudentDialogProps {
 
 const EMPTY_IDENTITY = {
   firstName: "", lastName: "", gender: "MALE", phone: "", email: "",
-  dateOfBirth: "", level: "", parentName: "", parentPhone: "", parentEmail: "",
+  level: "", parentName: "", parentPhone: "", parentEmail: "",
 }
 
 const EMPTY_SHARED = {
-  address: "", city: "", subject: "", monthlyFee: "",
+  subject: "", monthlyFee: "",
   paymentGraceAllowed: false,
   hourlyRate: "", lessonsPerWeek: "", duration: "", startSession: "",
   groupId: "", notes: "", status: "ACTIVE", recontactDate: "",
@@ -41,6 +41,21 @@ type PaymentAliasFormRow = {
 }
 
 const SUBJECTS = ["Coran", "Nouraniya", "Arabe", "Langue arabe", "Tajwid", "Fiqh", "Autre"]
+const DAYS = [
+  { value: "1", label: "Lundi" }, { value: "2", label: "Mardi" }, { value: "3", label: "Mercredi" },
+  { value: "4", label: "Jeudi" }, { value: "5", label: "Vendredi" }, { value: "6", label: "Samedi" },
+  { value: "0", label: "Dimanche" },
+]
+
+// Ajoute la durée du cours (ex: "1", "1,5", "0,5") à une heure "HH:MM".
+function addDurationToTime(time: string, duration: string): string {
+  const [h, m] = time.split(":").map(Number)
+  const hours = parseFloat((duration || "1").replace(",", "."))
+  if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(hours)) return time
+  const total = h * 60 + m + Math.round(hours * 60)
+  const normalized = ((total % 1440) + 1440) % 1440
+  return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
+}
 
 export function StudentDialog({ open, onClose, student, groups, teachers }: StudentDialogProps) {
   const [studentCount, setStudentCount] = useState(1)
@@ -48,6 +63,9 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
   const [shared, setShared] = useState({ ...EMPTY_SHARED })
   const [teacherId, setTeacherId] = useState("")
   const [joinExisting, setJoinExisting] = useState(false)
+  const [newClassName, setNewClassName] = useState("")
+  const [newClassDay, setNewClassDay] = useState("")
+  const [newClassTime, setNewClassTime] = useState("")
   const [multiProf, setMultiProf] = useState(false)
   const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
   const [extraTeacherId, setExtraTeacherId] = useState("")
@@ -66,15 +84,12 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
         gender: student.gender ?? "MALE",
         phone: student.phone ?? "",
         email: student.email ?? "",
-        dateOfBirth: student.dateOfBirth ? student.dateOfBirth.toString().slice(0, 10) : "",
         level: student.level ?? "",
         parentName: student.parentName ?? "",
         parentPhone: student.parentPhone ?? "",
         parentEmail: student.parentEmail ?? "",
       }])
       setShared({
-        address: student.address ?? "",
-        city: student.city ?? "",
         subject: student.subject ?? "",
         monthlyFee: String(student.monthlyFee ?? ""),
         paymentGraceAllowed: Boolean(student.paymentGraceAllowed),
@@ -107,14 +122,21 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
       }
       const currentGroup = groups.find(g => g.id === student.group?.id)
       setTeacherId(currentGroup?.teacherId ?? "")
+      setJoinExisting(Boolean(student.group?.id))
+      setNewClassName("")
+      setNewClassDay("")
+      setNewClassTime("")
     } else {
       setStudentCount(1)
       setIdentities([{ ...EMPTY_IDENTITY }])
       setShared({ ...EMPTY_SHARED })
       setTeacherId("")
       setPaymentAliases([])
+      setJoinExisting(false)
+      setNewClassName("")
+      setNewClassDay("")
+      setNewClassTime("")
     }
-    setJoinExisting(false)
     setMultiProf(false)
     setExtra({ ...EMPTY_EXTRA })
     setExtraTeacherId("")
@@ -165,6 +187,42 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
   const lockedByGroup = joinExisting && !!shared.groupId && !!groupInfo && groupInfo.count > 0
   const extraFilteredGroups = extraTeacherId ? groups.filter(g => g.teacherId === extraTeacherId) : groups
 
+  // Résout le groupId à utiliser : la classe existante sélectionnée, ou une classe fraîchement
+  // créée si le directeur a choisi "Nouvelle classe". Évite qu'un élève se retrouve détaché de
+  // tout professeur/classe (silencieusement) faute d'avoir resélectionné une classe.
+  async function resolveGroupId(): Promise<string> {
+    if (joinExisting) {
+      if (!shared.groupId) throw new Error("Merci de sélectionner une classe pour ce professeur (ou de créer une nouvelle classe).")
+      return shared.groupId
+    }
+    if (!newClassName.trim()) {
+      throw new Error("Merci de donner un nom à la nouvelle classe.")
+    }
+    const res = await fetch("/api/groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newClassName.trim(), teacherId: teacherId || undefined }),
+    })
+    if (!res.ok) throw new Error("La création de la nouvelle classe a échoué.")
+    const newGroup = await res.json()
+    // Crée le créneau (jour + heure) de la classe si renseigné. Non bloquant :
+    // une erreur ici n'empêche pas la création de l'élève et de sa classe.
+    if (newClassDay !== "" && newClassTime && teacherId) {
+      await fetch("/api/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dayOfWeek: Number(newClassDay),
+          startTime: newClassTime,
+          endTime: addDurationToTime(newClassTime, shared.duration),
+          groupId: newGroup.id,
+          teacherId,
+        }),
+      }).catch(() => {})
+    }
+    return newGroup.id
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -172,7 +230,8 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
     try {
       if (student) {
         // Edit mode: single student
-        const form = { ...identities[0], ...shared, paymentAliases }
+        const groupId = await resolveGroupId()
+        const form = { ...identities[0], ...shared, groupId, paymentAliases }
         const res = await fetch(`/api/students/${student.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -181,9 +240,10 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
         if (!res.ok) throw new Error(await res.text())
       } else {
         // Create mode: one or multiple students
+        const groupId = await resolveGroupId()
         for (let i = 0; i < studentCount; i++) {
-          const form = { ...identities[i], ...shared, joinExisting }
-          if (!joinExisting && !form.startSession) form.startSession = "1"
+          const form = { ...identities[i], ...shared, groupId, joinExisting: true }
+          if (!form.startSession) form.startSession = "1"
           const res = await fetch("/api/students", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -284,10 +344,6 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Date de naissance</Label>
-                  <Input type="date" value={identity.dateOfBirth} onChange={(e) => setIdentity(idx, "dateOfBirth", e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
                   <Label>Téléphone</Label>
                   <Input value={identity.phone} onChange={(e) => setIdentity(idx, "phone", e.target.value)} />
                 </div>
@@ -325,10 +381,6 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
           <div className="border-t pt-4">
             <p className="mb-3 text-sm font-medium text-gray-700">{studentCount > 1 ? "Informations communes" : "Informations complémentaires"}</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Adresse</Label>
-                <Input value={shared.address} onChange={(e) => setSharedField("address", e.target.value)} />
-              </div>
               <div className="space-y-1.5">
                 <Label>Tarif mensuel (€) *</Label>
                 <Input type="number" min="0" step="0.01" value={shared.monthlyFee} onChange={(e) => setSharedField("monthlyFee", e.target.value)} required />
@@ -399,24 +451,22 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
             <p className="mb-3 text-sm font-medium text-gray-700">Professeur & forfait</p>
 
             {/* Nouvelle classe vs intégrer classe existante */}
-            {!student && (
-              <div className="mb-4 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => { setJoinExisting(false); setSharedField("groupId", ""); setSharedField("startSession", "1") }}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${!joinExisting ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
-                >
-                  Nouvelle classe
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setJoinExisting(true); setSharedField("startSession", "") }}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${joinExisting ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
-                >
-                  Intégrer à une classe existante
-                </button>
-              </div>
-            )}
+            <div className="mb-4 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => { setJoinExisting(false); setSharedField("groupId", ""); setSharedField("startSession", "1") }}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${!joinExisting ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
+              >
+                Nouvelle classe
+              </button>
+              <button
+                type="button"
+                onClick={() => { setJoinExisting(true); setSharedField("startSession", ""); setNewClassName("") }}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${joinExisting ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
+              >
+                Intégrer à une classe existante
+              </button>
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -430,13 +480,12 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                 </Select>
               </div>
 
-              {/* Classe existante (visible seulement si "intégrer") ou en mode édition */}
-              {(joinExisting || student) && (
+              {joinExisting ? (
                 <div className="space-y-1.5">
-                  <Label>Classe</Label>
+                  <Label>Classe *</Label>
                   <Select value={shared.groupId} onValueChange={async (v) => {
                     setSharedField("groupId", v)
-                    if (joinExisting && v) {
+                    if (v) {
                       const res = await fetch(`/api/groups/${v}/info`)
                       if (res.ok) {
                         const info = await res.json()
@@ -454,16 +503,42 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                   }}>
                     <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto">
-                      <SelectItem value="">Aucune classe</SelectItem>
                       {filteredGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  {joinExisting && shared.groupId && groupInfo && groupInfo.count > 0 && (
+                  {shared.groupId && groupInfo && groupInfo.count > 0 && (
                     <p className="text-xs text-blue-600">
                       Classe de {groupInfo.count} élève{groupInfo.count > 1 ? "s" : ""} → tarif adapté à {groupInfo.newRate}€/h
                     </p>
                   )}
                 </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label>Nom de la classe *</Label>
+                  <Input
+                    value={newClassName}
+                    onChange={(e) => setNewClassName(e.target.value)}
+                    placeholder={studentCount > 1 ? "ex: Binôme Salima & Sandini" : `ex: ${identities[0]?.firstName || "Prénom"} — Individuel`}
+                  />
+                </div>
+              )}
+
+              {!joinExisting && teacherId && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Jour du cours</Label>
+                    <Select value={newClassDay} onValueChange={setNewClassDay}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                      <SelectContent>
+                        {DAYS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Heure du cours</Label>
+                    <Input type="time" value={newClassTime} onChange={(e) => setNewClassTime(e.target.value)} />
+                  </div>
+                </>
               )}
 
               <div className="space-y-1.5">

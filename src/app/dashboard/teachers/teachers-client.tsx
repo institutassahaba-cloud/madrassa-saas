@@ -594,7 +594,11 @@ function SessionCard({
     session.lessons.reduce((a, b) => (b.number > a.number ? b : a)).status !== "PENDING"
 
   async function handleDeleteSession() {
-    if (!confirm(`Supprimer définitivement la Session ${session.number} et tous ses cours ? Les paiements liés sont conservés mais dissociés. Action irréversible.`)) return
+    const hasTaughtLessons = session.lessons.some((l) => l.status !== "PENDING")
+    const payrollWarning = hasTaughtLessons
+      ? "\n\n⚠️ Des cours de cette session sont déjà marqués présent/absent : ils seront perdus, y compris pour le calcul de la paie du professeur s'ils n'ont pas encore été comptabilisés."
+      : ""
+    if (!confirm(`Supprimer définitivement la Session ${session.number} et tous ses cours ? Les paiements liés sont conservés mais dissociés.${payrollWarning}\n\nAction irréversible.`)) return
     setDeletingSession(true)
     const res = await fetch(`/api/sessions/${session.id}`, { method: "DELETE" })
     if (res.ok) window.location.reload()
@@ -1005,6 +1009,21 @@ function MergedGroupCahier({
     return null
   }
 
+  const [deletingSession, setDeletingSession] = useState(false)
+  // Supprime la session pour TOUS les élèves de la classe (garde le tableau unifié).
+  async function deleteClassSession() {
+    if (sessList.length === 0) return
+    const hasTaughtLessons = sessList.some((s) => s.lessons.some((l) => l.status !== "PENDING"))
+    const payrollWarning = hasTaughtLessons
+      ? "\n\n⚠️ Des cours de cette session sont déjà marqués présent/absent : ils seront perdus, y compris pour le calcul de la paie du professeur s'ils n'ont pas encore été comptabilisés."
+      : ""
+    if (!confirm(`Supprimer définitivement la Session ${selNum} pour toute la classe (${students.map(shortName).join(", ")}) et tous ses cours ? Les paiements liés sont conservés mais dissociés.${payrollWarning}\n\nAction irréversible.`)) return
+    setDeletingSession(true)
+    const results = await Promise.all(sessList.map((s) => fetch(`/api/sessions/${s.id}`, { method: "DELETE" })))
+    if (results.every((r) => r.ok)) window.location.reload()
+    else setDeletingSession(false)
+  }
+
   // Nouvelle session pour toute la classe : réplique le modèle de la dernière session.
   const maxNumber = numbers[0]
   async function createSessionForClass() {
@@ -1063,6 +1082,18 @@ function MergedGroupCahier({
           <span className="font-semibold text-gray-900">Session {selNum}</span>
           {canSetLegacyBoundary && <SessionNumberEditor currentNumber={selNum} onSave={renumberClassSession} />}
           {allComplete && <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">Terminée</span>}
+          {canSetLegacyBoundary && (
+            <button
+              type="button"
+              onClick={deleteClassSession}
+              disabled={deletingSession}
+              className="ml-auto flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+              title="Supprimer cette session pour toute la classe (directeur/secrétaire)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {deletingSession ? "Suppression…" : "Supprimer"}
+            </button>
+          )}
         </div>
 
         <div className="space-y-3 p-4">
@@ -1530,6 +1561,8 @@ function GroupCard({
   onMarkPaymentDate,
   onEnsureLesson,
   onRenumberSession,
+  currentTeacherId,
+  canEditGroup,
 }: {
   group: Group
   activeStudents: Student[]
@@ -1555,11 +1588,55 @@ function GroupCard({
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
   onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
+  currentTeacherId: string
+  canEditGroup: boolean
 }) {
   const [removing, setRemoving] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
   const [archivingClass, setArchivingClass] = useState(false)
   const [deletingClass, setDeletingClass] = useState(false)
+  const [editingGroup, setEditingGroup] = useState(false)
+  const [savingGroup, setSavingGroup] = useState(false)
+  const [groupError, setGroupError] = useState<string | null>(null)
+  const [groupForm, setGroupForm] = useState({
+    name: group.name,
+    level: group.level ?? "",
+    teacherId: currentTeacherId,
+    duration: activeStudents[0]?.duration ?? "",
+    lessonsPerWeek: activeStudents[0]?.lessonsPerWeek != null ? String(activeStudents[0].lessonsPerWeek) : "",
+  })
+
+  async function handleSaveGroup() {
+    setSavingGroup(true)
+    setGroupError(null)
+    const res = await fetch(`/api/groups/${group.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: groupForm.name,
+        level: groupForm.level || null,
+        teacherId: groupForm.teacherId || null,
+        maxStudents: group.maxStudents,
+      }),
+    })
+    if (!res.ok) {
+      setGroupError("La mise à jour de la classe a échoué.")
+      setSavingGroup(false)
+      return
+    }
+    // Applique durée/nb de cours par semaine à tous les élèves actifs de la classe.
+    await Promise.all(activeStudents.map((student) =>
+      fetch(`/api/students/${student.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          duration: groupForm.duration || null,
+          lessonsPerWeek: groupForm.lessonsPerWeek === "" ? null : Number(groupForm.lessonsPerWeek),
+        }),
+      })
+    ))
+    window.location.reload()
+  }
 
   async function handleRemoveStudent(studentId: string) {
     setRemoving(studentId)
@@ -1631,6 +1708,17 @@ function GroupCard({
           <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
             {activeStudents.length} élève{activeStudents.length > 1 ? "s" : ""}
           </span>
+          {canEditGroup && (
+            <button
+              type="button"
+              onClick={() => setEditingGroup((v) => !v)}
+              className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+              title="Modifier la classe"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Modifier
+            </button>
+          )}
           {canArchive && activeStudents.length > 0 && (
             <button
               type="button"
@@ -1657,6 +1745,57 @@ function GroupCard({
           )}
         </div>
       </div>
+
+      {editingGroup && (
+        <div className="mb-3 space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Nom de la classe</label>
+              <Input value={groupForm.name} onChange={(e) => setGroupForm((f) => ({ ...f, name: e.target.value }))} className="h-8 bg-white text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Niveau</label>
+              <Input value={groupForm.level} onChange={(e) => setGroupForm((f) => ({ ...f, level: e.target.value }))} className="h-8 bg-white text-sm" placeholder="ex: Débutant, A1..." />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Professeur</label>
+              <Select value={groupForm.teacherId} onValueChange={(v) => setGroupForm((f) => ({ ...f, teacherId: v }))}>
+                <SelectTrigger className="h-8 bg-white text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Cours par semaine</label>
+              <Input type="number" min="0" step="1" value={groupForm.lessonsPerWeek} onChange={(e) => setGroupForm((f) => ({ ...f, lessonsPerWeek: e.target.value }))} className="h-8 bg-white text-sm" placeholder="ex: 1, 2..." />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Durée d&apos;un cours</label>
+              <Select value={groupForm.duration} onValueChange={(v) => setGroupForm((f) => ({ ...f, duration: v }))}>
+                <SelectTrigger className="h-8 bg-white text-sm"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0,5">30 min</SelectItem>
+                  <SelectItem value="1">1h</SelectItem>
+                  <SelectItem value="1,5">1h30</SelectItem>
+                  <SelectItem value="2">2h</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {groupForm.teacherId !== currentTeacherId && (
+            <p className="text-xs text-amber-700">⚠️ Changer de professeur déplace toute la classe ({activeStudents.length} élève{activeStudents.length > 1 ? "s" : ""}) vers ce professeur.</p>
+          )}
+          {groupError && <p className="text-xs text-red-600">{groupError}</p>}
+          <div className="flex gap-2">
+            <Button size="sm" className="h-8 text-xs" disabled={savingGroup} onClick={handleSaveGroup}>
+              {savingGroup ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditingGroup(false)}>Annuler</Button>
+          </div>
+        </div>
+      )}
+
       {activeStudents.length === 0 ? (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-400">
           {filteringSessionsWithoutPaymentDate ? "Aucune session à vérifier dans cette classe." : "Aucun élève actif dans cette classe."}
@@ -1996,6 +2135,8 @@ function TeacherCard({
                         onMarkPaymentDate={onMarkPaymentDate}
                         onEnsureLesson={onEnsureLesson}
                         onRenumberSession={onRenumberSession}
+                        currentTeacherId={teacher.id}
+                        canEditGroup={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                       />
                     )
                   })}

@@ -88,10 +88,12 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       prisma.student.findUnique({ where: { id: existing.studentId } }),
       prisma.user.findUnique({ where: { id: existing.teacherId } }),
     ])
-    let paymentSessionNumber = updated.number + 1
+    // Le paiement demandé règle la session qui vient de se terminer (updated) — c'est elle
+    // qui affiche le badge « payée » une fois réglé. La session suivante est ouverte pour la
+    // continuité du suivi, mais ne porte pas elle-même de demande de paiement.
+    const nextSessionNumber = updated.number + 1
     if (student) {
-      const nextSessionNumber = updated.number + 1
-      const paymentSession = await prisma.lessonSession.upsert({
+      await prisma.lessonSession.upsert({
         where: {
           studentId_subject_number: {
             studentId: existing.studentId,
@@ -107,11 +109,9 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
           number: nextSessionNumber,
           frequency: existing.frequency,
           duration: existing.duration,
-          paymentRequestedAt: closingAt,
         },
-        update: { paymentRequestedAt: closingAt },
+        update: {},
       })
-      paymentSessionNumber = paymentSession.number
       const amount = student.monthlyFee || 0
       const requestData = {
         amount,
@@ -121,8 +121,8 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
         status: student.email ? "EMAIL_SENT" : "EXPECTED",
         method: paymentMethodFromStudent(student.paymentType),
         source: "MANUAL",
-        lessonSessionId: paymentSession.id,
-        sessionNumber: paymentSession.number,
+        lessonSessionId: updated.id,
+        sessionNumber: updated.number,
         expectedAmount: amount,
         expectedPayerName: student.payerName,
         emailSentAt: student.email ? closingAt : null,
@@ -133,7 +133,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       const existingPaymentRequest = await prisma.payment.findFirst({
         where: {
           tenantId: existing.tenantId,
-          lessonSessionId: paymentSession.id,
+          lessonSessionId: updated.id,
           status: { in: [...PAYMENT_AWAITING_STATUSES] },
         },
         select: { id: true },
@@ -163,7 +163,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
         teacherName,
         subject: existing.subject,
         completedSessionNumber: updated.number,
-        paymentSessionNumber,
+        nextSessionNumber,
         amount,
         paypalLink: PAYPAL_LINK,
         paypalEmail: PAYPAL_EMAIL,
@@ -172,7 +172,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       })
       sendComptaMail({
         to: student.email,
-        subject: `Demande de paiement — Session ${paymentSessionNumber} — ${existing.subject}`,
+        subject: `Demande de paiement — Session ${updated.number} — ${existing.subject}`,
         html,
       }).catch((err) => console.error("[mail] Erreur envoi demande de paiement:", err))
     }

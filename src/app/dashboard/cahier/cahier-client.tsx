@@ -371,6 +371,7 @@ function SessionCard({
   onAddLesson,
   onCloseSession,
   onDeleteLesson,
+  onDeleteSession,
 }: {
   session: LessonSession
   paidAt?: string | null
@@ -380,10 +381,23 @@ function SessionCard({
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
   onDeleteLesson: (lessonId: string) => void
+  onDeleteSession: (sessionId: string) => Promise<boolean>
 }) {
   const [open, setOpen] = useState(!session.isComplete)
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
+  const [deletingSession, setDeletingSession] = useState(false)
+
+  async function handleDeleteSessionClick() {
+    const hasTaughtLessons = session.lessons.some((l) => l.status !== "PENDING")
+    const payrollWarning = hasTaughtLessons
+      ? "\n\n⚠️ Des cours de cette session sont déjà marqués présent/absent : ils seront perdus, y compris pour le calcul de la paie du professeur s'ils n'ont pas encore été comptabilisés."
+      : ""
+    if (!confirm(`Supprimer définitivement la Session ${session.number} et tous ses cours ? Les paiements liés sont conservés mais dissociés.${payrollWarning}\n\nAction irréversible.`)) return
+    setDeletingSession(true)
+    const ok = await onDeleteSession(session.id)
+    if (!ok) setDeletingSession(false)
+  }
 
   const done    = session.lessons.filter((l) => l.status !== "PENDING").length
   const total   = session.lessons.length
@@ -499,6 +513,20 @@ function SessionCard({
             )}
           </div>
 
+          {canSetLegacyBoundary && (
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleDeleteSessionClick}
+                disabled={deletingSession}
+                className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+                title="Supprimer cette session (directeur/secrétaire)"
+              >
+                <X className="h-3.5 w-3.5" />
+                {deletingSession ? "Suppression…" : "Supprimer la session"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -546,6 +574,7 @@ function StudentCahier({
   onCloseSession,
   onNewSession,
   onDeleteLesson,
+  onDeleteSession,
 }: {
   student: Student
   sessions: LessonSession[]
@@ -560,6 +589,7 @@ function StudentCahier({
   onCloseSession: (sessionId: string) => void
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
+  onDeleteSession: (sessionId: string) => Promise<boolean>
 }) {
   const [open, setOpen] = useState(false)
   const [newSubject, setNewSubject] = useState("")
@@ -683,6 +713,7 @@ function StudentCahier({
               onAddLesson={onAddLesson}
               onCloseSession={onCloseSession}
               onDeleteLesson={onDeleteLesson}
+              onDeleteSession={onDeleteSession}
             />
           )}
 
@@ -981,7 +1012,7 @@ function MergedLessonRow({
 // Carte d'une session (numéro N) partagée par la classe.
 function MergedSessionCard({
   sessionNumber, students, sessionByStudent, paidBySession, sessionDuration, canSetLegacyBoundary,
-  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onEnsureLesson,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onEnsureLesson, onDeleteSession,
 }: {
   sessionNumber: number
   students: Student[]
@@ -995,10 +1026,24 @@ function MergedSessionCard({
   onCloseSession: (sessionId: string) => void
   onDeleteLesson: (lessonId: string) => void
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
+  onDeleteSession: (sessionId: string) => Promise<boolean>
 }) {
+  const [deletingSession, setDeletingSession] = useState(false)
   const sessions = students.map((st) => sessionByStudent.get(st.id)).filter(Boolean) as LessonSession[]
   const allComplete = sessions.length > 0 && sessions.every((s) => s.isComplete)
   const template = sessions[0]
+
+  async function handleDeleteClassSession() {
+    if (sessions.length === 0) return
+    const hasTaughtLessons = sessions.some((s) => s.lessons.some((l) => l.status !== "PENDING"))
+    const payrollWarning = hasTaughtLessons
+      ? "\n\n⚠️ Des cours de cette session sont déjà marqués présent/absent : ils seront perdus, y compris pour le calcul de la paie du professeur s'ils n'ont pas encore été comptabilisés."
+      : ""
+    if (!confirm(`Supprimer définitivement la Session ${sessionNumber} pour toute la classe (${students.map(shortName).join(", ")}) et tous ses cours ? Les paiements liés sont conservés mais dissociés.${payrollWarning}\n\nAction irréversible.`)) return
+    setDeletingSession(true)
+    const results = await Promise.all(sessions.map((s) => onDeleteSession(s.id)))
+    if (!results.every(Boolean)) setDeletingSession(false)
+  }
 
   // Union des numéros de cours présents chez au moins un élève.
   const lessonNumbers = Array.from(
@@ -1047,6 +1092,18 @@ function MergedSessionCard({
         <span className="font-semibold text-gray-900">Session {sessionNumber}</span>
         {allComplete && (
           <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">Terminée</span>
+        )}
+        {canSetLegacyBoundary && (
+          <button
+            type="button"
+            onClick={handleDeleteClassSession}
+            disabled={deletingSession}
+            className="ml-auto flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+            title="Supprimer cette session pour toute la classe (directeur/secrétaire)"
+          >
+            <X className="h-3.5 w-3.5" />
+            {deletingSession ? "Suppression…" : "Supprimer"}
+          </button>
         )}
       </div>
 
@@ -1132,7 +1189,7 @@ function MergedSessionCard({
 
 function GroupCahier({
   groupName, students, sessionsByStudent, paidBySession, schedule, canSetLegacyBoundary,
-  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onEnsureLesson,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onEnsureLesson, onDeleteSession,
 }: {
   groupName: string
   students: Student[]
@@ -1147,6 +1204,7 @@ function GroupCahier({
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
+  onDeleteSession: (sessionId: string) => Promise<boolean>
 }) {
   const [open, setOpen] = useState(false)
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
@@ -1245,6 +1303,7 @@ function GroupCahier({
                 onCloseSession={onCloseSession}
                 onDeleteLesson={onDeleteLesson}
                 onEnsureLesson={onEnsureLesson}
+                onDeleteSession={onDeleteSession}
               />
               <Button
                 variant="outline"
@@ -1329,6 +1388,15 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
     setSessions((prev) =>
       prev.map((s) => s.id === sessionId ? { ...s, isComplete: true } : s)
     )
+  }
+
+  // Supprime définitivement une session (directeur/secrétaire). Les cours sont effacés ;
+  // les paiements liés sont conservés mais dissociés (dépendances gérées côté API).
+  async function handleDeleteSession(sessionId: string): Promise<boolean> {
+    const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
+    if (!res.ok) return false
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+    return true
   }
 
   async function handleNewSession(studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) {
@@ -1422,6 +1490,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
           onCloseSession={handleCloseSession}
           onNewSession={handleNewSession}
           onDeleteLesson={handleDeleteLesson}
+          onDeleteSession={handleDeleteSession}
         />
       )
     }
@@ -1442,6 +1511,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
         onNewSession={handleNewSession}
         onDeleteLesson={handleDeleteLesson}
         onEnsureLesson={handleEnsureLesson}
+        onDeleteSession={handleDeleteSession}
       />
     )
   }

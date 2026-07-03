@@ -100,6 +100,8 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       monthlyFee: body.monthlyFee !== undefined ? Number(body.monthlyFee) : undefined,
       paymentGraceAllowed: body.paymentGraceAllowed !== undefined ? Boolean(body.paymentGraceAllowed) : undefined,
       groupId: body.groupId ?? undefined,
+      duration: body.duration !== undefined ? (body.duration || null) : undefined,
+      lessonsPerWeek: body.lessonsPerWeek !== undefined ? (body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek)) : undefined,
     },
   })
   if (body.status && body.status !== student.status && student.groupId) {
