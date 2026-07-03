@@ -634,6 +634,337 @@ function SessionCard({
   )
 }
 
+// ─── Classe fusionnée (binôme / groupe) ───────────────────────────────────────
+// Les élèves d'une même classe partagent UN seul tableau de sessions : présence
+// par élève (contenu/date communs) et paiement affiché/marqué par élève.
+
+function shortName(student: Student) {
+  return (student.displayName || student.firstName || student.lastName || "?").trim()
+}
+
+// Ligne « Cours N » fusionnée : contenu partagé + un rond de présence par élève.
+function MergedLessonRow({
+  lessonNumber, cells, sessionDuration, canSetLegacyBoundary, onToggleStatus, onEnsureStatus, onSaveShared, onToggleLegacy, onDelete,
+}: {
+  lessonNumber: number
+  cells: { student: Student; lesson: Lesson | undefined }[]
+  sessionDuration: string | null
+  canSetLegacyBoundary: boolean
+  onToggleStatus: (lessonId: string, current: string) => void
+  onEnsureStatus: (studentId: string) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSaveShared: (data: any) => void
+  onToggleLegacy: (checked: boolean) => void
+  onDelete: () => void
+}) {
+  const expectedMin = (() => {
+    if (!sessionDuration) return null
+    if (/min/i.test(sessionDuration)) return parseInt(sessionDuration)
+    const h = parseFloat(sessionDuration.replace(",", "."))
+    return isFinite(h) ? Math.round(h * 60) : null
+  })()
+
+  const ref = cells.find((c) => c.lesson)?.lesson
+  const [editing, setEditing] = useState(false)
+  const [content, setContent] = useState(ref?.content ?? "")
+  const [date, setDate] = useState(ref?.date ? new Date(ref.date).toISOString().slice(0, 10) : "")
+  const [durationMin, setDurationMin] = useState(
+    ref?.duration != null ? String(ref.duration) : (expectedMin != null ? String(expectedMin) : "")
+  )
+
+  const actualMin = ref?.duration ?? expectedMin
+  const diff = expectedMin != null && actualMin != null ? expectedMin - actualMin : 0
+  const isShort = diff > 0
+  const anyLegacy = cells.some((c) => c.lesson?.legacyPayrollBoundary)
+
+  function saveShared() {
+    const dur = durationMin ? parseInt(durationMin) : null
+    const makeup = dur != null && expectedMin != null && expectedMin > dur ? expectedMin - dur : null
+    onSaveShared({ content, date: date || undefined, duration: dur, makeupMinutes: makeup })
+    setEditing(false)
+  }
+
+  return (
+    <div className={`rounded-lg border p-3 ${ref ? statusBg(ref.status) : "bg-gray-50 border-gray-200"}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex shrink-0 gap-2">
+          {cells.map(({ student, lesson }) => (
+            <div key={student.id} className="flex flex-col items-center gap-1">
+              <button
+                onClick={() => lesson ? onToggleStatus(lesson.id, lesson.status) : onEnsureStatus(student.id)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow sm:h-7 sm:w-7"
+                title={lesson ? `${shortName(student)} — changer le statut` : `${shortName(student)} — ajouter ce cours et marquer présent`}
+              >
+                {lesson ? statusIcon(lesson.status) : <Plus className="h-3.5 w-3.5 text-gray-300" />}
+              </button>
+              <span className="max-w-[3.5rem] truncate text-[10px] text-gray-500" title={shortName(student)}>
+                {shortName(student)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500">Cours {lessonNumber}</span>
+            {date && (
+              <span className="text-xs text-gray-400">
+                {new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+              </span>
+            )}
+            {actualMin != null && (
+              <span className={`text-xs ${isShort ? "text-amber-600 font-medium" : "text-gray-400"}`}>
+                {formatMins(actualMin)}{isShort && ` (−${diff} min)`}
+              </span>
+            )}
+            {anyLegacy && (
+              <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>
+            )}
+            <button
+              onClick={() => { if (confirm(`Supprimer le Cours ${lessonNumber} pour toute la classe ?`)) onDelete() }}
+              className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
+              title="Supprimer ce cours"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {canSetLegacyBoundary && (
+            <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
+              <input
+                type="checkbox"
+                checked={anyLegacy}
+                onChange={(e) => onToggleLegacy(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Dernier cours comptabilisé sur l&apos;ancien système
+            </label>
+          )}
+
+          {editing ? (
+            <div className="mt-2 space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 flex-1 text-xs sm:h-7" />
+                <div className="flex items-center gap-1 sm:w-auto">
+                  <Input type="number" min="5" step="5" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} className="h-9 w-full text-xs sm:h-7 sm:w-20" placeholder={expectedMin ? String(expectedMin) : "min"} />
+                  <span className="text-xs text-gray-400">min</span>
+                </div>
+              </div>
+              <Input placeholder="Contenu du cours (commun à la classe)…" value={content} onChange={(e) => setContent(e.target.value)} className="h-9 text-xs sm:h-7" onKeyDown={(e) => e.key === "Enter" && saveShared()} autoFocus />
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <Button size="sm" className="h-8 text-xs sm:h-6 sm:px-2" onClick={saveShared}>Enregistrer</Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => setEditing(false)}>Annuler</Button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setEditing(true)} className="mt-1 block min-h-8 w-full rounded-md text-left text-xs text-gray-600 hover:text-gray-900">
+              {content ? <span className="italic">{content}</span> : <span className="text-gray-300">Cliquer pour ajouter le contenu…</span>}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Ligne de paiement d'un élève : statut + marquage de la date (directeur).
+function StudentPaymentRow({
+  student, session, paidAt, hasUndated, canMarkPaymentDate, onMarkPaymentDate,
+}: {
+  student: Student
+  session: LessonSession | undefined
+  paidAt: string | undefined
+  hasUndated: boolean
+  canMarkPaymentDate: boolean
+  onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
+}) {
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [saving, setSaving] = useState(false)
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="font-medium text-gray-700">{shortName(student)}</span>
+      {paidAt ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+          <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
+        </span>
+      ) : session ? (
+        <>
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            <AlertTriangle className="h-3 w-3" /> {hasUndated ? "Paiement sans date" : "Pas encore payé"}
+          </span>
+          {canMarkPaymentDate && (
+            <span className="ml-auto flex items-center gap-1">
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 w-36 bg-white text-xs" />
+              <Button
+                size="sm"
+                className="h-7 bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-700"
+                disabled={saving || !date}
+                onClick={async () => { setSaving(true); await onMarkPaymentDate(session, date); setSaving(false) }}
+                title="Enregistrer la date de paiement de cet élève"
+              >
+                {saving ? "…" : "Payé"}
+              </Button>
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="text-xs text-gray-300 italic">Pas de session</span>
+      )}
+    </div>
+  )
+}
+
+// Tableau de sessions fusionné pour une classe (binôme/groupe).
+function MergedGroupCahier({
+  students, sessions, paidBySession, undatedPaymentBySession, canSetLegacyBoundary, canMarkPaymentDate,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson,
+}: {
+  students: Student[]
+  sessions: LessonSession[]
+  paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
+  canSetLegacyBoundary: boolean
+  canMarkPaymentDate: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onUpdateLesson: (lessonId: string, data: any) => void
+  onAddLesson: (sessionId: string) => void
+  onCloseSession: (sessionId: string) => void
+  onDeleteLesson: (lessonId: string) => void
+  onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
+  onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
+}) {
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
+
+  const sessionsByStudent = new Map<string, LessonSession[]>()
+  for (const st of students) sessionsByStudent.set(st.id, sessions.filter((s) => s.student.id === st.id))
+  const allSessions = students.flatMap((st) => sessionsByStudent.get(st.id) ?? [])
+  const numbers = Array.from(new Set(allSessions.map((s) => s.number))).sort((a, b) => b - a)
+  const incompleteNums = allSessions.filter((s) => !s.isComplete).map((s) => s.number)
+  const defaultNumber = incompleteNums.length > 0 ? Math.min(...incompleteNums) : numbers[0]
+  const selNum = selectedNumber != null && numbers.includes(selectedNumber) ? selectedNumber : defaultNumber
+
+  const sessionByStudent = new Map<string, LessonSession>()
+  for (const st of students) {
+    const s = (sessionsByStudent.get(st.id) ?? []).find((x) => x.number === selNum)
+    if (s) sessionByStudent.set(st.id, s)
+  }
+  const sessList = students.map((st) => sessionByStudent.get(st.id)).filter(Boolean) as LessonSession[]
+  const template = sessList[0]
+  const sessionDuration = allSessions.find((s) => s.number === selNum)?.duration ?? null
+  const subjectLabel = allSessions.find((s) => s.number === selNum)?.subject ?? null
+  const allComplete = sessList.length > 0 && sessList.every((s) => s.isComplete)
+  const lessonNumbers = Array.from(new Set(sessList.flatMap((s) => s.lessons.map((l) => l.number)))).sort((a, b) => a - b)
+
+  async function ensureAndPresent(studentId: string, lessonNumber: number) {
+    if (!template) return
+    const lessonId = await onEnsureLesson(
+      studentId, template.subject, template.teacher.id, selNum, lessonNumber,
+      template.frequency, template.duration, Math.max(lessonNumbers.length, lessonNumber),
+    )
+    if (lessonId) onUpdateLesson(lessonId, { status: "PRESENT" })
+  }
+
+  function closeForClass() {
+    const targets = sessList.filter((s) => !s.isComplete)
+    if (targets.length === 0) return
+    if (!confirm(`Terminer la Session ${selNum} et envoyer la demande de paiement à tous les élèves de la classe (${students.map(shortName).join(", ")}) ?`)) return
+    targets.forEach((s) => onCloseSession(s.id))
+  }
+
+  if (numbers.length === 0) {
+    return <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-400">Aucune session pour cette classe.</p>
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {numbers.map((num) => {
+          const isSel = selNum === num
+          return (
+            <button
+              key={num}
+              onClick={() => setSelectedNumber(num)}
+              className={"shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " + (isSel ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
+            >
+              Session {num}
+            </button>
+          )
+        })}
+      </div>
+      {subjectLabel && <p className="text-xs text-gray-400">Matière : {subjectLabel}</p>}
+
+      <div className={`rounded-xl border ${allComplete ? "border-gray-200 bg-gray-50" : "border-emerald-200 bg-white shadow-sm"}`}>
+        <div className="flex items-center gap-3 border-b border-gray-100 p-4">
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${allComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
+            {selNum}
+          </div>
+          <span className="font-semibold text-gray-900">Session {selNum}</span>
+          {allComplete && <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">Terminée</span>}
+        </div>
+
+        <div className="space-y-3 p-4">
+          {lessonNumbers.map((num) => {
+            const cells = students.map((student) => ({
+              student,
+              lesson: sessionByStudent.get(student.id)?.lessons.find((l) => l.number === num),
+            }))
+            return (
+              <MergedLessonRow
+                key={num}
+                lessonNumber={num}
+                cells={cells}
+                sessionDuration={sessionDuration}
+                canSetLegacyBoundary={canSetLegacyBoundary}
+                onToggleStatus={(lessonId, current) => onUpdateLesson(lessonId, { status: STATUS_CYCLE[current] ?? "PENDING" })}
+                onEnsureStatus={(studentId) => ensureAndPresent(studentId, num)}
+                onSaveShared={(data) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, data))}
+                onToggleLegacy={(checked) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, { legacyPayrollBoundary: checked }))}
+                onDelete={() => cells.forEach((c) => c.lesson && onDeleteLesson(c.lesson.id))}
+              />
+            )
+          })}
+
+          {!allComplete && (
+            <Button
+              variant="ghost"
+              className="w-full border border-dashed border-gray-200 text-gray-500 hover:text-gray-700"
+              onClick={() => sessList.forEach((s) => { if (!s.isComplete) onAddLesson(s.id) })}
+            >
+              <Plus className="h-4 w-4" /> Ajouter un cours à la classe
+            </Button>
+          )}
+
+          <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <p className="text-xs font-semibold text-gray-500">Paiement par élève</p>
+            {students.map((student) => (
+              <StudentPaymentRow
+                key={student.id}
+                student={student}
+                session={sessionByStudent.get(student.id)}
+                paidAt={paidBySession[`${student.id}:${selNum}`]}
+                hasUndated={Boolean(undatedPaymentBySession[`${student.id}:${selNum}`])}
+                canMarkPaymentDate={canMarkPaymentDate}
+                onMarkPaymentDate={onMarkPaymentDate}
+              />
+            ))}
+          </div>
+
+          {!allComplete && sessList.length > 0 && (
+            <Button
+              className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={closeForClass}
+              title="Termine la session et envoie la demande de paiement à tous les élèves de la classe"
+            >
+              <Bell className="h-4 w-4" /> Terminer la session et prévenir les élèves
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── StudentCahier ────────────────────────────────────────────────────────────
 
 function StudentCahier({
@@ -1012,6 +1343,7 @@ function GroupCard({
   onNewSession,
   onDeleteLesson,
   onMarkPaymentDate,
+  onEnsureLesson,
 }: {
   group: Group
   activeStudents: Student[]
@@ -1035,6 +1367,7 @@ function GroupCard({
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
+  onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
 }) {
   const [removing, setRemoving] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
@@ -1141,6 +1474,51 @@ function GroupCard({
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-400">
           {filteringSessionsWithoutPaymentDate ? "Aucune session à vérifier dans cette classe." : "Aucun élève actif dans cette classe."}
         </p>
+      ) : activeStudents.length >= 2 ? (
+        <div className="space-y-2">
+          {/* Contrôles par élève (archiver / retirer) */}
+          <div className="flex flex-wrap gap-1.5">
+            {activeStudents.map((student) => (
+              <span key={student.id} className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
+                {shortName(student)}
+                {canArchive && (
+                  <button
+                    onClick={() => handleArchiveStudent(student.id, student.displayName || `${student.firstName} ${student.lastName}`)}
+                    disabled={archiving === student.id}
+                    className="text-gray-300 hover:text-orange-500 disabled:opacity-50"
+                    title="Arrêter cet élève (→ Anciens élèves)"
+                  >
+                    {archiving === student.id ? "…" : <Archive className="h-3 w-3" />}
+                  </button>
+                )}
+                {canRemoveStudent && (
+                  <button
+                    onClick={() => handleRemoveStudent(student.id)}
+                    disabled={removing === student.id}
+                    className="text-gray-300 hover:text-red-500 disabled:opacity-50"
+                    title="Retirer de la classe"
+                  >
+                    {removing === student.id ? "…" : <X className="h-3 w-3" />}
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+          <MergedGroupCahier
+            students={activeStudents}
+            sessions={sessions}
+            paidBySession={paidBySession}
+            undatedPaymentBySession={undatedPaymentBySession}
+            canSetLegacyBoundary={canSetLegacyBoundary}
+            canMarkPaymentDate={canMarkPaymentDate}
+            onUpdateLesson={onUpdateLesson}
+            onAddLesson={onAddLesson}
+            onCloseSession={onCloseSession}
+            onDeleteLesson={onDeleteLesson}
+            onMarkPaymentDate={onMarkPaymentDate}
+            onEnsureLesson={onEnsureLesson}
+          />
+        </div>
       ) : (
         <div className="space-y-2">
           {activeStudents.map((student) => (
@@ -1154,16 +1532,6 @@ function GroupCard({
                     title="Arrêter cet élève (→ Anciens élèves)"
                   >
                     {archiving === student.id ? "…" : <Archive className="h-3.5 w-3.5" />}
-                  </button>
-                )}
-                {canRemoveStudent && activeStudents.length > 1 && (
-                  <button
-                    onClick={() => handleRemoveStudent(student.id)}
-                    disabled={removing === student.id}
-                    className="rounded-full p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                    title="Retirer de la classe"
-                  >
-                    {removing === student.id ? "..." : <X className="h-3.5 w-3.5" />}
                   </button>
                 )}
               </div>
@@ -1195,7 +1563,7 @@ function GroupCard({
 function TeacherCard({
   teacher, teacherStudents, sessions, paidBySession, undatedPaymentBySession, scheduleByGroup, teachers, currentUserId, currentRole,
   showSessionsWithoutPaymentDate, studentSearch = "",
-  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onUpdateRates,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson, onUpdateRates,
 }: {
   teacher: Teacher
   teacherStudents: Student[]
@@ -1215,6 +1583,7 @@ function TeacherCard({
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
+  onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
   onUpdateRates: (teacherId: string, rates: { individualRate?: number; binomeRate?: number; groupRate?: number }) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -1434,6 +1803,7 @@ function TeacherCard({
                         onNewSession={onNewSession}
                         onDeleteLesson={onDeleteLesson}
                         onMarkPaymentDate={onMarkPaymentDate}
+                        onEnsureLesson={onEnsureLesson}
                       />
                     )
                   })}
@@ -1603,6 +1973,41 @@ export function TeachersClient({
     return newSession.id ?? null
   }
 
+  // Garantit qu'un élève a bien un cours (session + Cours N) pour marquer sa présence
+  // dans une classe fusionnée. Crée la session et/ou les cours manquants, renvoie l'id du cours.
+  async function handleEnsureLesson(
+    studentId: string, subject: string, teacherId: string, sessionNumber: number,
+    lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number,
+  ): Promise<string | null> {
+    let target = sessions.find((s) => s.student.id === studentId && s.number === sessionNumber && s.subject === subject)
+    if (!target) {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, subject, teacherId, number: sessionNumber, frequency, duration, lessonCount: Math.max(lessonCount, lessonNumber) }),
+      })
+      if (!res.ok) return null
+      target = await res.json()
+      const created = target!
+      setSessions((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]))
+    }
+    let current = target!
+    let lesson = current.lessons.find((l) => l.number === lessonNumber)
+    while (!lesson) {
+      const res = await fetch(`/api/sessions/${current.id}/lessons`, { method: "POST" })
+      if (!res.ok) return null
+      const newLesson = await res.json()
+      current = { ...current, lessons: [...current.lessons, newLesson] }
+      const snapshot = current
+      setSessions((prev) => prev.map((s) => (s.id === snapshot.id ? snapshot : s)))
+      if (newLesson.number >= lessonNumber) {
+        lesson = current.lessons.find((l) => l.number === lessonNumber)
+        break
+      }
+    }
+    return lesson?.id ?? null
+  }
+
   async function handleMarkPaymentDate(session: LessonSession, paidDate: string) {
     const res = await fetch(`/api/sessions/${session.id}/payment-date`, {
       method: "PATCH",
@@ -1754,6 +2159,7 @@ export function TeachersClient({
               onNewSession={handleNewSession}
               onDeleteLesson={handleDeleteLesson}
               onMarkPaymentDate={handleMarkPaymentDate}
+              onEnsureLesson={handleEnsureLesson}
               onUpdateRates={handleUpdateRates}
             />
           ))}
