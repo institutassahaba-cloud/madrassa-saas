@@ -832,6 +832,361 @@ function StudentCahier({
   )
 }
 
+// ─── Classe fusionnée (binôme / groupe) ───────────────────────────────────────
+// Plusieurs élèves d'un même groupe partagent UN seul tableau de sessions.
+// Le contenu/date/durée d'un cours est commun ; seule la présence est par élève.
+// Le paiement est affiché par élève (chacun garde son propre suivi).
+
+function shortName(student: Student) {
+  return (student.displayName || student.firstName || student.lastName || "?").trim()
+}
+
+// Une ligne « Cours N » dans le tableau de classe : contenu partagé + un rond de présence par élève.
+function MergedLessonRow({
+  lessonNumber, cells, sessionDuration, canSetLegacyBoundary, onToggleStatus, onSaveShared, onToggleLegacy, onDelete,
+}: {
+  lessonNumber: number
+  cells: { student: Student; lesson: Lesson | undefined }[]
+  sessionDuration: string | null
+  canSetLegacyBoundary: boolean
+  onToggleStatus: (lessonId: string, current: string) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSaveShared: (data: any) => void
+  onToggleLegacy: (checked: boolean) => void
+  onDelete: () => void
+}) {
+  const expectedMin = (() => {
+    if (!sessionDuration) return null
+    if (/min/i.test(sessionDuration)) return parseInt(sessionDuration)
+    const h = parseFloat(sessionDuration.replace(",", "."))
+    return isFinite(h) ? Math.round(h * 60) : null
+  })()
+
+  const ref = cells.find((c) => c.lesson)?.lesson
+  const [editing, setEditing] = useState(false)
+  const [content, setContent] = useState(ref?.content ?? "")
+  const [date, setDate] = useState(ref?.date ? new Date(ref.date).toISOString().slice(0, 10) : "")
+  const [durationMin, setDurationMin] = useState(
+    ref?.duration != null ? String(ref.duration) : (expectedMin != null ? String(expectedMin) : "")
+  )
+
+  const actualMin = ref?.duration ?? expectedMin
+  const diff = expectedMin != null && actualMin != null ? expectedMin - actualMin : 0
+  const isShort = diff > 0
+  const anyLegacy = cells.some((c) => c.lesson?.legacyPayrollBoundary)
+
+  function saveShared() {
+    const dur = durationMin ? parseInt(durationMin) : null
+    const makeup = dur != null && expectedMin != null && expectedMin > dur ? expectedMin - dur : null
+    onSaveShared({ content, date: date || undefined, duration: dur, makeupMinutes: makeup })
+    setEditing(false)
+  }
+
+  return (
+    <div className={`rounded-lg border p-3 ${ref ? statusBg(ref.status) : "bg-gray-50 border-gray-200"}`}>
+      <div className="flex items-start gap-3">
+        {/* Ronds de présence : un par élève */}
+        <div className="flex shrink-0 gap-2">
+          {cells.map(({ student, lesson }) => (
+            <div key={student.id} className="flex flex-col items-center gap-1">
+              <button
+                onClick={() => lesson && onToggleStatus(lesson.id, lesson.status)}
+                disabled={!lesson}
+                className="flex h-9 w-9 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow disabled:opacity-30 sm:h-7 sm:w-7"
+                title={lesson ? `${shortName(student)} — changer le statut` : `${shortName(student)} — pas de cours`}
+              >
+                {lesson ? statusIcon(lesson.status) : <span className="text-xs text-gray-300">—</span>}
+              </button>
+              <span className="max-w-[3.5rem] truncate text-[10px] text-gray-500" title={shortName(student)}>
+                {shortName(student)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500">Cours {lessonNumber}</span>
+            {date && (
+              <span className="text-xs text-gray-400">
+                {new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+              </span>
+            )}
+            {actualMin != null && (
+              <span className={`text-xs ${isShort ? "text-amber-600 font-medium" : "text-gray-400"}`}>
+                {formatMins(actualMin)}{isShort && ` (−${diff} min)`}
+              </span>
+            )}
+            {anyLegacy && (
+              <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>
+            )}
+            <button
+              onClick={() => { if (confirm(`Supprimer le Cours ${lessonNumber} pour toute la classe ?`)) onDelete() }}
+              className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
+              title="Supprimer ce cours"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {canSetLegacyBoundary && (
+            <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
+              <input
+                type="checkbox"
+                checked={anyLegacy}
+                onChange={(e) => onToggleLegacy(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Dernier cours comptabilisé sur l&apos;ancien système
+            </label>
+          )}
+
+          {editing ? (
+            <div className="mt-2 space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 flex-1 text-xs sm:h-7" />
+                <div className="flex items-center gap-1 sm:w-auto">
+                  <Input type="number" min="5" step="5" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} className="h-9 w-full text-xs sm:h-7 sm:w-20" placeholder={expectedMin ? String(expectedMin) : "min"} />
+                  <span className="text-xs text-gray-400">min</span>
+                </div>
+              </div>
+              <Input placeholder="Contenu du cours (commun à la classe)…" value={content} onChange={(e) => setContent(e.target.value)} className="h-9 text-xs sm:h-7" onKeyDown={(e) => e.key === "Enter" && saveShared()} autoFocus />
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <Button size="sm" className="h-8 text-xs sm:h-6 sm:px-2" onClick={saveShared}>Enregistrer</Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => setEditing(false)}>Annuler</Button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setEditing(true)} className="mt-1 block min-h-8 w-full rounded-md text-left text-xs text-gray-600 hover:text-gray-900">
+              {content ? <span className="italic">{content}</span> : <span className="text-gray-300">Cliquer pour ajouter le contenu…</span>}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Carte d'une session (numéro N) partagée par la classe.
+function MergedSessionCard({
+  sessionNumber, students, sessionByStudent, paidBySession, sessionDuration, canSetLegacyBoundary,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson,
+}: {
+  sessionNumber: number
+  students: Student[]
+  sessionByStudent: Map<string, LessonSession>
+  paidBySession: Record<string, string>
+  sessionDuration: string | null
+  canSetLegacyBoundary: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onUpdateLesson: (lessonId: string, data: any) => void
+  onAddLesson: (sessionId: string) => void
+  onCloseSession: (sessionId: string) => void
+  onDeleteLesson: (lessonId: string) => void
+}) {
+  const sessions = students.map((st) => sessionByStudent.get(st.id)).filter(Boolean) as LessonSession[]
+  const allComplete = sessions.length > 0 && sessions.every((s) => s.isComplete)
+
+  // Union des numéros de cours présents chez au moins un élève.
+  const lessonNumbers = Array.from(
+    new Set(sessions.flatMap((s) => s.lessons.map((l) => l.number)))
+  ).sort((a, b) => a - b)
+
+  function lessonsForNumber(num: number) {
+    return students.map((student) => ({
+      student,
+      lesson: sessionByStudent.get(student.id)?.lessons.find((l) => l.number === num),
+    }))
+  }
+
+  return (
+    <div className={`rounded-xl border ${allComplete ? "border-gray-200 bg-gray-50" : "border-emerald-200 bg-white shadow-sm"}`}>
+      <div className="flex items-center gap-3 border-b border-gray-100 p-4">
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${allComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
+          {sessionNumber}
+        </div>
+        <span className="font-semibold text-gray-900">Session {sessionNumber}</span>
+        {allComplete && (
+          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">Terminée</span>
+        )}
+      </div>
+
+      <div className="space-y-3 p-4">
+        {/* Cours partagés */}
+        {lessonNumbers.map((num) => {
+          const cells = lessonsForNumber(num)
+          return (
+            <MergedLessonRow
+              key={num}
+              lessonNumber={num}
+              cells={cells}
+              sessionDuration={sessionDuration}
+              canSetLegacyBoundary={canSetLegacyBoundary}
+              onToggleStatus={(lessonId, current) => onUpdateLesson(lessonId, { status: STATUS_CYCLE[current] ?? "PENDING" })}
+              onSaveShared={(data) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, data))}
+              onToggleLegacy={(checked) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, { legacyPayrollBoundary: checked }))}
+              onDelete={() => cells.forEach((c) => c.lesson && onDeleteLesson(c.lesson.id))}
+            />
+          )
+        })}
+
+        {!allComplete && (
+          <Button
+            variant="ghost"
+            className="w-full border border-dashed border-gray-200 text-gray-500 hover:text-gray-700"
+            onClick={() => sessions.forEach((s) => { if (!s.isComplete) onAddLesson(s.id) })}
+          >
+            <Plus className="h-4 w-4" /> Ajouter un cours à la classe
+          </Button>
+        )}
+
+        {/* Paiement par élève */}
+        <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+          <p className="text-xs font-semibold text-gray-500">Paiement par élève</p>
+          {students.map((student) => {
+            const paidAt = paidBySession[`${student.id}:${sessionNumber}`]
+            const session = sessionByStudent.get(student.id)
+            return (
+              <div key={student.id} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="font-medium text-gray-700">{shortName(student)}</span>
+                {paidAt ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                    <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
+                  </span>
+                ) : session ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      <AlertTriangle className="h-3 w-3" /> Pas encore payé
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-auto h-7 text-xs"
+                      onClick={() => onCloseSession(session.id)}
+                      title="Terminer sa session et lui envoyer la demande de paiement"
+                    >
+                      <Bell className="mr-1 h-3 w-3" />
+                      {session.isComplete ? "Envoyer la demande" : "Terminer et demander"}
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-300 italic">Pas de session</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GroupCahier({
+  groupName, students, sessionsByStudent, paidBySession, schedule, canSetLegacyBoundary,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson,
+}: {
+  groupName: string
+  students: Student[]
+  sessionsByStudent: Map<string, LessonSession[]>
+  paidBySession: Record<string, string>
+  schedule: Slot[] | undefined
+  canSetLegacyBoundary: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onUpdateLesson: (lessonId: string, data: any) => void
+  onAddLesson: (sessionId: string) => void
+  onCloseSession: (sessionId: string) => void
+  onDeleteLesson: (lessonId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
+
+  const allSessions = students.flatMap((st) => sessionsByStudent.get(st.id) ?? [])
+  const numbers = Array.from(new Set(allSessions.map((s) => s.number))).sort((a, b) => b - a)
+  // Session par défaut : la première non terminée (numéro le plus bas), sinon la plus récente.
+  const incompleteNums = allSessions.filter((s) => !s.isComplete).map((s) => s.number)
+  const defaultNumber = incompleteNums.length > 0 ? Math.min(...incompleteNums) : numbers[0]
+  const selNum = selectedNumber != null && numbers.includes(selectedNumber) ? selectedNumber : defaultNumber
+
+  // Map élève -> sa session pour le numéro sélectionné.
+  const sessionByStudent = new Map<string, LessonSession>()
+  for (const st of students) {
+    const s = (sessionsByStudent.get(st.id) ?? []).find((x) => x.number === selNum)
+    if (s) sessionByStudent.set(st.id, s)
+  }
+  const sessionDuration = allSessions.find((s) => s.number === selNum)?.duration ?? null
+  const subjectLabel = allSessions.find((s) => s.number === selNum)?.subject ?? null
+  const planning = schedule && schedule.length > 0
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-white shadow-sm sm:rounded-2xl">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-start gap-3 p-4 text-left sm:items-center sm:gap-4 sm:p-5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700 sm:h-10 sm:w-10">
+          {students.length}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-gray-900">{groupName}</p>
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              {students.length === 2 ? "Binôme" : `Classe de ${students.length}`}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-gray-400">{students.map(shortName).join(" · ")}</p>
+          {planning && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              {schedule?.map((slot) => (
+                <a key={slot.id} href={`/dashboard/schedule?teacherId=${slot.teacherId}`} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-emerald-100" title="Modifier ce créneau dans le planning">
+                  <Clock className="h-3 w-3 text-emerald-600" /> 🇫🇷 {scheduleLabel(slot)}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+        {allSessions.length === 0 && <span className="text-xs text-gray-300 italic">Aucun cours</span>}
+        {open ? <ChevronUp className="h-4 w-4 shrink-0 text-gray-400" /> : <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />}
+      </button>
+
+      {open && (
+        <div className="space-y-4 border-t border-gray-100 p-4 sm:p-5">
+          {numbers.length > 0 ? (
+            <>
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {numbers.map((num) => {
+                  const isSel = selNum === num
+                  return (
+                    <button
+                      key={num}
+                      onClick={() => setSelectedNumber(num)}
+                      className={"shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " + (isSel ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
+                    >
+                      Session {num}
+                    </button>
+                  )
+                })}
+              </div>
+              {subjectLabel && <p className="text-xs text-gray-400">Matière : {subjectLabel}</p>}
+              <MergedSessionCard
+                key={selNum}
+                sessionNumber={selNum}
+                students={students}
+                sessionByStudent={sessionByStudent}
+                paidBySession={paidBySession}
+                sessionDuration={sessionDuration}
+                canSetLegacyBoundary={canSetLegacyBoundary}
+                onUpdateLesson={onUpdateLesson}
+                onAddLesson={onAddLesson}
+                onCloseSession={onCloseSession}
+                onDeleteLesson={onDeleteLesson}
+              />
+            </>
+          ) : (
+            <p className="text-sm text-gray-400">Aucune session pour cette classe.</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main CahierClient ────────────────────────────────────────────────────────
 
 export function CahierClient({ students, lessonSessions, paidBySession, scheduleByGroup, teachers, currentUserId, role, initialSearch = "" }: Props) {
@@ -914,6 +1269,68 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
   // All unique subjects across sessions
   const allSubjects = Array.from(new Set(sessions.map((s) => s.subject)))
 
+  // Regroupe les élèves d'un même groupe (≥ 2) en une seule « classe » ; les autres restent solo.
+  type Unit =
+    | { type: "solo"; student: Student }
+    | { type: "group"; groupId: string; students: Student[] }
+
+  function buildUnits(list: Student[]): Unit[] {
+    const counts = new Map<string, number>()
+    for (const st of list) if (st.groupId) counts.set(st.groupId, (counts.get(st.groupId) ?? 0) + 1)
+    const emitted = new Set<string>()
+    const units: Unit[] = []
+    for (const st of list) {
+      if (st.groupId && (counts.get(st.groupId) ?? 0) >= 2) {
+        if (emitted.has(st.groupId)) continue
+        emitted.add(st.groupId)
+        units.push({ type: "group", groupId: st.groupId, students: list.filter((x) => x.groupId === st.groupId) })
+      } else {
+        units.push({ type: "solo", student: st })
+      }
+    }
+    return units
+  }
+
+  const unitKey = (u: Unit) => (u.type === "solo" ? u.student.id : `g:${u.groupId}`)
+
+  function renderUnit(u: Unit) {
+    if (u.type === "solo") {
+      return (
+        <StudentCahier
+          key={u.student.id}
+          student={u.student}
+          sessions={getStudentSessions(u.student.id)}
+          paidBySession={paidBySession}
+          schedule={u.student.groupId ? scheduleByGroup[u.student.groupId] : undefined}
+          teachers={teachers}
+          currentUserId={currentUserId}
+          canSetLegacyBoundary={canSetLegacyBoundary}
+          onUpdateLesson={handleUpdateLesson}
+          onAddLesson={handleAddLesson}
+          onCloseSession={handleCloseSession}
+          onNewSession={handleNewSession}
+          onDeleteLesson={handleDeleteLesson}
+        />
+      )
+    }
+    const sessionsByStudent = new Map<string, LessonSession[]>()
+    for (const st of u.students) sessionsByStudent.set(st.id, getStudentSessions(st.id))
+    return (
+      <GroupCahier
+        key={`g:${u.groupId}`}
+        groupName={u.students[0].group?.name ?? "Classe"}
+        students={u.students}
+        sessionsByStudent={sessionsByStudent}
+        paidBySession={paidBySession}
+        schedule={scheduleByGroup[u.groupId]}
+        canSetLegacyBoundary={canSetLegacyBoundary}
+        onUpdateLesson={handleUpdateLesson}
+        onAddLesson={handleAddLesson}
+        onCloseSession={handleCloseSession}
+        onDeleteLesson={handleDeleteLesson}
+      />
+    )
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -969,23 +1386,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
           {/* Actifs */}
           {activeStudents.length > 0 && (
             <div className="space-y-3">
-              {activeStudents.map((student) => (
-                <StudentCahier
-                  key={student.id}
-                  student={student}
-                  sessions={getStudentSessions(student.id)}
-                  paidBySession={paidBySession}
-                  schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
-                  teachers={teachers}
-                  currentUserId={currentUserId}
-                  canSetLegacyBoundary={canSetLegacyBoundary}
-                  onUpdateLesson={handleUpdateLesson}
-                  onAddLesson={handleAddLesson}
-                  onCloseSession={handleCloseSession}
-                  onNewSession={handleNewSession}
-                  onDeleteLesson={handleDeleteLesson}
-                />
-              ))}
+              {buildUnits(activeStudents).map((u) => renderUnit(u))}
             </div>
           )}
 
@@ -997,22 +1398,9 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
                 <span className="text-xs font-medium text-amber-600">En pause ({pausedStudents.length})</span>
                 <div className="h-px flex-1 bg-amber-200" />
               </div>
-              {pausedStudents.map((student) => (
-                <div key={student.id} className="opacity-70">
-                  <StudentCahier
-                    student={student}
-                    sessions={getStudentSessions(student.id)}
-                    paidBySession={paidBySession}
-                    schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
-                    teachers={teachers}
-                    currentUserId={currentUserId}
-                    canSetLegacyBoundary={canSetLegacyBoundary}
-                    onUpdateLesson={handleUpdateLesson}
-                    onAddLesson={handleAddLesson}
-                    onCloseSession={handleCloseSession}
-                    onNewSession={handleNewSession}
-                    onDeleteLesson={handleDeleteLesson}
-                  />
+              {buildUnits(pausedStudents).map((u) => (
+                <div key={unitKey(u)} className="opacity-70">
+                  {renderUnit(u)}
                 </div>
               ))}
             </div>
@@ -1026,22 +1414,9 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
                 <span className="text-xs font-medium text-red-500">Arrêt définitif ({stoppedStudents.length})</span>
                 <div className="h-px flex-1 bg-red-200" />
               </div>
-              {stoppedStudents.map((student) => (
-                <div key={student.id} className="opacity-50">
-                  <StudentCahier
-                    student={student}
-                    sessions={getStudentSessions(student.id)}
-                    paidBySession={paidBySession}
-                    schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
-                    teachers={teachers}
-                    currentUserId={currentUserId}
-                    canSetLegacyBoundary={canSetLegacyBoundary}
-                    onUpdateLesson={handleUpdateLesson}
-                    onAddLesson={handleAddLesson}
-                    onCloseSession={handleCloseSession}
-                    onNewSession={handleNewSession}
-                    onDeleteLesson={handleDeleteLesson}
-                  />
+              {buildUnits(stoppedStudents).map((u) => (
+                <div key={unitKey(u)} className="opacity-50">
+                  {renderUnit(u)}
                 </div>
               ))}
             </div>
