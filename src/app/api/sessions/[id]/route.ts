@@ -32,21 +32,55 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  // Renumérotation d'une session : réservée au directeur/secrétaire (impacte le suivi
+  // des paiements). Les paiements déjà enregistrés pour cette session suivent le nouveau
+  // numéro ; les prochaines sessions créées reprendront l'auto-incrément à partir de lui.
+  let newNumber: number | null = null
+  if (body.number !== undefined) {
+    if (!["DIRECTOR", "SECRETARY"].includes(user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    const parsed = Number(body.number)
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 999) {
+      return NextResponse.json({ error: "Numéro de session invalide." }, { status: 400 })
+    }
+    if (parsed !== existing.number) {
+      const conflict = await prisma.lessonSession.findFirst({
+        where: { tenantId: user.tenantId, studentId: existing.studentId, subject: existing.subject, number: parsed },
+        select: { id: true },
+      })
+      if (conflict) {
+        return NextResponse.json({ error: `La Session ${parsed} existe déjà pour cet élève.` }, { status: 409 })
+      }
+      newNumber = parsed
+    }
+  }
+
   const isClosing = body.isComplete === true && !existing.isComplete
   const shouldRequestPayment = isClosing || body.requestPayment === true
   const closingAt = new Date()
 
-  const updated = await prisma.lessonSession.update({
-    where: { id },
-    data: {
-      isComplete: body.isComplete ?? existing.isComplete,
-      notes: body.notes ?? existing.notes,
-      frequency: body.frequency != null ? Number(body.frequency) : existing.frequency,
-      duration: body.duration ?? existing.duration,
-      ...(isClosing ? { endedAt: closingAt } : {}),
-      ...(shouldRequestPayment ? { paymentRequestedAt: closingAt } : {}),
-    },
-    include: { lessons: { orderBy: { number: "asc" } } },
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.lessonSession.update({
+      where: { id },
+      data: {
+        isComplete: body.isComplete ?? existing.isComplete,
+        notes: body.notes ?? existing.notes,
+        frequency: body.frequency != null ? Number(body.frequency) : existing.frequency,
+        duration: body.duration ?? existing.duration,
+        ...(newNumber != null ? { number: newNumber } : {}),
+        ...(isClosing ? { endedAt: closingAt } : {}),
+        ...(shouldRequestPayment ? { paymentRequestedAt: closingAt } : {}),
+      },
+      include: { lessons: { orderBy: { number: "asc" } } },
+    })
+    if (newNumber != null) {
+      await tx.payment.updateMany({
+        where: { tenantId: user.tenantId, lessonSessionId: id },
+        data: { sessionNumber: newNumber },
+      })
+    }
+    return result
   })
 
   if (shouldRequestPayment) {
@@ -54,9 +88,9 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       prisma.student.findUnique({ where: { id: existing.studentId } }),
       prisma.user.findUnique({ where: { id: existing.teacherId } }),
     ])
-    let paymentSessionNumber = existing.number + 1
+    let paymentSessionNumber = updated.number + 1
     if (student) {
-      const nextSessionNumber = existing.number + 1
+      const nextSessionNumber = updated.number + 1
       const paymentSession = await prisma.lessonSession.upsert({
         where: {
           studentId_subject_number: {
@@ -128,7 +162,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
         studentName,
         teacherName,
         subject: existing.subject,
-        completedSessionNumber: existing.number,
+        completedSessionNumber: updated.number,
         paymentSessionNumber,
         amount,
         paypalLink: PAYPAL_LINK,

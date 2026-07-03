@@ -468,9 +468,103 @@ function LessonRow({
 
 // ─── SessionCard ──────────────────────────────────────────────────────────────
 
+// Champ « date de paiement » : marquage initial ou modification d'une date déjà enregistrée
+// (directeur/secrétaire). Remonté (via `key`) quand `paidAt` change pour repartir à jour.
+function PaymentDateEditor({
+  paidAt, onSave,
+}: {
+  paidAt?: string | null
+  onSave: (paidDate: string) => Promise<boolean>
+}) {
+  const [date, setDate] = useState(() => paidAt ? new Date(paidAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save() {
+    setSaving(true)
+    setError(null)
+    const ok = await onSave(date)
+    setSaving(false)
+    if (!ok) setError("La date n'a pas pu être enregistrée.")
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        {paidAt ? "Modifier la date du paiement" : "Marquer la date du paiement"}
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 bg-white text-xs sm:w-40" />
+        <Button size="sm" className="h-8 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700" disabled={saving || !date} onClick={save}>
+          {saving ? "Enregistrement..." : (paidAt ? "Mettre à jour" : "OK")}
+        </Button>
+      </div>
+      {error && <p className="text-xs text-red-600 sm:basis-full">{error}</p>}
+    </div>
+  )
+}
+
+// Renumérotation d'une session (directeur/secrétaire) : les paiements déjà enregistrés
+// pour cette session suivent le nouveau numéro, et les prochaines sessions créées
+// reprendront l'auto-incrément à partir de lui.
+function SessionNumberEditor({
+  currentNumber, onSave,
+}: {
+  currentNumber: number
+  onSave: (newNumber: number) => Promise<string | null>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(String(currentNumber))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => { setValue(String(currentNumber)); setError(null); setEditing(true) }}
+        className="text-gray-300 hover:text-emerald-600"
+        title="Modifier le numéro de cette session"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+    )
+  }
+
+  async function save() {
+    const parsed = Number(value)
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setError("Numéro invalide.")
+      return
+    }
+    if (parsed === currentNumber) {
+      setEditing(false)
+      return
+    }
+    setSaving(true)
+    setError(null)
+    const err = await onSave(parsed)
+    setSaving(false)
+    if (err) setError(err)
+    // succès : la page est rechargée par l'appelant, pas besoin de fermer l'éditeur ici
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      <Input type="number" min="1" step="1" value={value} onChange={(e) => setValue(e.target.value)} className="h-7 w-16 bg-white text-xs" />
+      <Button size="sm" className="h-7 px-2 text-xs" disabled={saving} onClick={save}>{saving ? "…" : "OK"}</Button>
+      <button type="button" onClick={() => setEditing(false)} className="text-gray-400 hover:text-gray-600" title="Annuler">
+        <X className="h-3.5 w-3.5" />
+      </button>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </span>
+  )
+}
+
 function SessionCard({
   session, paidAt, hasUndatedPayment, canSetLegacyBoundary, canMarkPaymentDate,
-  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
 }: {
   session: LessonSession
   paidAt?: string | null
@@ -483,13 +577,11 @@ function SessionCard({
   onCloseSession: (sessionId: string) => void
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
+  onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
   const [open, setOpen] = useState(!session.isComplete)
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
-  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [savingPaymentDate, setSavingPaymentDate] = useState(false)
-  const [paymentDateError, setPaymentDateError] = useState<string | null>(null)
   const [deletingSession, setDeletingSession] = useState(false)
 
   const done = session.lessons.filter((l) => l.status !== "PENDING").length
@@ -500,18 +592,6 @@ function SessionCard({
   // Le dernier cours de la session doit être validé (présent/absent) pour terminer.
   const lastLessonValidated = session.lessons.length > 0 &&
     session.lessons.reduce((a, b) => (b.number > a.number ? b : a)).status !== "PENDING"
-
-  async function savePaymentDate() {
-    setSavingPaymentDate(true)
-    setPaymentDateError(null)
-    const ok = await onMarkPaymentDate(session, paymentDate)
-    setSavingPaymentDate(false)
-    if (!ok) {
-      setPaymentDateError("La date n'a pas pu être enregistrée.")
-      return
-    }
-    setPaymentDateError(null)
-  }
 
   async function handleDeleteSession() {
     if (!confirm(`Supprimer définitivement la Session ${session.number} et tous ses cours ? Les paiements liés sont conservés mais dissociés. Action irréversible.`)) return
@@ -583,7 +663,18 @@ function SessionCard({
             )}
           </div>
           {canSetLegacyBoundary && (
-            <div className="flex justify-end pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span>N° de session :</span>
+                <SessionNumberEditor
+                  currentNumber={session.number}
+                  onSave={async (n) => {
+                    const err = await onRenumberSession(session.id, n)
+                    if (!err) window.location.reload()
+                    return err
+                  }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={handleDeleteSession}
@@ -599,42 +690,32 @@ function SessionCard({
         </div>
       )}
 
-      {/* Fin de session / demande de paiement — toujours visible (même carte repliée) */}
-      {canRequestPayment && (
+      {/* Fin de session / demande de paiement / date de paiement — toujours visible (même carte repliée) */}
+      {(canRequestPayment || canMarkPaymentDate) && (
         <div className="space-y-2 border-t border-gray-100 p-4">
           {canMarkPaymentDate && (
-            <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Marquer la date du paiement
+            <PaymentDateEditor key={paidAt ?? "unpaid"} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
+          )}
+          {canRequestPayment && (
+            <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-xs text-amber-700">
+                <Bell className="h-3.5 w-3.5" />
+                {session.isComplete
+                  ? "Envoyer la demande de paiement à l'élève"
+                  : "Terminer la session et envoyer la demande de paiement à l'élève"}
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="h-8 bg-white text-xs sm:w-40" />
-                <Button size="sm" className="h-8 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700" disabled={savingPaymentDate || !paymentDate} onClick={savePaymentDate}>
-                  {savingPaymentDate ? "Enregistrement..." : "OK"}
-                </Button>
-              </div>
-              {paymentDateError && <p className="text-xs text-red-600 sm:basis-full">{paymentDateError}</p>}
+              <Button
+                size="sm"
+                className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!session.isComplete && !lastLessonValidated}
+                onClick={() => onCloseSession(session.id)}
+                title={!session.isComplete && !lastLessonValidated ? "Validez la présence/absence du dernier cours pour activer" : "Envoie la demande de paiement à l'élève"}
+              >
+                {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
+              </Button>
             </div>
           )}
-          <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-xs text-amber-700">
-              <Bell className="h-3.5 w-3.5" />
-              {session.isComplete
-                ? "Envoyer la demande de paiement à l'élève"
-                : "Terminer la session et envoyer la demande de paiement à l'élève"}
-            </div>
-            <Button
-              size="sm"
-              className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!session.isComplete && !lastLessonValidated}
-              onClick={() => onCloseSession(session.id)}
-              title={!session.isComplete && !lastLessonValidated ? "Validez la présence/absence du dernier cours pour activer" : "Envoie la demande de paiement à l'élève"}
-            >
-              {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
-            </Button>
-          </div>
-          {!session.isComplete && !lastLessonValidated && (
+          {canRequestPayment && !session.isComplete && !lastLessonValidated && (
             <p className="text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
           )}
         </div>
@@ -776,7 +857,7 @@ function MergedLessonRow({
   )
 }
 
-// Ligne de paiement d'un élève : statut + marquage de la date (directeur).
+// Ligne de paiement d'un élève : statut + marquage/modification de la date (directeur/secrétaire).
 function StudentPaymentRow({
   student, session, paidAt, hasUndated, canMarkPaymentDate, onMarkPaymentDate,
 }: {
@@ -787,38 +868,58 @@ function StudentPaymentRow({
   canMarkPaymentDate: boolean
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
 }) {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [editing, setEditing] = useState(false)
+  const [date, setDate] = useState(() => paidAt ? new Date(paidAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10))
   const [saving, setSaving] = useState(false)
+
+  const showEditor = canMarkPaymentDate && session && (editing || !paidAt)
+
+  async function save() {
+    if (!session) return
+    setSaving(true)
+    const ok = await onMarkPaymentDate(session, date)
+    setSaving(false)
+    if (ok) setEditing(false)
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <span className="font-medium text-gray-700">{shortName(student)}</span>
       {paidAt ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-          <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
-        </span>
-      ) : session ? (
         <>
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-            <AlertTriangle className="h-3 w-3" /> {hasUndated ? "Paiement sans date" : "Pas encore payé"}
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+            <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
           </span>
-          {canMarkPaymentDate && (
-            <span className="ml-auto flex items-center gap-1">
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 w-36 bg-white text-xs" />
-              <Button
-                size="sm"
-                className="h-7 bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-700"
-                disabled={saving || !date}
-                onClick={async () => { setSaving(true); await onMarkPaymentDate(session, date); setSaving(false) }}
-                title="Enregistrer la date de paiement de cet élève"
-              >
-                {saving ? "…" : "Payé"}
-              </Button>
-            </span>
+          {canMarkPaymentDate && session && (
+            <button
+              onClick={() => { setDate(new Date(paidAt).toISOString().slice(0, 10)); setEditing((v) => !v) }}
+              className="text-gray-300 hover:text-emerald-600"
+              title="Modifier la date de paiement"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
           )}
         </>
+      ) : session ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+          <AlertTriangle className="h-3 w-3" /> {hasUndated ? "Paiement sans date" : "Pas encore payé"}
+        </span>
       ) : (
         <span className="text-xs text-gray-300 italic">Pas de session</span>
+      )}
+      {showEditor && (
+        <span className="ml-auto flex items-center gap-1">
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 w-36 bg-white text-xs" />
+          <Button
+            size="sm"
+            className="h-7 bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-700"
+            disabled={saving || !date}
+            onClick={save}
+            title="Enregistrer la date de paiement de cet élève"
+          >
+            {saving ? "…" : (paidAt ? "OK" : "Payé")}
+          </Button>
+        </span>
       )}
     </div>
   )
@@ -827,7 +928,7 @@ function StudentPaymentRow({
 // Tableau de sessions fusionné pour une classe (binôme/groupe).
 function MergedGroupCahier({
   students, sessions, paidBySession, undatedPaymentBySession, canSetLegacyBoundary, canMarkPaymentDate,
-  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson, onRenumberSession,
 }: {
   students: Student[]
   sessions: LessonSession[]
@@ -843,6 +944,7 @@ function MergedGroupCahier({
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
+  onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
   const [open, setOpen] = useState(false)
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
@@ -891,6 +993,16 @@ function MergedGroupCahier({
     if (unpaidSessions.length === 0) return
     if (!confirm(`${anyIncomplete ? "Terminer la Session" : "Envoyer la demande de paiement de la Session"} ${selNum} pour la classe (${students.map(shortName).join(", ")}) ?`)) return
     unpaidSessions.forEach((s) => onCloseSession(s.id))
+  }
+
+  // Renuméroter la session pour TOUS les élèves de la classe (garde le tableau unifié).
+  async function renumberClassSession(newNumber: number): Promise<string | null> {
+    for (const s of sessList) {
+      const err = await onRenumberSession(s.id, newNumber)
+      if (err) return err
+    }
+    window.location.reload()
+    return null
   }
 
   // Nouvelle session pour toute la classe : réplique le modèle de la dernière session.
@@ -949,6 +1061,7 @@ function MergedGroupCahier({
             {selNum}
           </div>
           <span className="font-semibold text-gray-900">Session {selNum}</span>
+          {canSetLegacyBoundary && <SessionNumberEditor currentNumber={selNum} onSave={renumberClassSession} />}
           {allComplete && <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">Terminée</span>}
         </div>
 
@@ -1040,7 +1153,7 @@ function MergedGroupCahier({
 function StudentCahier({
   student, sessions, paidBySession, undatedPaymentBySession, schedule, teachers, currentUserId,
   canSetLegacyBoundary, canMarkPaymentDate,
-  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
 }: {
   student: Student
   sessions: LessonSession[]
@@ -1058,6 +1171,7 @@ function StudentCahier({
   onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
+  onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
   const [open, setOpen] = useState(false)
   const [newSubject, setNewSubject] = useState("")
@@ -1150,12 +1264,13 @@ function StudentCahier({
               paidAt={paidBySession[`${student.id}:${selected.number}`]}
               hasUndatedPayment={undatedPaymentBySession[`${student.id}:${selected.number}`]}
               canSetLegacyBoundary={canSetLegacyBoundary}
-              canMarkPaymentDate={canMarkPaymentDate && !paidBySession[`${student.id}:${selected.number}`]}
+              canMarkPaymentDate={canMarkPaymentDate}
               onUpdateLesson={onUpdateLesson}
               onAddLesson={onAddLesson}
               onCloseSession={onCloseSession}
               onDeleteLesson={onDeleteLesson}
               onMarkPaymentDate={onMarkPaymentDate}
+              onRenumberSession={onRenumberSession}
             />
           )}
           {choosingSessionModel ? (
@@ -1414,6 +1529,7 @@ function GroupCard({
   onDeleteLesson,
   onMarkPaymentDate,
   onEnsureLesson,
+  onRenumberSession,
 }: {
   group: Group
   activeStudents: Student[]
@@ -1438,6 +1554,7 @@ function GroupCard({
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
+  onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
   const [removing, setRemoving] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
@@ -1588,6 +1705,7 @@ function GroupCard({
             onDeleteLesson={onDeleteLesson}
             onMarkPaymentDate={onMarkPaymentDate}
             onEnsureLesson={onEnsureLesson}
+            onRenumberSession={onRenumberSession}
           />
         </div>
       ) : (
@@ -1622,6 +1740,7 @@ function GroupCard({
                 onNewSession={onNewSession}
                 onDeleteLesson={onDeleteLesson}
                 onMarkPaymentDate={onMarkPaymentDate}
+                onRenumberSession={onRenumberSession}
               />
             </div>
           ))}
@@ -1634,7 +1753,7 @@ function GroupCard({
 function TeacherCard({
   teacher, teacherStudents, sessions, paidBySession, undatedPaymentBySession, scheduleByGroup, teachers, currentUserId, currentRole,
   showSessionsWithoutPaymentDate, studentSearch = "",
-  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson, onUpdateRates,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson, onRenumberSession, onUpdateRates,
 }: {
   teacher: Teacher
   teacherStudents: Student[]
@@ -1655,6 +1774,7 @@ function TeacherCard({
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
+  onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
   onUpdateRates: (teacherId: string, rates: { individualRate?: number; binomeRate?: number; groupRate?: number }) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -1866,7 +1986,7 @@ function TeacherCard({
                         canRemoveStudent={currentRole === "DIRECTOR"}
                         canArchive={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                         canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
-                        canMarkPaymentDate={currentRole === "DIRECTOR"}
+                        canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
                         filteringSessionsWithoutPaymentDate={showSessionsWithoutPaymentDate}
                         onUpdateLesson={onUpdateLesson}
                         onAddLesson={onAddLesson}
@@ -1875,6 +1995,7 @@ function TeacherCard({
                         onDeleteLesson={onDeleteLesson}
                         onMarkPaymentDate={onMarkPaymentDate}
                         onEnsureLesson={onEnsureLesson}
+                        onRenumberSession={onRenumberSession}
                       />
                     )
                   })}
@@ -1902,13 +2023,14 @@ function TeacherCard({
                     teachers={teachers}
                     currentUserId={currentUserId}
                     canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
-                    canMarkPaymentDate={currentRole === "DIRECTOR"}
+                    canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
                     onUpdateLesson={onUpdateLesson}
                     onAddLesson={onAddLesson}
                     onCloseSession={onCloseSession}
                     onNewSession={onNewSession}
                     onDeleteLesson={onDeleteLesson}
                     onMarkPaymentDate={onMarkPaymentDate}
+                    onRenumberSession={onRenumberSession}
                   />
                 </div>
               ))}
@@ -1934,13 +2056,14 @@ function TeacherCard({
                     teachers={teachers}
                     currentUserId={currentUserId}
                     canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
-                    canMarkPaymentDate={currentRole === "DIRECTOR"}
+                    canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
                     onUpdateLesson={onUpdateLesson}
                     onAddLesson={onAddLesson}
                     onCloseSession={onCloseSession}
                     onNewSession={onNewSession}
                     onDeleteLesson={onDeleteLesson}
                     onMarkPaymentDate={onMarkPaymentDate}
+                    onRenumberSession={onRenumberSession}
                   />
                 </div>
               ))}
@@ -2097,6 +2220,19 @@ export function TeachersClient({
     return true
   }
 
+  // Renumérote une session (directeur/secrétaire). Le rechargement de page (côté appelant)
+  // rafraîchit paidBySession/undatedPaymentBySession, mis à jour côté serveur en cascade.
+  async function handleRenumberSession(sessionId: string, newNumber: number): Promise<string | null> {
+    const res = await fetch(`/api/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ number: newNumber }),
+    })
+    if (res.ok) return null
+    const err = await res.json().catch(() => null)
+    return err?.error ?? "La renumérotation a échoué."
+  }
+
   async function handleUpdateRates(teacherId: string, ratesData: { individualRate?: number; binomeRate?: number; groupRate?: number }) {
     await fetch("/api/teachers", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ teacherId, ...ratesData }) })
     setTeachers((prev) => prev.map((t) => t.id === teacherId ? { ...t, ...ratesData } : t))
@@ -2231,6 +2367,7 @@ export function TeachersClient({
               onDeleteLesson={handleDeleteLesson}
               onMarkPaymentDate={handleMarkPaymentDate}
               onEnsureLesson={handleEnsureLesson}
+              onRenumberSession={handleRenumberSession}
               onUpdateRates={handleUpdateRates}
             />
           ))}

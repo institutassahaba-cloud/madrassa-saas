@@ -22,7 +22,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
-  if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (!["DIRECTOR", "SECRETARY"].includes(user.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const { id } = await params
   const body = await req.json()
@@ -40,13 +40,14 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   const paymentMonth = paidDate.getMonth() + 1
   const paymentYear = paidDate.getFullYear()
   const now = new Date()
+  // Pas de filtre sur paidDate : si le paiement est déjà daté, on le met à jour
+  // (édition d'une date existante) plutôt que d'en créer un doublon.
   const existingPayment = await prisma.payment.findFirst({
     where: {
       tenantId: user.tenantId,
       studentId: lessonSession.studentId,
       sessionNumber: lessonSession.number,
       status: { not: "REJECTED" },
-      paidDate: null,
     },
     orderBy: { createdAt: "desc" },
   })
