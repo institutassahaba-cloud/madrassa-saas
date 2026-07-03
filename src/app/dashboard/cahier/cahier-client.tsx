@@ -843,13 +843,14 @@ function shortName(student: Student) {
 
 // Une ligne « Cours N » dans le tableau de classe : contenu partagé + un rond de présence par élève.
 function MergedLessonRow({
-  lessonNumber, cells, sessionDuration, canSetLegacyBoundary, onToggleStatus, onSaveShared, onToggleLegacy, onDelete,
+  lessonNumber, cells, sessionDuration, canSetLegacyBoundary, onToggleStatus, onEnsureStatus, onSaveShared, onToggleLegacy, onDelete,
 }: {
   lessonNumber: number
   cells: { student: Student; lesson: Lesson | undefined }[]
   sessionDuration: string | null
   canSetLegacyBoundary: boolean
   onToggleStatus: (lessonId: string, current: string) => void
+  onEnsureStatus: (studentId: string) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSaveShared: (data: any) => void
   onToggleLegacy: (checked: boolean) => void
@@ -890,12 +891,11 @@ function MergedLessonRow({
           {cells.map(({ student, lesson }) => (
             <div key={student.id} className="flex flex-col items-center gap-1">
               <button
-                onClick={() => lesson && onToggleStatus(lesson.id, lesson.status)}
-                disabled={!lesson}
-                className="flex h-9 w-9 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow disabled:opacity-30 sm:h-7 sm:w-7"
-                title={lesson ? `${shortName(student)} — changer le statut` : `${shortName(student)} — pas de cours`}
+                onClick={() => lesson ? onToggleStatus(lesson.id, lesson.status) : onEnsureStatus(student.id)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow sm:h-7 sm:w-7"
+                title={lesson ? `${shortName(student)} — changer le statut` : `${shortName(student)} — ajouter ce cours et marquer présent`}
               >
-                {lesson ? statusIcon(lesson.status) : <span className="text-xs text-gray-300">—</span>}
+                {lesson ? statusIcon(lesson.status) : <Plus className="h-3.5 w-3.5 text-gray-300" />}
               </button>
               <span className="max-w-[3.5rem] truncate text-[10px] text-gray-500" title={shortName(student)}>
                 {shortName(student)}
@@ -970,7 +970,7 @@ function MergedLessonRow({
 // Carte d'une session (numéro N) partagée par la classe.
 function MergedSessionCard({
   sessionNumber, students, sessionByStudent, paidBySession, sessionDuration, canSetLegacyBoundary,
-  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onEnsureLesson,
 }: {
   sessionNumber: number
   students: Student[]
@@ -983,9 +983,11 @@ function MergedSessionCard({
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
   onDeleteLesson: (lessonId: string) => void
+  onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
 }) {
   const sessions = students.map((st) => sessionByStudent.get(st.id)).filter(Boolean) as LessonSession[]
   const allComplete = sessions.length > 0 && sessions.every((s) => s.isComplete)
+  const template = sessions[0]
 
   // Union des numéros de cours présents chez au moins un élève.
   const lessonNumbers = Array.from(
@@ -997,6 +999,24 @@ function MergedSessionCard({
       student,
       lesson: sessionByStudent.get(student.id)?.lessons.find((l) => l.number === num),
     }))
+  }
+
+  // Case vide (élève sans cours pour ce numéro) → crée le cours manquant puis marque présent.
+  async function ensureAndPresent(studentId: string, lessonNumber: number) {
+    if (!template) return
+    const lessonId = await onEnsureLesson(
+      studentId, template.subject, template.teacher.id, sessionNumber, lessonNumber,
+      template.frequency, template.duration, Math.max(lessonNumbers.length, lessonNumber),
+    )
+    if (lessonId) onUpdateLesson(lessonId, { status: "PRESENT" })
+  }
+
+  // Terminer la session pour TOUTE la classe (prévient chaque élève par email).
+  function closeForClass() {
+    const targets = sessions.filter((s) => !s.isComplete)
+    if (targets.length === 0) return
+    if (!confirm(`Terminer la Session ${sessionNumber} et envoyer la demande de paiement à tous les élèves de la classe (${students.map(shortName).join(", ")}) ?`)) return
+    targets.forEach((s) => onCloseSession(s.id))
   }
 
   return (
@@ -1023,6 +1043,7 @@ function MergedSessionCard({
               sessionDuration={sessionDuration}
               canSetLegacyBoundary={canSetLegacyBoundary}
               onToggleStatus={(lessonId, current) => onUpdateLesson(lessonId, { status: STATUS_CYCLE[current] ?? "PENDING" })}
+              onEnsureStatus={(studentId) => ensureAndPresent(studentId, num)}
               onSaveShared={(data) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, data))}
               onToggleLegacy={(checked) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, { legacyPayrollBoundary: checked }))}
               onDelete={() => cells.forEach((c) => c.lesson && onDeleteLesson(c.lesson.id))}
@@ -1054,21 +1075,9 @@ function MergedSessionCard({
                     <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
                   </span>
                 ) : session ? (
-                  <>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                      <AlertTriangle className="h-3 w-3" /> Pas encore payé
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="ml-auto h-7 text-xs"
-                      onClick={() => onCloseSession(session.id)}
-                      title="Terminer sa session et lui envoyer la demande de paiement"
-                    >
-                      <Bell className="mr-1 h-3 w-3" />
-                      {session.isComplete ? "Envoyer la demande" : "Terminer et demander"}
-                    </Button>
-                  </>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    <AlertTriangle className="h-3 w-3" /> Pas encore payé
+                  </span>
                 ) : (
                   <span className="text-xs text-gray-300 italic">Pas de session</span>
                 )}
@@ -1076,6 +1085,17 @@ function MergedSessionCard({
             )
           })}
         </div>
+
+        {/* Fin de session pour toute la classe */}
+        {!allComplete && sessions.length > 0 && (
+          <Button
+            className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+            onClick={closeForClass}
+            title="Termine la session et envoie la demande de paiement à tous les élèves de la classe"
+          >
+            <Bell className="h-4 w-4" /> Terminer la session et prévenir les élèves
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -1083,7 +1103,7 @@ function MergedSessionCard({
 
 function GroupCahier({
   groupName, students, sessionsByStudent, paidBySession, schedule, canSetLegacyBoundary,
-  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onEnsureLesson,
 }: {
   groupName: string
   students: Student[]
@@ -1096,6 +1116,7 @@ function GroupCahier({
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
   onDeleteLesson: (lessonId: string) => void
+  onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
 }) {
   const [open, setOpen] = useState(false)
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
@@ -1176,6 +1197,7 @@ function GroupCahier({
                 onAddLesson={onAddLesson}
                 onCloseSession={onCloseSession}
                 onDeleteLesson={onDeleteLesson}
+                onEnsureLesson={onEnsureLesson}
               />
             </>
           ) : (
@@ -1266,6 +1288,41 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
     return newSession.id ?? null
   }
 
+  // Garantit qu'un élève a bien un cours (session + Cours N) pour pouvoir marquer sa présence
+  // dans une classe fusionnée. Crée la session et/ou les cours manquants, renvoie l'id du cours.
+  async function handleEnsureLesson(
+    studentId: string, subject: string, teacherId: string, sessionNumber: number,
+    lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number,
+  ): Promise<string | null> {
+    let target = sessions.find((s) => s.student.id === studentId && s.number === sessionNumber && s.subject === subject)
+    if (!target) {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, subject, teacherId, number: sessionNumber, frequency, duration, lessonCount: Math.max(lessonCount, lessonNumber) }),
+      })
+      if (!res.ok) return null
+      target = await res.json()
+      const created = target!
+      setSessions((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]))
+    }
+    let current = target!
+    let lesson = current.lessons.find((l) => l.number === lessonNumber)
+    while (!lesson) {
+      const res = await fetch(`/api/sessions/${current.id}/lessons`, { method: "POST" })
+      if (!res.ok) return null
+      const newLesson = await res.json()
+      current = { ...current, lessons: [...current.lessons, newLesson] }
+      const snapshot = current
+      setSessions((prev) => prev.map((s) => (s.id === snapshot.id ? snapshot : s)))
+      if (newLesson.number >= lessonNumber) {
+        lesson = current.lessons.find((l) => l.number === lessonNumber)
+        break
+      }
+    }
+    return lesson?.id ?? null
+  }
+
   // All unique subjects across sessions
   const allSubjects = Array.from(new Set(sessions.map((s) => s.subject)))
 
@@ -1328,6 +1385,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
         onAddLesson={handleAddLesson}
         onCloseSession={handleCloseSession}
         onDeleteLesson={handleDeleteLesson}
+        onEnsureLesson={handleEnsureLesson}
       />
     )
   }
