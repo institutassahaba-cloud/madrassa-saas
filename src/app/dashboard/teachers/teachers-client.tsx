@@ -818,7 +818,7 @@ function StudentPaymentRow({
 // Tableau de sessions fusionné pour une classe (binôme/groupe).
 function MergedGroupCahier({
   students, sessions, paidBySession, undatedPaymentBySession, canSetLegacyBoundary, canMarkPaymentDate,
-  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson,
+  onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson,
 }: {
   students: Student[]
   sessions: LessonSession[]
@@ -830,11 +830,14 @@ function MergedGroupCahier({
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
   onCloseSession: (sessionId: string) => void
+  onNewSession: (studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) => Promise<string | null>
   onDeleteLesson: (lessonId: string) => void
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
 }) {
+  const [open, setOpen] = useState(false)
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
+  const [creatingSession, setCreatingSession] = useState(false)
 
   const sessionsByStudent = new Map<string, LessonSession[]>()
   for (const st of students) sessionsByStudent.set(st.id, sessions.filter((s) => s.student.id === st.id))
@@ -865,11 +868,35 @@ function MergedGroupCahier({
     if (lessonId) onUpdateLesson(lessonId, { status: "PRESENT" })
   }
 
-  function closeForClass() {
-    const targets = sessList.filter((s) => !s.isComplete)
-    if (targets.length === 0) return
-    if (!confirm(`Terminer la Session ${selNum} et envoyer la demande de paiement à tous les élèves de la classe (${students.map(shortName).join(", ")}) ?`)) return
-    targets.forEach((s) => onCloseSession(s.id))
+  // Demande de paiement pour toute la classe : cible les élèves non encore payés
+  // (termine leur session si besoin, puis envoie l'email de demande à chacun).
+  const unpaidSessions = sessList.filter((s) => !paidBySession[`${s.student.id}:${selNum}`])
+  const anyIncomplete = sessList.some((s) => !s.isComplete)
+  // Le dernier cours de la session doit être validé (présent/absent) pour tous les élèves.
+  const lastLessonValidated = sessList.length > 0 && sessList.every((s) => {
+    if (s.lessons.length === 0) return false
+    const last = s.lessons.reduce((a, b) => (b.number > a.number ? b : a))
+    return last.status !== "PENDING"
+  })
+  function requestPaymentForClass() {
+    if (unpaidSessions.length === 0) return
+    if (!confirm(`${anyIncomplete ? "Terminer la Session" : "Envoyer la demande de paiement de la Session"} ${selNum} pour la classe (${students.map(shortName).join(", ")}) ?`)) return
+    unpaidSessions.forEach((s) => onCloseSession(s.id))
+  }
+
+  // Nouvelle session pour toute la classe : réplique le modèle de la dernière session.
+  const maxNumber = numbers[0]
+  async function createSessionForClass() {
+    setCreatingSession(true)
+    const tmpl = students.map((st) => (sessionsByStudent.get(st.id) ?? []).find((s) => s.number === maxNumber)).find(Boolean) ?? template
+    if (tmpl) {
+      const count = tmpl.lessons.length || DEFAULT_LESSON_COUNT
+      for (const st of students) {
+        await onNewSession(st.id, tmpl.subject, tmpl.teacher.id, count, tmpl.frequency, tmpl.duration)
+      }
+      setSelectedNumber(maxNumber + 1)
+    }
+    setCreatingSession(false)
   }
 
   if (numbers.length === 0) {
@@ -877,7 +904,20 @@ function MergedGroupCahier({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100"
+      >
+        <span className="flex items-center gap-2">
+          <BookOpen className="h-3.5 w-3.5" />
+          {open ? "Masquer les sessions" : `Voir les sessions · Session ${selNum}`}
+        </span>
+        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+
+      {!open ? null : (
+      <>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         {numbers.map((num) => {
           const isSel = selNum === num
@@ -950,17 +990,38 @@ function MergedGroupCahier({
             ))}
           </div>
 
-          {!allComplete && sessList.length > 0 && (
+          {sessList.length > 0 && (
             <Button
-              className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
-              onClick={closeForClass}
-              title="Termine la session et envoie la demande de paiement à tous les élèves de la classe"
+              className="w-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!lastLessonValidated || unpaidSessions.length === 0}
+              onClick={requestPaymentForClass}
+              title={
+                unpaidSessions.length === 0
+                  ? "Tous les élèves ont déjà payé cette session"
+                  : !lastLessonValidated
+                    ? "Validez la présence/absence du dernier cours pour activer"
+                    : "Termine la session et envoie la demande de paiement aux élèves non payés"
+              }
             >
-              <Bell className="h-4 w-4" /> Terminer la session et prévenir les élèves
+              <Bell className="h-4 w-4" /> {anyIncomplete ? "Terminer la session et prévenir les élèves" : "Envoyer la demande de paiement à la classe"}
             </Button>
+          )}
+          {sessList.length > 0 && !lastLessonValidated && (
+            <p className="text-center text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
           )}
         </div>
       </div>
+
+      <Button
+        variant="outline"
+        className="w-full border-dashed"
+        disabled={creatingSession}
+        onClick={createSessionForClass}
+      >
+        <Plus className="h-4 w-4" /> {creatingSession ? "Création…" : "Nouvelle session pour la classe"}
+      </Button>
+      </>
+      )}
     </div>
   )
 }
@@ -1514,6 +1575,7 @@ function GroupCard({
             onUpdateLesson={onUpdateLesson}
             onAddLesson={onAddLesson}
             onCloseSession={onCloseSession}
+            onNewSession={onNewSession}
             onDeleteLesson={onDeleteLesson}
             onMarkPaymentDate={onMarkPaymentDate}
             onEnsureLesson={onEnsureLesson}
