@@ -390,6 +390,9 @@ function SessionCard({
   const present = session.lessons.filter((l) => l.status === "PRESENT").length
   const totalMakeup = session.lessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
   const canRequestPayment = !paidAt
+  // Le dernier cours de la session doit être validé (présent/absent) pour terminer.
+  const lastLessonValidated = session.lessons.length > 0 &&
+    session.lessons.reduce((a, b) => (b.number > a.number ? b : a)).status !== "PENDING"
 
   return (
     <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-emerald-200 bg-white shadow-sm"}`}>
@@ -496,23 +499,31 @@ function SessionCard({
             )}
           </div>
 
-          {/* Close session / payment request */}
-          {canRequestPayment && (
-            <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs text-amber-700">
-                <Bell className="h-3.5 w-3.5" />
-                {session.isComplete
-                  ? "Envoyer la demande de paiement à l'élève"
-                  : "Terminer la session et envoyer la demande de paiement à l'élève"}
-              </div>
-              <Button
-                size="sm"
-                className="h-8 bg-amber-500 px-3 text-xs text-white hover:bg-amber-600 sm:h-7"
-                onClick={() => onCloseSession(session.id)}
-              >
-                {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
-              </Button>
+        </div>
+      )}
+
+      {/* Fin de session / demande de paiement — toujours visible (même carte repliée) */}
+      {canRequestPayment && (
+        <div className="border-t border-gray-100 p-3 sm:p-4">
+          <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-amber-700">
+              <Bell className="h-3.5 w-3.5" />
+              {session.isComplete
+                ? "Envoyer la demande de paiement à l'élève"
+                : "Terminer la session et envoyer la demande de paiement à l'élève"}
             </div>
+            <Button
+              size="sm"
+              className="h-8 bg-amber-500 px-3 text-xs text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 sm:h-7"
+              disabled={!session.isComplete && !lastLessonValidated}
+              onClick={() => onCloseSession(session.id)}
+              title={!session.isComplete && !lastLessonValidated ? "Validez la présence/absence du dernier cours pour activer" : "Envoie la demande de paiement à l'élève"}
+            >
+              {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
+            </Button>
+          </div>
+          {!session.isComplete && !lastLessonValidated && (
+            <p className="mt-1 text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
           )}
         </div>
       )}
@@ -1098,7 +1109,7 @@ function MergedSessionCard({
         {sessions.length > 0 && (
           <Button
             className="w-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!lastLessonValidated || unpaidSessions.length === 0}
+            disabled={unpaidSessions.length === 0 || (anyIncomplete && !lastLessonValidated)}
             onClick={requestPaymentForClass}
             title={
               unpaidSessions.length === 0

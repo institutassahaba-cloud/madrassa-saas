@@ -497,6 +497,9 @@ function SessionCard({
   const present = session.lessons.filter((l) => l.status === "PRESENT").length
   const totalMakeup = session.lessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
   const canRequestPayment = !paidAt
+  // Le dernier cours de la session doit être validé (présent/absent) pour terminer.
+  const lastLessonValidated = session.lessons.length > 0 &&
+    session.lessons.reduce((a, b) => (b.number > a.number ? b : a)).status !== "PENDING"
 
   async function savePaymentDate() {
     setSavingPaymentDate(true)
@@ -579,41 +582,6 @@ function SessionCard({
               </button>
             )}
           </div>
-          {canRequestPayment && (
-            <div className="space-y-2">
-              {canMarkPaymentDate && (
-                <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Marquer la date du paiement
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Input
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      className="h-8 bg-white text-xs sm:w-40"
-                    />
-                    <Button size="sm" className="h-8 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700" disabled={savingPaymentDate || !paymentDate} onClick={savePaymentDate}>
-                      {savingPaymentDate ? "Enregistrement..." : "OK"}
-                    </Button>
-                  </div>
-                  {paymentDateError && <p className="text-xs text-red-600 sm:basis-full">{paymentDateError}</p>}
-                </div>
-              )}
-              <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 text-xs text-amber-700">
-                  <Bell className="h-3.5 w-3.5" />
-                  {session.isComplete
-                    ? "Envoyer la demande de paiement à l'élève"
-                    : "Terminer la session et envoyer la demande de paiement à l'élève"}
-                </div>
-                <Button size="sm" className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3" onClick={() => onCloseSession(session.id)}>
-                  {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
-                </Button>
-              </div>
-            </div>
-          )}
           {canSetLegacyBoundary && (
             <div className="flex justify-end pt-1">
               <button
@@ -627,6 +595,47 @@ function SessionCard({
                 {deletingSession ? "Suppression…" : "Supprimer la session"}
               </button>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Fin de session / demande de paiement — toujours visible (même carte repliée) */}
+      {canRequestPayment && (
+        <div className="space-y-2 border-t border-gray-100 p-4">
+          {canMarkPaymentDate && (
+            <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Marquer la date du paiement
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="h-8 bg-white text-xs sm:w-40" />
+                <Button size="sm" className="h-8 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700" disabled={savingPaymentDate || !paymentDate} onClick={savePaymentDate}>
+                  {savingPaymentDate ? "Enregistrement..." : "OK"}
+                </Button>
+              </div>
+              {paymentDateError && <p className="text-xs text-red-600 sm:basis-full">{paymentDateError}</p>}
+            </div>
+          )}
+          <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-amber-700">
+              <Bell className="h-3.5 w-3.5" />
+              {session.isComplete
+                ? "Envoyer la demande de paiement à l'élève"
+                : "Terminer la session et envoyer la demande de paiement à l'élève"}
+            </div>
+            <Button
+              size="sm"
+              className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!session.isComplete && !lastLessonValidated}
+              onClick={() => onCloseSession(session.id)}
+              title={!session.isComplete && !lastLessonValidated ? "Validez la présence/absence du dernier cours pour activer" : "Envoie la demande de paiement à l'élève"}
+            >
+              {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
+            </Button>
+          </div>
+          {!session.isComplete && !lastLessonValidated && (
+            <p className="text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
           )}
         </div>
       )}
@@ -993,7 +1002,7 @@ function MergedGroupCahier({
           {sessList.length > 0 && (
             <Button
               className="w-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!lastLessonValidated || unpaidSessions.length === 0}
+              disabled={unpaidSessions.length === 0 || (anyIncomplete && !lastLessonValidated)}
               onClick={requestPaymentForClass}
               title={
                 unpaidSessions.length === 0
