@@ -31,6 +31,7 @@ interface LessonSession {
   frequency: number | null
   duration: string | null
   isComplete: boolean
+  paymentRequestedAt?: string | null
   notes: string | null
   student: { id: string; firstName: string; lastName: string }
   teacher: { id: string; name: string }
@@ -66,6 +67,7 @@ interface Props {
   students: Student[]
   lessonSessions: LessonSession[]
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   scheduleByGroup: Record<string, Slot[]>
   teachers: { id: string; name: string }[]
   currentUserId: string
@@ -75,6 +77,7 @@ interface Props {
 
 const DAYS_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
 const DEFAULT_LESSON_COUNT = 8
+const LAST_LESSON_NOT_VALIDATED_MESSAGE = "بارك الله فيك, la session n'est pas encore terminée : le dernier cours doit être validé présent ou absent avant d'envoyer la demande de paiement."
 
 // "1 cours de 1h par semaine", "2 cours de 30 min par semaine"
 function formatForfait(lessonsPerWeek: number | null, duration: string | null): string | null {
@@ -97,6 +100,10 @@ function formatTime(time: string): string {
   const [hours, minutes] = time.split(":")
   if (!hours || !minutes) return time
   return minutes === "00" ? `${Number(hours)}h` : `${Number(hours)}h${minutes}`
+}
+
+function initialFromName(name: string): string {
+  return Array.from(name.trim()).find((char) => /[\p{L}\p{N}]/u.test(char))?.toUpperCase() ?? "?"
 }
 
 function getUTCOffset(tz: string): number {
@@ -366,6 +373,8 @@ function LessonRow({
 function SessionCard({
   session,
   paidAt,
+  nextPaidAt,
+  nextHasPaymentRequest,
   canSetLegacyBoundary,
   onUpdateLesson,
   onAddLesson,
@@ -375,6 +384,8 @@ function SessionCard({
 }: {
   session: LessonSession
   paidAt?: string | null
+  nextPaidAt?: string | null
+  nextHasPaymentRequest?: boolean
   canSetLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
@@ -383,7 +394,6 @@ function SessionCard({
   onDeleteLesson: (lessonId: string) => void
   onDeleteSession: (sessionId: string) => Promise<boolean>
 }) {
-  const [open, setOpen] = useState(!session.isComplete)
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
@@ -403,18 +413,25 @@ function SessionCard({
   const total   = session.lessons.length
   const present = session.lessons.filter((l) => l.status === "PRESENT").length
   const totalMakeup = session.lessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
-  const canRequestPayment = !paidAt
+  const nextSessionNumber = session.number + 1
+  const canRequestNextPayment = !nextPaidAt && !nextHasPaymentRequest
   // Le dernier cours de la session doit être validé (présent/absent) pour terminer.
   const lastLessonValidated = session.lessons.length > 0 &&
     session.lessons.reduce((a, b) => (b.number > a.number ? b : a)).status !== "PENDING"
+  const canSendNextPaymentRequest = session.isComplete || lastLessonValidated
+
+  function requestNextPayment() {
+    if (!canSendNextPaymentRequest) {
+      alert(LAST_LESSON_NOT_VALIDATED_MESSAGE)
+      return
+    }
+    onCloseSession(session.id)
+  }
 
   return (
     <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-emerald-200 bg-white shadow-sm"}`}>
       {/* Header */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-start gap-3 p-3 text-left sm:p-4"
-      >
+      <div className="flex w-full items-start gap-3 p-3 text-left sm:p-4">
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
           {session.number}
         </div>
@@ -433,7 +450,7 @@ function SessionCard({
             )}
             {!paidAt && (
               <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                <AlertTriangle className="h-3 w-3" /> Session pas encore payée
+                <AlertTriangle className="h-3 w-3" /> Paiement non renseigné
               </span>
             )}
           </div>
@@ -455,106 +472,114 @@ function SessionCard({
             />
           </div>
         </div>
-        {open ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />}
-      </button>
+      </div>
 
-      {open && (
-        <div className="space-y-3 border-t border-gray-100 p-3 sm:p-4">
-          {session.lessons.map((lesson) => (
-            <LessonRow
-              key={lesson.id}
-              lesson={lesson}
-              sessionDuration={session.duration}
-              siblingLessons={session.lessons}
-              canSetLegacyBoundary={canSetLegacyBoundary}
-              onUpdate={onUpdateLesson}
-              onDelete={onDeleteLesson}
-            />
-          ))}
+      <div className="space-y-3 border-t border-gray-100 p-3 sm:p-4">
+        {session.lessons.map((lesson) => (
+          <LessonRow
+            key={lesson.id}
+            lesson={lesson}
+            sessionDuration={session.duration}
+            siblingLessons={session.lessons}
+            canSetLegacyBoundary={canSetLegacyBoundary}
+            onUpdate={onUpdateLesson}
+            onDelete={onDeleteLesson}
+          />
+        ))}
 
-          {!session.isComplete && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full border-dashed text-xs"
-              onClick={() => onAddLesson(session.id)}
-            >
-              <Plus className="h-3 w-3" /> Ajouter un cours
-            </Button>
-          )}
+        {!session.isComplete && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-dashed text-xs"
+            onClick={() => onAddLesson(session.id)}
+          >
+            <Plus className="h-3 w-3" /> Ajouter un cours
+          </Button>
+        )}
 
-          {/* Notes */}
-          <div className="pt-1">
-            {editingNotes ? (
-              <div className="space-y-2">
-                <Input
-                  placeholder="Appréciation de session / Notes…"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="text-xs"
-                  autoFocus
-                />
-                <div className="grid grid-cols-2 gap-2 sm:flex">
-                  <Button size="sm" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => {
-                    fetch(`/api/sessions/${session.id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ notes }),
-                    })
-                    setEditingNotes(false)
-                  }}>Enregistrer</Button>
-                  <Button size="sm" variant="outline" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => setEditingNotes(false)}>Annuler</Button>
-                </div>
+        {/* Notes */}
+        <div className="pt-1">
+          {editingNotes ? (
+            <div className="space-y-2">
+              <Input
+                placeholder="Appréciation de session / Notes…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="text-xs"
+                autoFocus
+              />
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <Button size="sm" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => {
+                  fetch(`/api/sessions/${session.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ notes }),
+                  })
+                  setEditingNotes(false)
+                }}>Enregistrer</Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => setEditingNotes(false)}>Annuler</Button>
               </div>
-            ) : (
-              <button onClick={() => setEditingNotes(true)} className="text-xs text-gray-400 hover:text-gray-600 italic text-left w-full">
-                {notes || "Ajouter une appréciation de session…"}
-              </button>
-            )}
-          </div>
-
-          {canSetLegacyBoundary && (
-            <div className="flex justify-end pt-1">
-              <button
-                type="button"
-                onClick={handleDeleteSessionClick}
-                disabled={deletingSession}
-                className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
-                title="Supprimer cette session (directeur/secrétaire)"
-              >
-                <X className="h-3.5 w-3.5" />
-                {deletingSession ? "Suppression…" : "Supprimer la session"}
-              </button>
             </div>
+          ) : (
+            <button onClick={() => setEditingNotes(true)} className="text-xs text-gray-400 hover:text-gray-600 italic text-left w-full">
+              {notes || "Ajouter une appréciation de session…"}
+            </button>
           )}
         </div>
-      )}
 
-      {/* Fin de session / demande de paiement — toujours visible (même carte repliée) */}
-      {canRequestPayment && (
-        <div className="border-t border-gray-100 p-3 sm:p-4">
+        {canSetLegacyBoundary && (
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={handleDeleteSessionClick}
+              disabled={deletingSession}
+              className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+              title="Supprimer cette session (directeur/secrétaire)"
+            >
+              <X className="h-3.5 w-3.5" />
+              {deletingSession ? "Suppression…" : "Supprimer la session"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-gray-100 p-3 sm:p-4">
+        {nextPaidAt ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Session {nextSessionNumber} déjà payée
+            </div>
+          </div>
+        ) : nextHasPaymentRequest ? (
           <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-xs text-amber-700">
               <Bell className="h-3.5 w-3.5" />
-              {session.isComplete
-                ? "Envoyer la demande de paiement à l'élève"
-                : "Terminer la session et envoyer la demande de paiement à l'élève"}
+              Demande de paiement déjà envoyée pour la Session {nextSessionNumber}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-amber-700">
+              <Bell className="h-3.5 w-3.5" />
+              {`Envoyer la demande de paiement de la Session ${nextSessionNumber} à l'élève`}
             </div>
             <Button
               size="sm"
-              className="h-8 bg-amber-500 px-3 text-xs text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 sm:h-7"
-              disabled={!session.isComplete && !lastLessonValidated}
-              onClick={() => onCloseSession(session.id)}
-              title={!session.isComplete && !lastLessonValidated ? "Validez la présence/absence du dernier cours pour activer" : "Envoie la demande de paiement à l'élève"}
+              className={`h-8 px-3 text-xs text-white sm:h-7 ${canSendNextPaymentRequest ? "bg-amber-500 hover:bg-amber-600" : "cursor-not-allowed bg-amber-300"}`}
+              aria-disabled={!canSendNextPaymentRequest}
+              onClick={requestNextPayment}
+              title={!canSendNextPaymentRequest ? LAST_LESSON_NOT_VALIDATED_MESSAGE : `Envoie la demande de paiement pour la Session ${nextSessionNumber}`}
             >
-              {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
+              Envoyer la demande
             </Button>
           </div>
-          {!session.isComplete && !lastLessonValidated && (
-            <p className="mt-1 text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
-          )}
-        </div>
-      )}
+        )}
+        {canRequestNextPayment && !canSendNextPaymentRequest && (
+          <p className="mt-1 text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
+        )}
+      </div>
     </div>
   )
 }
@@ -565,6 +590,7 @@ function StudentCahier({
   student,
   sessions,
   paidBySession,
+  undatedPaymentBySession,
   schedule,
   teachers,
   currentUserId,
@@ -579,6 +605,7 @@ function StudentCahier({
   student: Student
   sessions: LessonSession[]
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   schedule: Slot[] | undefined
   teachers: { id: string; name: string }[]
   currentUserId: string
@@ -618,7 +645,7 @@ function StudentCahier({
         className="flex w-full items-start gap-3 p-4 text-left sm:items-center sm:gap-4 sm:p-5"
       >
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700 sm:h-10 sm:w-10">
-          {name.charAt(0).toUpperCase()}
+          {initialFromName(name)}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900">{name}</p>
@@ -708,6 +735,8 @@ function StudentCahier({
               key={selected.id}
               session={selected}
               paidAt={paidBySession[`${student.id}:${selected.number}`]}
+              nextPaidAt={paidBySession[`${student.id}:${selected.number + 1}`]}
+              nextHasPaymentRequest={undatedPaymentBySession[`${student.id}:${selected.number + 1}`]}
               canSetLegacyBoundary={canSetLegacyBoundary}
               onUpdateLesson={onUpdateLesson}
               onAddLesson={onAddLesson}
@@ -1011,13 +1040,14 @@ function MergedLessonRow({
 
 // Carte d'une session (numéro N) partagée par la classe.
 function MergedSessionCard({
-  sessionNumber, students, sessionByStudent, paidBySession, sessionDuration, canSetLegacyBoundary,
+  sessionNumber, students, sessionByStudent, paidBySession, undatedPaymentBySession, sessionDuration, canSetLegacyBoundary,
   onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onEnsureLesson, onDeleteSession,
 }: {
   sessionNumber: number
   students: Student[]
   sessionByStudent: Map<string, LessonSession>
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   sessionDuration: string | null
   canSetLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1067,9 +1097,13 @@ function MergedSessionCard({
     if (lessonId) onUpdateLesson(lessonId, { status: "PRESENT" })
   }
 
-  // Demande de paiement pour toute la classe : cible les élèves non encore payés
-  // (termine leur session si besoin, puis envoie l'email de demande à chacun).
-  const unpaidSessions = sessions.filter((s) => !paidBySession[`${s.student.id}:${sessionNumber}`])
+  // Demande de paiement pour toute la classe : quand la Session N se termine,
+  // on demande la Session N+1 aux élèves qui n'ont pas encore une demande ouverte.
+  const nextSessionNumber = sessionNumber + 1
+  const sessionsNeedingNextPaymentRequest = sessions.filter((s) => (
+    !paidBySession[`${s.student.id}:${nextSessionNumber}`] &&
+    !undatedPaymentBySession[`${s.student.id}:${nextSessionNumber}`]
+  ))
   const anyIncomplete = sessions.some((s) => !s.isComplete)
   // Le dernier cours de la session doit être validé (présent/absent) pour tous les élèves.
   const lastLessonValidated = sessions.length > 0 && sessions.every((s) => {
@@ -1077,10 +1111,15 @@ function MergedSessionCard({
     const last = s.lessons.reduce((a, b) => (b.number > a.number ? b : a))
     return last.status !== "PENDING"
   })
+  const canSendNextPaymentRequestForClass = !anyIncomplete || lastLessonValidated
   function requestPaymentForClass() {
-    if (unpaidSessions.length === 0) return
-    if (!confirm(`${anyIncomplete ? "Terminer la Session" : "Envoyer la demande de paiement de la Session"} ${sessionNumber} pour la classe (${students.map(shortName).join(", ")}) ?`)) return
-    unpaidSessions.forEach((s) => onCloseSession(s.id))
+    if (sessionsNeedingNextPaymentRequest.length === 0) return
+    if (!canSendNextPaymentRequestForClass) {
+      alert(LAST_LESSON_NOT_VALIDATED_MESSAGE)
+      return
+    }
+    if (!confirm(`${anyIncomplete ? `Terminer la Session ${sessionNumber} et demander` : "Demander"} le paiement de la Session ${nextSessionNumber} pour la classe (${students.map(shortName).join(", ")}) ?`)) return
+    sessionsNeedingNextPaymentRequest.forEach((s) => onCloseSession(s.id))
   }
 
   return (
@@ -1152,7 +1191,7 @@ function MergedSessionCard({
                   </span>
                 ) : session ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                    <AlertTriangle className="h-3 w-3" /> Pas encore payé
+                    <AlertTriangle className="h-3 w-3" /> Paiement non renseigné
                   </span>
                 ) : (
                   <span className="text-xs text-gray-300 italic">Pas de session</span>
@@ -1165,18 +1204,19 @@ function MergedSessionCard({
         {/* Fin de session / demande de paiement pour toute la classe */}
         {sessions.length > 0 && (
           <Button
-            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={unpaidSessions.length === 0 || (anyIncomplete && !lastLessonValidated)}
+            className={`w-full text-white disabled:cursor-not-allowed disabled:opacity-50 ${canSendNextPaymentRequestForClass ? "bg-emerald-600 hover:bg-emerald-700" : "cursor-not-allowed bg-emerald-400 hover:bg-emerald-400"}`}
+            disabled={sessionsNeedingNextPaymentRequest.length === 0}
+            aria-disabled={!canSendNextPaymentRequestForClass}
             onClick={requestPaymentForClass}
             title={
-              unpaidSessions.length === 0
-                ? "Tous les élèves ont déjà payé cette session"
+              sessionsNeedingNextPaymentRequest.length === 0
+                ? `La Session ${nextSessionNumber} est déjà payée ou déjà demandée pour tous les élèves`
                 : !lastLessonValidated
                   ? "Validez la présence/absence du dernier cours pour activer"
-                  : "Termine la session et envoie la demande de paiement aux élèves non payés"
+                  : `Termine la session et envoie la demande de paiement de la Session ${nextSessionNumber}`
             }
           >
-            <Bell className="h-4 w-4" /> {anyIncomplete ? "Terminer la session et prévenir les élèves" : "Envoyer la demande de paiement à la classe"}
+            <Bell className="h-4 w-4" /> {anyIncomplete ? `Terminer et demander Session ${nextSessionNumber}` : `Demander paiement Session ${nextSessionNumber}`}
           </Button>
         )}
         {sessions.length > 0 && !lastLessonValidated && (
@@ -1188,13 +1228,14 @@ function MergedSessionCard({
 }
 
 function GroupCahier({
-  groupName, students, sessionsByStudent, paidBySession, schedule, canSetLegacyBoundary,
+  groupName, students, sessionsByStudent, paidBySession, undatedPaymentBySession, schedule, canSetLegacyBoundary,
   onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onEnsureLesson, onDeleteSession,
 }: {
   groupName: string
   students: Student[]
   sessionsByStudent: Map<string, LessonSession[]>
   paidBySession: Record<string, string>
+  undatedPaymentBySession: Record<string, boolean>
   schedule: Slot[] | undefined
   canSetLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1296,6 +1337,7 @@ function GroupCahier({
                 students={students}
                 sessionByStudent={sessionByStudent}
                 paidBySession={paidBySession}
+                undatedPaymentBySession={undatedPaymentBySession}
                 sessionDuration={sessionDuration}
                 canSetLegacyBoundary={canSetLegacyBoundary}
                 onUpdateLesson={onUpdateLesson}
@@ -1325,8 +1367,19 @@ function GroupCahier({
 
 // ─── Main CahierClient ────────────────────────────────────────────────────────
 
-export function CahierClient({ students, lessonSessions, paidBySession, scheduleByGroup, teachers, currentUserId, role, initialSearch = "" }: Props) {
+export function CahierClient({
+  students,
+  lessonSessions,
+  paidBySession,
+  undatedPaymentBySession: initialUndatedPaymentBySession,
+  scheduleByGroup,
+  teachers,
+  currentUserId,
+  role,
+  initialSearch = "",
+}: Props) {
   const [sessions, setSessions]   = useState<LessonSession[]>(lessonSessions)
+  const [undatedPaymentBySession, setUndatedPaymentBySession] = useState(initialUndatedPaymentBySession)
   const [search, setSearch]       = useState(initialSearch)
   const [subjectFilter, setSubjectFilter] = useState("ALL")
   const [teacherFilter, setTeacherFilter] = useState("ALL")
@@ -1380,14 +1433,25 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
   }
 
   async function handleCloseSession(sessionId: string) {
-    await fetch(`/api/sessions/${sessionId}`, {
+    const res = await fetch(`/api/sessions/${sessionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isComplete: true, requestPayment: true }),
     })
-    setSessions((prev) =>
-      prev.map((s) => s.id === sessionId ? { ...s, isComplete: true } : s)
-    )
+    if (!res.ok) return
+    const data = await res.json()
+    const { nextSession, ...updatedSession } = data as LessonSession & { nextSession?: LessonSession }
+    setSessions((prev) => {
+      const withoutNext = nextSession ? prev.filter((s) => s.id !== nextSession.id) : prev
+      const mapped = withoutNext.map((s) => s.id === sessionId ? { ...s, ...updatedSession } : s)
+      return nextSession ? [...mapped, nextSession] : mapped
+    })
+    if (nextSession) {
+      setUndatedPaymentBySession((prev) => ({
+        ...prev,
+        [`${nextSession.student.id}:${nextSession.number}`]: true,
+      }))
+    }
   }
 
   // Supprime définitivement une session (directeur/secrétaire). Les cours sont effacés ;
@@ -1481,6 +1545,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
           student={u.student}
           sessions={getStudentSessions(u.student.id)}
           paidBySession={paidBySession}
+          undatedPaymentBySession={undatedPaymentBySession}
           schedule={u.student.groupId ? scheduleByGroup[u.student.groupId] : undefined}
           teachers={teachers}
           currentUserId={currentUserId}
@@ -1503,6 +1568,7 @@ export function CahierClient({ students, lessonSessions, paidBySession, schedule
         students={u.students}
         sessionsByStudent={sessionsByStudent}
         paidBySession={paidBySession}
+        undatedPaymentBySession={undatedPaymentBySession}
         schedule={scheduleByGroup[u.groupId]}
         canSetLegacyBoundary={canSetLegacyBoundary}
         onUpdateLesson={handleUpdateLesson}

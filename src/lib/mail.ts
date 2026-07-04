@@ -80,7 +80,7 @@ export function sessionEndEmailHtml({
   teacherName,
   subject,
   completedSessionNumber,
-  nextSessionNumber,
+  requestedSessionNumber,
   amount,
   paypalLink,
   paypalEmail,
@@ -91,7 +91,7 @@ export function sessionEndEmailHtml({
   teacherName: string
   subject: string
   completedSessionNumber: number
-  nextSessionNumber: number
+  requestedSessionNumber: number
   amount: string
   paypalLink: string
   paypalEmail: string
@@ -135,7 +135,7 @@ export function sessionEndEmailHtml({
         <!-- Titre -->
         <tr>
           <td align="center" style="padding:36px 32px 8px;font-size:22px;line-height:30px;color:#17456C;font-weight:700;">
-            Demande de paiement pour la session ${completedSessionNumber}
+            Demande de paiement pour la session ${requestedSessionNumber}
           </td>
         </tr>
 
@@ -150,7 +150,7 @@ export function sessionEndEmailHtml({
         <tr>
           <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
             Nous vous informons que votre session ${completedSessionNumber} est terminée.<br /><br />
-            Afin de poursuivre les cours sans interruption, nous vous demandons donc le règlement de cette session. La session ${nextSessionNumber} est d'ores et déjà ouverte et pourra démarrer dès réception du paiement.
+            Afin de poursuivre les cours sans interruption, nous vous demandons donc le règlement de la session ${requestedSessionNumber}.
           </td>
         </tr>
 
@@ -163,8 +163,8 @@ export function sessionEndEmailHtml({
               <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">🧑‍🎓 Élève concerné : <strong>${studentName}</strong></td></tr>
               <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">👩‍🏫 Enseignant(e) : <strong>${teacherName}</strong></td></tr>
               <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">📘 Matière : <strong>${subject}</strong></td></tr>
-              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">📌 Session à régler : <strong>Session ${completedSessionNumber}</strong></td></tr>
-              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">➡️ Prochaine session : <strong>Session ${nextSessionNumber}</strong></td></tr>
+              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">✅ Session terminée : <strong>Session ${completedSessionNumber}</strong></td></tr>
+              <tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">📌 Session à régler : <strong>Session ${requestedSessionNumber}</strong></td></tr>
               <tr><td style="padding:6px 20px 16px;font-size:14px;line-height:24px;color:#1A2440;">💶 Montant à régler : <strong>${amount} €</strong></td></tr>
               </tbody>
             </table>

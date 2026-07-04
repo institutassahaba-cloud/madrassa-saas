@@ -35,6 +35,7 @@ interface LessonSession {
   frequency: number | null
   duration: string | null
   isComplete: boolean
+  paymentRequestedAt?: string | null
   notes: string | null
   student: { id: string; firstName: string; lastName: string }
   teacher: { id: string; name: string }
@@ -91,6 +92,7 @@ interface Slot {
 
 const DAYS_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
 const DEFAULT_LESSON_COUNT = 8
+const LAST_LESSON_NOT_VALIDATED_MESSAGE = "بارك الله فيك, la session n'est pas encore terminée : le dernier cours doit être validé présent ou absent avant d'envoyer la demande de paiement."
 const SUBJECTS = ["Apprentissage du Coran", "Nouraniya", "Langue arabe", "Tajwid", "Fiqh", "Moutoun", "Autre"]
 
 const STATUS_CYCLE: Record<string, string> = {
@@ -115,6 +117,10 @@ function formatMins(m: number): string {
   if (m >= 60 && m % 60 === 0) return `${m / 60}h`
   if (m >= 60) return `${Math.floor(m / 60)}h${(m % 60).toString().padStart(2, "0")}`
   return `${m} min`
+}
+
+function initialFromName(name: string): string {
+  return Array.from(name.trim()).find((char) => /[\p{L}\p{N}]/u.test(char))?.toUpperCase() ?? "?"
 }
 
 function applyLessonUpdate(sessions: LessonSession[], lessonId: string, data: Partial<Lesson>) {
@@ -505,6 +511,82 @@ function PaymentDateEditor({
   )
 }
 
+function PaidDateBadgeEditor({
+  paidAt, onSave,
+}: {
+  paidAt: string
+  onSave: (paidDate: string) => Promise<boolean>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [date, setDate] = useState(() => new Date(paidAt).toISOString().slice(0, 10))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function stopHeaderToggle(e: React.MouseEvent) {
+    e.stopPropagation()
+  }
+
+  async function save() {
+    setSaving(true)
+    setError(null)
+    const ok = await onSave(date)
+    setSaving(false)
+    if (ok) setEditing(false)
+    else setError("Date non enregistrée.")
+  }
+
+  if (editing) {
+    return (
+      <span className="inline-flex items-center gap-1" onClick={stopHeaderToggle}>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="h-7 w-36 bg-white text-xs"
+          autoFocus
+        />
+        <Button
+          size="sm"
+          className="h-7 bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-700"
+          disabled={saving || !date}
+          onClick={save}
+        >
+          {saving ? "..." : "OK"}
+        </Button>
+        <button
+          type="button"
+          onClick={() => { setDate(new Date(paidAt).toISOString().slice(0, 10)); setError(null); setEditing(false) }}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          title="Annuler"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+        {error && <span className="text-xs text-red-600">{error}</span>}
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+      <CheckCircle2 className="h-3 w-3" />
+      Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
+      <button
+        type="button"
+        onClick={(e) => {
+          stopHeaderToggle(e)
+          setDate(new Date(paidAt).toISOString().slice(0, 10))
+          setError(null)
+          setEditing(true)
+        }}
+        className="-mr-0.5 ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-emerald-500 hover:bg-emerald-200 hover:text-emerald-700"
+        title="Modifier la date de paiement"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+    </span>
+  )
+}
+
 // Renumérotation d'une session (directeur/secrétaire) : les paiements déjà enregistrés
 // pour cette session suivent le nouveau numéro, et les prochaines sessions créées
 // reprendront l'auto-incrément à partir de lui.
@@ -563,12 +645,14 @@ function SessionNumberEditor({
 }
 
 function SessionCard({
-  session, paidAt, hasUndatedPayment, canSetLegacyBoundary, canMarkPaymentDate,
+  session, paidAt, hasUndatedPayment, nextPaidAt, nextHasPaymentRequest, canSetLegacyBoundary, canMarkPaymentDate,
   onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
 }: {
   session: LessonSession
   paidAt?: string | null
   hasUndatedPayment?: boolean
+  nextPaidAt?: string | null
+  nextHasPaymentRequest?: boolean
   canSetLegacyBoundary: boolean
   canMarkPaymentDate: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -579,7 +663,6 @@ function SessionCard({
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
-  const [open, setOpen] = useState(!session.isComplete)
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
@@ -588,10 +671,21 @@ function SessionCard({
   const total = session.lessons.length
   const present = session.lessons.filter((l) => l.status === "PRESENT").length
   const totalMakeup = session.lessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
-  const canRequestPayment = !paidAt
+  const nextSessionNumber = session.number + 1
+  const canRequestNextPayment = !nextPaidAt && !nextHasPaymentRequest
+  const canEnterMissingPaymentDate = canMarkPaymentDate && !paidAt
   // Le dernier cours de la session doit être validé (présent/absent) pour terminer.
   const lastLessonValidated = session.lessons.length > 0 &&
     session.lessons.reduce((a, b) => (b.number > a.number ? b : a)).status !== "PENDING"
+  const canSendNextPaymentRequest = session.isComplete || lastLessonValidated
+
+  function requestNextPayment() {
+    if (!canSendNextPaymentRequest) {
+      alert(LAST_LESSON_NOT_VALIDATED_MESSAGE)
+      return
+    }
+    onCloseSession(session.id)
+  }
 
   async function handleDeleteSession() {
     const hasTaughtLessons = session.lessons.some((l) => l.status !== "PENDING")
@@ -607,7 +701,7 @@ function SessionCard({
 
   return (
     <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-emerald-200 bg-white shadow-sm"}`}>
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-3 p-4 text-left">
+      <div className="flex w-full items-center gap-3 p-4 text-left">
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
           {session.number}
         </div>
@@ -615,11 +709,14 @@ function SessionCard({
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-gray-900">Session {session.number}</span>
             {session.isComplete && <span className="flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600"><CheckCircle2 className="h-3 w-3" /> Terminée</span>}
-            {paidAt && <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}</span>}
+            {paidAt && canMarkPaymentDate && (
+              <PaidDateBadgeEditor key={paidAt} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
+            )}
+            {paidAt && !canMarkPaymentDate && <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}</span>}
             {!paidAt && (
               <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                 <AlertTriangle className="h-3 w-3" />
-                {hasUndatedPayment ? "Paiement sans date" : "Session pas encore payée"}
+                {hasUndatedPayment ? "Paiement à dater" : "Paiement non renseigné"}
               </span>
             )}
           </div>
@@ -635,95 +732,101 @@ function SessionCard({
             <div className="h-1.5 rounded-full bg-emerald-400 transition-all" style={{ width: total > 0 ? `${(done / total) * 100}%` : "0%" }} />
           </div>
         </div>
-        {open ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />}
-      </button>
+      </div>
 
-      {open && (
-        <div className="border-t border-gray-100 p-4 space-y-3">
-          {session.lessons.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} sessionDuration={session.duration} siblingLessons={session.lessons} canSetLegacyBoundary={canSetLegacyBoundary} onUpdate={onUpdateLesson} onDelete={onDeleteLesson} />
-          ))}
-          {!session.isComplete && (
-            <Button variant="outline" size="sm" className="w-full border-dashed text-xs" onClick={() => onAddLesson(session.id)}>
-              <Plus className="h-3 w-3" /> Ajouter un cours
-            </Button>
-          )}
-          <div className="pt-1">
-            {editingNotes ? (
-              <div className="space-y-2">
-                <Input placeholder="Appréciation de session / Notes…" value={notes} onChange={(e) => setNotes(e.target.value)} className="text-xs" autoFocus />
-                <div className="flex gap-2">
-                  <Button size="sm" className="h-6 text-xs px-2" onClick={() => {
-                    fetch(`/api/sessions/${session.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes }) })
-                    setEditingNotes(false)
-                  }}>Enregistrer</Button>
-                  <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditingNotes(false)}>Annuler</Button>
-                </div>
+      <div className="border-t border-gray-100 p-4 space-y-3">
+        {session.lessons.map((lesson) => (
+          <LessonRow key={lesson.id} lesson={lesson} sessionDuration={session.duration} siblingLessons={session.lessons} canSetLegacyBoundary={canSetLegacyBoundary} onUpdate={onUpdateLesson} onDelete={onDeleteLesson} />
+        ))}
+        {!session.isComplete && (
+          <Button variant="outline" size="sm" className="w-full border-dashed text-xs" onClick={() => onAddLesson(session.id)}>
+            <Plus className="h-3 w-3" /> Ajouter un cours
+          </Button>
+        )}
+        <div className="pt-1">
+          {editingNotes ? (
+            <div className="space-y-2">
+              <Input placeholder="Appréciation de session / Notes…" value={notes} onChange={(e) => setNotes(e.target.value)} className="text-xs" autoFocus />
+              <div className="flex gap-2">
+                <Button size="sm" className="h-6 text-xs px-2" onClick={() => {
+                  fetch(`/api/sessions/${session.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes }) })
+                  setEditingNotes(false)
+                }}>Enregistrer</Button>
+                <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditingNotes(false)}>Annuler</Button>
               </div>
-            ) : (
-              <button onClick={() => setEditingNotes(true)} className="text-xs text-gray-400 hover:text-gray-600 italic text-left w-full">
-                {notes || "Ajouter une appréciation de session…"}
-              </button>
-            )}
+            </div>
+          ) : (
+            <button onClick={() => setEditingNotes(true)} className="text-xs text-gray-400 hover:text-gray-600 italic text-left w-full">
+              {notes || "Ajouter une appréciation de session…"}
+            </button>
+          )}
+        </div>
+        {canSetLegacyBoundary && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span>N° de session :</span>
+              <SessionNumberEditor
+                currentNumber={session.number}
+                onSave={async (n) => {
+                  const err = await onRenumberSession(session.id, n)
+                  if (!err) window.location.reload()
+                  return err
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteSession}
+              disabled={deletingSession}
+              className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+              title="Supprimer cette session (directeur/secrétaire)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {deletingSession ? "Suppression…" : "Supprimer la session"}
+            </button>
           </div>
-          {canSetLegacyBoundary && (
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <span>N° de session :</span>
-                <SessionNumberEditor
-                  currentNumber={session.number}
-                  onSave={async (n) => {
-                    const err = await onRenumberSession(session.id, n)
-                    if (!err) window.location.reload()
-                    return err
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleDeleteSession}
-                disabled={deletingSession}
-                className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
-                title="Supprimer cette session (directeur/secrétaire)"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {deletingSession ? "Suppression…" : "Supprimer la session"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Fin de session / demande de paiement / date de paiement — toujours visible (même carte repliée) */}
-      {(canRequestPayment || canMarkPaymentDate) && (
-        <div className="space-y-2 border-t border-gray-100 p-4">
-          {canMarkPaymentDate && (
-            <PaymentDateEditor key={paidAt ?? "unpaid"} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
-          )}
-          {canRequestPayment && (
-            <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs text-amber-700">
-                <Bell className="h-3.5 w-3.5" />
-                {session.isComplete
-                  ? "Envoyer la demande de paiement à l'élève"
-                  : "Terminer la session et envoyer la demande de paiement à l'élève"}
-              </div>
-              <Button
-                size="sm"
-                className="h-7 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!session.isComplete && !lastLessonValidated}
-                onClick={() => onCloseSession(session.id)}
-                title={!session.isComplete && !lastLessonValidated ? "Validez la présence/absence du dernier cours pour activer" : "Envoie la demande de paiement à l'élève"}
-              >
-                {session.isComplete ? "Envoyer la demande" : "Terminer et envoyer"}
-              </Button>
+      <div className="space-y-2 border-t border-gray-100 p-4">
+        {canEnterMissingPaymentDate && (
+          <PaymentDateEditor key={paidAt ?? "unpaid"} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
+        )}
+        {nextPaidAt ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Session {nextSessionNumber} déjà payée
             </div>
-          )}
-          {canRequestPayment && !session.isComplete && !lastLessonValidated && (
-            <p className="text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
-          )}
-        </div>
-      )}
+          </div>
+        ) : nextHasPaymentRequest ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-amber-700">
+              <Bell className="h-3.5 w-3.5" />
+              Demande de paiement déjà envoyée pour la Session {nextSessionNumber}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-amber-700">
+              <Bell className="h-3.5 w-3.5" />
+              {`Envoyer la demande de paiement de la Session ${nextSessionNumber} à l'élève`}
+            </div>
+            <Button
+              size="sm"
+              className={`h-7 px-3 text-xs text-white ${canSendNextPaymentRequest ? "bg-amber-500 hover:bg-amber-600" : "cursor-not-allowed bg-amber-300"}`}
+              aria-disabled={!canSendNextPaymentRequest}
+              onClick={requestNextPayment}
+              title={!canSendNextPaymentRequest ? LAST_LESSON_NOT_VALIDATED_MESSAGE : `Envoie la demande de paiement pour la Session ${nextSessionNumber}`}
+            >
+              Envoyer la demande
+            </Button>
+          </div>
+        )}
+        {canRequestNextPayment && !canSendNextPaymentRequest && (
+          <p className="text-[11px] text-gray-400">Validez le dernier cours de la session (présent/absent) pour activer l&apos;envoi.</p>
+        )}
+      </div>
     </div>
   )
 }
@@ -906,7 +1009,7 @@ function StudentPaymentRow({
         </>
       ) : session ? (
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-          <AlertTriangle className="h-3 w-3" /> {hasUndated ? "Paiement sans date" : "Pas encore payé"}
+          <AlertTriangle className="h-3 w-3" /> {hasUndated ? "Paiement à dater" : "Paiement non renseigné"}
         </span>
       ) : (
         <span className="text-xs text-gray-300 italic">Pas de session</span>
@@ -950,7 +1053,6 @@ function MergedGroupCahier({
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
   onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
-  const [open, setOpen] = useState(false)
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
   const [creatingSession, setCreatingSession] = useState(false)
 
@@ -983,9 +1085,13 @@ function MergedGroupCahier({
     if (lessonId) onUpdateLesson(lessonId, { status: "PRESENT" })
   }
 
-  // Demande de paiement pour toute la classe : cible les élèves non encore payés
-  // (termine leur session si besoin, puis envoie l'email de demande à chacun).
-  const unpaidSessions = sessList.filter((s) => !paidBySession[`${s.student.id}:${selNum}`])
+  // Demande de paiement pour toute la classe : quand la Session N se termine,
+  // on demande la Session N+1 aux élèves qui n'ont pas encore une demande ouverte.
+  const nextSessionNumber = selNum + 1
+  const sessionsNeedingNextPaymentRequest = sessList.filter((s) => (
+    !paidBySession[`${s.student.id}:${nextSessionNumber}`] &&
+    !undatedPaymentBySession[`${s.student.id}:${nextSessionNumber}`]
+  ))
   const anyIncomplete = sessList.some((s) => !s.isComplete)
   // Le dernier cours de la session doit être validé (présent/absent) pour tous les élèves.
   const lastLessonValidated = sessList.length > 0 && sessList.every((s) => {
@@ -993,10 +1099,15 @@ function MergedGroupCahier({
     const last = s.lessons.reduce((a, b) => (b.number > a.number ? b : a))
     return last.status !== "PENDING"
   })
+  const canSendNextPaymentRequestForClass = !anyIncomplete || lastLessonValidated
   function requestPaymentForClass() {
-    if (unpaidSessions.length === 0) return
-    if (!confirm(`${anyIncomplete ? "Terminer la Session" : "Envoyer la demande de paiement de la Session"} ${selNum} pour la classe (${students.map(shortName).join(", ")}) ?`)) return
-    unpaidSessions.forEach((s) => onCloseSession(s.id))
+    if (sessionsNeedingNextPaymentRequest.length === 0) return
+    if (!canSendNextPaymentRequestForClass) {
+      alert(LAST_LESSON_NOT_VALIDATED_MESSAGE)
+      return
+    }
+    if (!confirm(`${anyIncomplete ? `Terminer la Session ${selNum} et demander` : "Demander"} le paiement de la Session ${nextSessionNumber} pour la classe (${students.map(shortName).join(", ")}) ?`)) return
+    sessionsNeedingNextPaymentRequest.forEach((s) => onCloseSession(s.id))
   }
 
   // Renuméroter la session pour TOUS les élèves de la classe (garde le tableau unifié).
@@ -1045,19 +1156,6 @@ function MergedGroupCahier({
 
   return (
     <div className="space-y-2">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100"
-      >
-        <span className="flex items-center gap-2">
-          <BookOpen className="h-3.5 w-3.5" />
-          {open ? "Masquer les sessions" : `Voir les sessions · Session ${selNum}`}
-        </span>
-        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </button>
-
-      {!open ? null : (
-      <>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         {numbers.map((num) => {
           const isSel = selNum === num
@@ -1145,22 +1243,23 @@ function MergedGroupCahier({
 
           {sessList.length > 0 && (
             <Button
-              className="w-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={unpaidSessions.length === 0 || (anyIncomplete && !lastLessonValidated)}
+              className={`w-full text-white disabled:cursor-not-allowed disabled:opacity-50 ${canSendNextPaymentRequestForClass ? "bg-emerald-600 hover:bg-emerald-700" : "cursor-not-allowed bg-emerald-400 hover:bg-emerald-400"}`}
+              disabled={sessionsNeedingNextPaymentRequest.length === 0}
+              aria-disabled={!canSendNextPaymentRequestForClass}
               onClick={requestPaymentForClass}
               title={
-                unpaidSessions.length === 0
-                  ? "Tous les élèves ont déjà payé cette session"
+                sessionsNeedingNextPaymentRequest.length === 0
+                  ? `La Session ${nextSessionNumber} est déjà payée ou déjà demandée pour tous les élèves`
                   : !lastLessonValidated
                     ? "Validez la présence/absence du dernier cours pour activer"
-                    : "Termine la session et envoie la demande de paiement aux élèves non payés"
+                    : `Termine la session et envoie la demande de paiement de la Session ${nextSessionNumber}`
               }
             >
-              <Bell className="h-4 w-4" /> {anyIncomplete ? "Terminer la session et prévenir les élèves" : "Envoyer la demande de paiement à la classe"}
+              <Bell className="h-4 w-4" /> {anyIncomplete ? `Terminer et demander Session ${nextSessionNumber}` : `Demander paiement Session ${nextSessionNumber}`}
             </Button>
           )}
           {sessList.length > 0 && !lastLessonValidated && (
-            <p className="text-center text-[11px] text-gray-400">Validez le dernier cours (présent/absent) pour activer l&apos;envoi.</p>
+            <p className="text-center text-[11px] text-gray-400">Validez le dernier cours de la session (présent/absent) pour activer l&apos;envoi.</p>
           )}
         </div>
       </div>
@@ -1173,8 +1272,6 @@ function MergedGroupCahier({
       >
         <Plus className="h-4 w-4" /> {creatingSession ? "Création…" : "Nouvelle session pour la classe"}
       </Button>
-      </>
-      )}
     </div>
   )
 }
@@ -1224,9 +1321,12 @@ function StudentCahier({
 
   return (
     <div className="rounded-xl border border-gray-100 bg-gray-50/50">
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-3 p-4 text-left">
+      <div
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full cursor-pointer items-center gap-3 p-4 text-left"
+      >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-          {name.charAt(0).toUpperCase()}
+          {initialFromName(name)}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-gray-900 text-sm">{name}</p>
@@ -1240,6 +1340,7 @@ function StudentCahier({
               <a
                 key={slot.id}
                 href={`/dashboard/schedule?teacherId=${slot.teacherId}`}
+                onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-emerald-100"
                 title="Modifier ce créneau dans le planning"
               >
@@ -1253,8 +1354,19 @@ function StudentCahier({
           <span className="text-xs text-gray-400">{sessions.length} session{sessions.length > 1 ? "s" : ""}</span>
         )}
         {sessions.length === 0 && <span className="text-xs text-gray-300 italic">Aucun cours</span>}
-        {open ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />}
-      </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setOpen((current) => !current)
+          }}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          title={open ? "Masquer les sessions" : "Afficher les sessions"}
+          aria-label={open ? `Masquer les sessions de ${name}` : `Afficher les sessions de ${name}`}
+        >
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </div>
 
       {(student.phone || student.parentPhone) && (
         <div className="flex flex-wrap items-center gap-2 px-4 pb-3 -mt-1">
@@ -1294,6 +1406,8 @@ function StudentCahier({
               session={selected}
               paidAt={paidBySession[`${student.id}:${selected.number}`]}
               hasUndatedPayment={undatedPaymentBySession[`${student.id}:${selected.number}`]}
+              nextPaidAt={paidBySession[`${student.id}:${selected.number + 1}`]}
+              nextHasPaymentRequest={undatedPaymentBySession[`${student.id}:${selected.number + 1}`]}
               canSetLegacyBoundary={canSetLegacyBoundary}
               canMarkPaymentDate={canMarkPaymentDate}
               onUpdateLesson={onUpdateLesson}
@@ -1935,6 +2049,7 @@ function TeacherCard({
   const visibleStudentIds = new Set(visibleSessions.map((session) => session.student.id))
   // Filtre de recherche (nom d'élève) venant de la barre du haut.
   const q = studentSearch.trim().toLowerCase()
+  const searchActive = q.length > 0
   const matchesQuery = (s: Student) =>
     !q || `${s.firstName} ${s.lastName} ${s.displayName ?? ""}`.toLowerCase().includes(q)
   const visibleTeacherStudents = (showSessionsWithoutPaymentDate
@@ -1945,8 +2060,15 @@ function TeacherCard({
   const activeStudents = visibleTeacherStudents.filter(s => s.status === "ACTIVE")
   const pausedStudents = visibleTeacherStudents.filter(s => s.status === "PAUSED")
   const stoppedStudents = visibleTeacherStudents.filter(s => s.status === "STOPPED")
+  const visibleGroupEntries = teacher.teacherGroups
+    .map((group) => ({
+      group,
+      activeInGroup: activeStudents.filter((student) => student.groupId === group.id),
+    }))
+    .filter((entry) => !searchActive || entry.activeInGroup.length > 0)
   // Déplie automatiquement la fiche quand une recherche est active.
-  const isOpen = expanded || q.length > 0
+  const isOpen = expanded || searchActive
+  const areClassesOpen = classesOpen || searchActive
 
   function getStudentSessions(studentId: string) {
     return visibleSessions.filter(s => s.student.id === studentId)
@@ -1965,18 +2087,10 @@ function TeacherCard({
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div
         onClick={() => setExpanded(!expanded)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            setExpanded((open) => !open)
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        className="flex w-full cursor-pointer items-center gap-4 p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        className="flex w-full cursor-pointer items-center gap-4 p-5 text-left"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-lg font-bold text-emerald-700">
-          {teacher.name.charAt(0).toUpperCase()}
+          {initialFromName(teacher.name)}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900">{teacher.name}</p>
@@ -2026,13 +2140,24 @@ function TeacherCard({
             </button>
           )}
         </div>
-        {isOpen ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setExpanded((open) => !open)
+          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          title={isOpen ? "Masquer les élèves" : "Afficher les élèves"}
+          aria-label={isOpen ? `Masquer les élèves de ${teacher.name}` : `Afficher les élèves de ${teacher.name}`}
+        >
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
       </div>
 
       {isOpen && (
         <div className="border-t border-gray-100 p-5 space-y-4">
           {/* Tarifs horaires (directeur uniquement) */}
-          {currentRole === "DIRECTOR" && (
+          {currentRole === "DIRECTOR" && !searchActive && (
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
               <button type="button" onClick={() => setSalaryOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
                 <p className="text-sm font-semibold text-gray-700">Salaire à l&apos;heure</p>
@@ -2089,8 +2214,34 @@ function TeacherCard({
             </div>
           )}
 
+          {searchActive && visibleTeacherStudents.length > 0 && (
+            <div className="space-y-3">
+              {visibleTeacherStudents.map((student) => (
+                <StudentCahier
+                  key={student.id}
+                  student={student}
+                  sessions={getStudentSessions(student.id)}
+                  paidBySession={paidBySession}
+                  undatedPaymentBySession={undatedPaymentBySession}
+                  schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
+                  teachers={teachers}
+                  currentUserId={currentUserId}
+                  canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                  canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
+                  onUpdateLesson={onUpdateLesson}
+                  onAddLesson={onAddLesson}
+                  onCloseSession={onCloseSession}
+                  onNewSession={onNewSession}
+                  onDeleteLesson={onDeleteLesson}
+                  onMarkPaymentDate={onMarkPaymentDate}
+                  onRenumberSession={onRenumberSession}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Classes et élèves actifs */}
-          {teacher.teacherGroups.length > 0 && (
+          {!searchActive && visibleGroupEntries.length > 0 && (
             <div className="space-y-2">
               <button
                 type="button"
@@ -2099,14 +2250,13 @@ function TeacherCard({
               >
                 <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                   <Users className="h-4 w-4 text-blue-600" />
-                  Classes ({teacher.teacherGroups.length})
+                  Classes ({visibleGroupEntries.length})
                 </span>
-                {classesOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                {areClassesOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
               </button>
-              {classesOpen && (
+              {areClassesOpen && (
                 <div className="space-y-2">
-                  {teacher.teacherGroups.map((group) => {
-                    const activeInGroup = activeStudents.filter(s => s.groupId === group.id)
+                  {visibleGroupEntries.map(({ group, activeInGroup }) => {
                     const groupType = activeInGroup.length <= 1 ? "Solo" : activeInGroup.length === 2 ? "Binôme" : `Groupe (${activeInGroup.length})`
                     const rate = rateForSize(activeInGroup.length)
                     return (
@@ -2146,7 +2296,7 @@ function TeacherCard({
           )}
 
           {/* En pause */}
-          {pausedStudents.length > 0 && (
+          {!searchActive && pausedStudents.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-1">
                 <div className="h-px flex-1 bg-amber-200" />
@@ -2179,7 +2329,7 @@ function TeacherCard({
           )}
 
           {/* Arrêt */}
-          {stoppedStudents.length > 0 && (
+          {!searchActive && stoppedStudents.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-1">
                 <div className="h-px flex-1 bg-red-200" />
@@ -2288,12 +2438,25 @@ export function TeachersClient({
   }
 
   async function handleCloseSession(sessionId: string) {
-    await fetch(`/api/sessions/${sessionId}`, {
+    const res = await fetch(`/api/sessions/${sessionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isComplete: true, requestPayment: true }),
     })
-    setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, isComplete: true } : s))
+    if (!res.ok) return
+    const data = await res.json()
+    const { nextSession, ...updatedSession } = data as LessonSession & { nextSession?: LessonSession }
+    setSessions((prev) => {
+      const withoutNext = nextSession ? prev.filter((s) => s.id !== nextSession.id) : prev
+      const mapped = withoutNext.map((s) => s.id === sessionId ? { ...s, ...updatedSession } : s)
+      return nextSession ? [...mapped, nextSession] : mapped
+    })
+    if (nextSession) {
+      setUndatedPaymentBySession((prev) => ({
+        ...prev,
+        [`${nextSession.student.id}:${nextSession.number}`]: true,
+      }))
+    }
   }
 
   async function handleNewSession(studentId: string, subject: string, teacherId: string, lessonCount: number, frequency: number | null, duration: string | null) {

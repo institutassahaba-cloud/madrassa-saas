@@ -56,13 +56,12 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
       },
       orderBy: [{ studentId: "asc" }, { subject: "asc" }, { number: "asc" }],
     }),
-    // Paiements confirmés → on n'expose QUE la date (jamais le montant), même pour le prof.
+    // Paiements par session → on n'expose QUE la date et l'état (jamais le montant), même pour le prof.
     prisma.payment.findMany({
       where: {
         tenantId: user.tenantId,
-        status: "CONFIRMED",
         sessionNumber: { not: null },
-        paidDate: { not: null },
+        status: { not: "REJECTED" },
         ...(user.role === "TEACHER"
           ? {
               lessonSession: { teacherId: user.id },
@@ -124,10 +123,15 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
 
   // map "studentId:sessionNumber" -> date de paiement (la plus récente)
   const paidBySession: Record<string, string> = {}
+  const undatedPaymentBySession: Record<string, boolean> = {}
   for (const p of payments) {
     const key = `${p.studentId}:${p.sessionNumber}`
-    const iso = p.paidDate!.toISOString()
-    if (!paidBySession[key] || iso > paidBySession[key]) paidBySession[key] = iso
+    if (p.paidDate) {
+      const iso = p.paidDate.toISOString()
+      if (!paidBySession[key] || iso > paidBySession[key]) paidBySession[key] = iso
+    } else {
+      undatedPaymentBySession[key] = true
+    }
   }
 
   const teachers = user.role === "DIRECTOR"
@@ -146,6 +150,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lessonSessions={lessonSessionsWithLessons as any}
       paidBySession={paidBySession}
+      undatedPaymentBySession={undatedPaymentBySession}
       scheduleByGroup={scheduleByGroup}
       teachers={teachers}
       currentUserId={user.id}
