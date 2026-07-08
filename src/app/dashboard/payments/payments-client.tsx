@@ -926,7 +926,9 @@ function PaymentMatchDialog({
 
   const allocated = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
   const remaining = match.receivedAmount - allocated
-  const hasRemainder = remaining > 0.01
+  // Encart « reste pour le directeur » : seulement quand une allocation partielle existe
+  // (paiement entièrement pour le directeur = bouton dédié sur la carte, pas ce dialogue).
+  const hasRemainder = allocated > 0 && remaining > 0.01
 
   const studentsByTeacher = useMemo(() => {
     const map = new Map<string, Set<string>>()
@@ -1158,7 +1160,8 @@ function PaymentMatchDialog({
                           <div key={subject} className="flex flex-wrap items-center gap-1.5">
                             <span className="text-xs text-gray-400">{subject} :</span>
                             {sessions.map((session) => {
-                              const isPaid = Boolean(paidBySession[`${row.studentId}:${session.number}`])
+                              const paidAt = paidBySession[`${row.studentId}:${session.number}`]
+                              const isPaid = Boolean(paidAt)
                               const requested = !isPaid && Boolean(session.paymentRequestedAt)
                               const selected = row.lessonSessionIds.includes(session.id)
                               return (
@@ -1167,7 +1170,7 @@ function PaymentMatchDialog({
                                   type="button"
                                   disabled={isPaid}
                                   onClick={() => toggleSession(row.id, session.id, isPaid)}
-                                  title={isPaid ? "Déjà payée" : requested ? "Demande de paiement envoyée" : "Non payée"}
+                                  title={isPaid ? `Déjà payée le ${formatDate(paidAt)}` : requested ? "Demande de paiement envoyée" : "Non payée"}
                                   className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
                                     isPaid
                                       ? "cursor-default border-emerald-100 bg-emerald-50 text-emerald-700"
@@ -1176,7 +1179,7 @@ function PaymentMatchDialog({
                                         : "border-red-200 bg-red-50 text-red-700 hover:border-red-300"
                                   }`}
                                 >
-                                  Session {session.number}
+                                  Session {session.number}{isPaid ? ` (payée le ${formatDate(paidAt)})` : ""}
                                   {requested && <Mail className="h-3 w-3" />}
                                 </button>
                               )
