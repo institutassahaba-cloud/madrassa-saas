@@ -1,12 +1,13 @@
 "use client"
 import { useMemo, useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { PaymentDialog } from "./payment-dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { PAYMENT_PAID_STATUSES, PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
@@ -64,6 +65,9 @@ interface LessonSessionOption {
   subject: string
   number: number
   isComplete: boolean
+  frequency: number | null
+  duration: string | null
+  paymentRequestedAt: Date | string | null
 }
 
 interface PaymentPeriod {
@@ -101,10 +105,12 @@ export function PaymentsClient({
   students,
   teachers,
   lessonSessions,
+  paidBySession,
   paymentMatches,
   autoPaymentMatches,
   confirmedPaymentMatches,
   trashedPaymentMatches,
+  directorPaymentMatches,
   pendingPayments,
   paymentPeriods,
   currentMonth,
@@ -116,10 +122,12 @@ export function PaymentsClient({
   students: Student[]
   teachers: Teacher[]
   lessonSessions: LessonSessionOption[]
+  paidBySession: Record<string, string>
   paymentMatches: PaymentMatch[]
   autoPaymentMatches: PaymentMatch[]
   confirmedPaymentMatches: PaymentMatch[]
   trashedPaymentMatches: PaymentMatch[]
+  directorPaymentMatches: PaymentMatch[]
   pendingPayments: Payment[]
   paymentPeriods: PaymentPeriod[]
   currentMonth: number
@@ -142,6 +150,7 @@ export function PaymentsClient({
   const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
   const [confirmedOpen, setConfirmedOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
+  const [directorOpen, setDirectorOpen] = useState(false)
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [nowTime] = useState(() => Date.now())
@@ -249,10 +258,12 @@ export function PaymentsClient({
     }
   }
 
-  async function updatePaymentMatch(matchId: string, action: "trash" | "restore") {
+  async function updatePaymentMatch(matchId: string, action: "trash" | "restore" | "director") {
     const confirmed = action === "trash"
       ? window.confirm("Mettre ce paiement non traité dans la corbeille ? Vous pourrez le restaurer ensuite.")
-      : true
+      : action === "director"
+        ? window.confirm("Marquer ce paiement comme étant pour le directeur ? Il ne sera plus compté ni proposé dans les paiements non traités. Le même payeur sera reconnu automatiquement la prochaine fois.")
+        : true
     if (!confirmed) return
     setMatchActionLoading(matchId)
     try {
@@ -461,6 +472,17 @@ export function PaymentsClient({
                       Associer un élève
                     </Button>
                     <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updatePaymentMatch(match.id, "director")}
+                      disabled={matchActionLoading === match.id}
+                      className="border-violet-200 text-violet-700 hover:bg-violet-50"
+                      title="Ce paiement est pour le directeur, pas pour un élève"
+                    >
+                      {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
+                      Pour le directeur
+                    </Button>
+                    <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => updatePaymentMatch(match.id, "trash")}
@@ -601,6 +623,47 @@ export function PaymentsClient({
                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                     Remettre dans non traités
+                  </Button>
+                </div>
+              ))}
+            </div>}
+          </CardContent>
+        </Card>
+      )}
+
+      {directorPaymentMatches.length > 0 && (
+        <Card className="border-violet-200 bg-violet-50">
+          <CardContent className="space-y-3 p-4">
+            <button
+              type="button"
+              onClick={() => setDirectorOpen((value) => !value)}
+              className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <h3 className="font-semibold text-violet-900">Paiements pour le directeur</h3>
+                <p className="text-sm text-violet-700">
+                  Virements reçus qui ne concernent aucun élève (ex: famille du directeur). Non comptabilisés, non proposés dans « non traités ».
+                </p>
+              </div>
+              <span className="flex items-center gap-2">
+                <Badge variant="secondary">{directorPaymentMatches.length}</Badge>
+                {directorOpen ? <ChevronUp className="h-4 w-4 text-violet-700" /> : <ChevronDown className="h-4 w-4 text-violet-700" />}
+              </span>
+            </button>
+            {directorOpen && <div className="space-y-2">
+              {directorPaymentMatches.map((match) => (
+                <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-violet-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                    </div>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
+                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                    Ce n&apos;est pas pour le directeur
                   </Button>
                 </div>
               ))}
@@ -760,6 +823,7 @@ export function PaymentsClient({
           students={students}
           teachers={teachers}
           lessonSessions={lessonSessions}
+          paidBySession={paidBySession}
           onClose={() => setSelectedMatch(null)}
         />
       )}
@@ -771,7 +835,7 @@ type AllocationRow = {
   id: string
   teacherId: string
   studentId: string
-  lessonSessionId: string
+  lessonSessionIds: string[]
   amount: string
 }
 
@@ -803,9 +867,26 @@ function newAllocationRow(student?: Student | null): AllocationRow {
     id: Math.random().toString(36).slice(2),
     teacherId: student?.group?.teacherId ?? "",
     studentId: student?.id ?? "",
-    lessonSessionId: "",
-    amount: student?.monthlyFee ? String(student.monthlyFee) : "",
+    lessonSessionIds: [],
+    amount: "",
   }
+}
+
+// Sentinel encodant une session pas encore créée : "__new__:{subject}".
+const NEW_SESSION_PREFIX = "__new__:"
+
+function isNewSessionSentinel(value: string) {
+  return value.startsWith(NEW_SESSION_PREFIX)
+}
+
+// Répartit `total` en `count` parts de 2 décimales dont la somme vaut exactement `total`.
+function splitAmount(total: number, count: number): number[] {
+  if (count <= 0) return []
+  const base = Math.floor((total / count) * 100) / 100
+  const amounts = Array(count).fill(base)
+  const remainder = Math.round((total - base * count) * 100) / 100
+  amounts[count - 1] = Math.round((amounts[count - 1] + remainder) * 100) / 100
+  return amounts
 }
 
 function PaymentMatchDialog({
@@ -813,12 +894,14 @@ function PaymentMatchDialog({
   students,
   teachers,
   lessonSessions,
+  paidBySession,
   onClose,
 }: {
   match: PaymentMatch
   students: Student[]
   teachers: Teacher[]
   lessonSessions: LessonSessionOption[]
+  paidBySession: Record<string, string>
   onClose: () => void
 }) {
   const hintedStudent = students.find((student) => student.id === match.student?.id) ?? null
@@ -846,28 +929,68 @@ function PaymentMatchDialog({
   }
 
   function onTeacherChange(row: AllocationRow, teacherId: string) {
-    updateRow(row.id, { teacherId, studentId: "", lessonSessionId: "", amount: "" })
+    updateRow(row.id, { teacherId, studentId: "", lessonSessionIds: [], amount: "" })
   }
 
   function onStudentChange(row: AllocationRow, studentId: string) {
-    const student = students.find((item) => item.id === studentId)
-    updateRow(row.id, { studentId, lessonSessionId: "", amount: student ? String(student.monthlyFee) : "" })
+    updateRow(row.id, { studentId, lessonSessionIds: [], amount: "" })
+  }
+
+  function toggleSession(rowId: string, sessionKey: string, isPaid: boolean) {
+    if (isPaid) return
+    setRows((current) => current.map((item) => {
+      if (item.id !== rowId) return item
+      const has = item.lessonSessionIds.includes(sessionKey)
+      const nextIds = has ? item.lessonSessionIds.filter((id) => id !== sessionKey) : [...item.lessonSessionIds, sessionKey]
+      const student = students.find((candidate) => candidate.id === item.studentId)
+      const amount = student && nextIds.length > 0 ? String(student.monthlyFee * nextIds.length) : ""
+      return { ...item, lessonSessionIds: nextIds, amount }
+    }))
   }
 
   async function submit() {
     setLoading(true)
     setError("")
     try {
-      const payload = {
-        note,
-        mode,
-        allocations: rows.map((row) => ({
-          teacherId: row.teacherId,
-          studentId: row.studentId,
-          lessonSessionId: row.lessonSessionId,
-          amount: Number(row.amount),
-        })),
+      const expandedAllocations: { teacherId: string; studentId: string; lessonSessionId: string; amount: number }[] = []
+
+      for (const row of rows) {
+        const count = row.lessonSessionIds.length
+        if (count === 0) continue
+        const amounts = splitAmount(Number(row.amount || 0), count)
+        const resolvedIds: string[] = []
+        for (const sessionKey of row.lessonSessionIds) {
+          if (isNewSessionSentinel(sessionKey)) {
+            const subject = sessionKey.slice(NEW_SESSION_PREFIX.length)
+            const template = lessonSessions
+              .filter((s) => s.studentId === row.studentId && s.teacherId === row.teacherId && s.subject === subject)
+              .sort((a, b) => b.number - a.number)[0]
+            const res = await fetch("/api/sessions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                studentId: row.studentId,
+                teacherId: row.teacherId,
+                subject,
+                frequency: template?.frequency ?? undefined,
+                duration: template?.duration ?? undefined,
+              }),
+            })
+            const created = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(created.error || "Création de la nouvelle session impossible.")
+            resolvedIds.push(created.id)
+          } else {
+            resolvedIds.push(sessionKey)
+          }
+        }
+        resolvedIds.forEach((sessionId, i) => {
+          expandedAllocations.push({ teacherId: row.teacherId, studentId: row.studentId, lessonSessionId: sessionId, amount: amounts[i] })
+        })
       }
+
+      if (expandedAllocations.length === 0) throw new Error("Choisissez au moins une session à valider.")
+
+      const payload = { note, mode, allocations: expandedAllocations }
       const res = await fetch(`/api/payment-matches/${match.id}/allocate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -938,6 +1061,13 @@ function PaymentMatchDialog({
               const selectableSessions = lessonSessions.filter((session) => (
                 session.teacherId === row.teacherId && session.studentId === row.studentId
               ))
+              const sessionsBySubject = new Map<string, LessonSessionOption[]>()
+              for (const session of selectableSessions) {
+                const list = sessionsBySubject.get(session.subject) ?? []
+                list.push(session)
+                sessionsBySubject.set(session.subject, list)
+              }
+              for (const list of sessionsBySubject.values()) list.sort((a, b) => a.number - b.number)
               const selectedStudent = students.find((student) => student.id === row.studentId)
 
               return (
@@ -950,33 +1080,20 @@ function PaymentMatchDialog({
                       </button>
                     )}
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_8rem]">
+                  <div className="grid gap-3 lg:grid-cols-[1fr_1fr_8rem]">
                     <Select value={row.teacherId} onValueChange={(value) => onTeacherChange(row, value)}>
                       <SelectTrigger><SelectValue placeholder="Professeur" /></SelectTrigger>
                       <SelectContent>
                         {teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Select value={row.studentId} onValueChange={(value) => onStudentChange(row, value)} disabled={!row.teacherId}>
-                      <SelectTrigger><SelectValue placeholder={row.teacherId ? "Élève" : "Choisir professeur"} /></SelectTrigger>
-                      <SelectContent>
-                        {selectableStudents.map((student) => (
-                          <SelectItem key={student.id} value={student.id}>
-                            {student.firstName} {student.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={row.lessonSessionId} onValueChange={(value) => updateRow(row.id, { lessonSessionId: value })} disabled={!row.studentId}>
-                      <SelectTrigger><SelectValue placeholder={row.studentId ? "Session" : "Choisir élève"} /></SelectTrigger>
-                      <SelectContent>
-                        {selectableSessions.map((session) => (
-                          <SelectItem key={session.id} value={session.id}>
-                            Session {session.number} · {session.subject}{session.isComplete ? " · terminée" : " · à venir"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <StudentCombobox
+                      students={selectableStudents}
+                      value={row.studentId}
+                      onChange={(value) => onStudentChange(row, value)}
+                      disabled={!row.teacherId}
+                      placeholder={row.teacherId ? "Élève" : "Choisir professeur"}
+                    />
                     <Input
                       type="number"
                       min="0"
@@ -991,6 +1108,60 @@ function PaymentMatchDialog({
                       ? `Forfait élève : ${formatCurrency(selectedStudent.monthlyFee)} · Payeur attendu : ${selectedStudent.payerName || "non renseigné"}`
                       : "Choisissez un élève pour afficher son forfait."}
                   </p>
+
+                  {row.studentId && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-medium text-gray-500">
+                        Sessions à valider (plusieurs possibles) · <span className="text-emerald-700">vert</span> = déjà payée · <span className="text-red-600">rouge</span> = non payée
+                      </p>
+                      {sessionsBySubject.size === 0 && <p className="text-xs text-gray-400">Aucune session pour cet élève avec ce professeur.</p>}
+                      {Array.from(sessionsBySubject.entries()).map(([subject, sessions]) => {
+                        const nextNumber = (sessions[sessions.length - 1]?.number ?? 0) + 1
+                        const newSessionKey = `${NEW_SESSION_PREFIX}${subject}`
+                        const newSessionSelected = row.lessonSessionIds.includes(newSessionKey)
+                        return (
+                          <div key={subject} className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs text-gray-400">{subject} :</span>
+                            {sessions.map((session) => {
+                              const isPaid = Boolean(paidBySession[`${row.studentId}:${session.number}`])
+                              const requested = !isPaid && Boolean(session.paymentRequestedAt)
+                              const selected = row.lessonSessionIds.includes(session.id)
+                              return (
+                                <button
+                                  key={session.id}
+                                  type="button"
+                                  disabled={isPaid}
+                                  onClick={() => toggleSession(row.id, session.id, isPaid)}
+                                  title={isPaid ? "Déjà payée" : requested ? "Demande de paiement envoyée" : "Non payée"}
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                    isPaid
+                                      ? "cursor-default border-emerald-100 bg-emerald-50 text-emerald-700"
+                                      : selected
+                                        ? "border-emerald-600 bg-emerald-600 text-white"
+                                        : "border-red-200 bg-red-50 text-red-700 hover:border-red-300"
+                                  }`}
+                                >
+                                  Session {session.number}
+                                  {requested && <Mail className="h-3 w-3" />}
+                                </button>
+                              )
+                            })}
+                            <button
+                              type="button"
+                              onClick={() => toggleSession(row.id, newSessionKey, false)}
+                              title="Créera une nouvelle session au même modèle que la dernière"
+                              className={`inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-xs font-medium ${
+                                newSessionSelected ? "border-emerald-600 bg-emerald-600 text-white" : "border-gray-300 bg-white text-gray-500 hover:border-gray-400"
+                              }`}
+                            >
+                              <Plus className="h-3 w-3" />
+                              Nouvelle session (n°{nextNumber})
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -1012,7 +1183,12 @@ function PaymentMatchDialog({
             <Button variant="outline" onClick={onClose}>Annuler</Button>
             <Button
               onClick={submit}
-              disabled={loading || rows.some((row) => !row.teacherId || !row.studentId || !row.lessonSessionId || !row.amount) || remaining < -0.01}
+              disabled={
+                loading ||
+                !rows.some((row) => row.lessonSessionIds.length > 0) ||
+                rows.some((row) => row.lessonSessionIds.length > 0 && (!row.teacherId || !row.studentId || !row.amount || Number(row.amount) <= 0)) ||
+                remaining < -0.01
+              }
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Valider le paiement
@@ -1021,6 +1197,70 @@ function PaymentMatchDialog({
         </div>
       </div>
     </div>
+  )
+}
+
+function StudentCombobox({
+  students,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+}: {
+  students: Student[]
+  value: string
+  onChange: (studentId: string) => void
+  disabled?: boolean
+  placeholder: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const selected = students.find((student) => student.id === value)
+  const filtered = students.filter((student) => `${student.firstName} ${student.lastName}`.toLowerCase().includes(query.toLowerCase()))
+
+  return (
+    <Popover open={open} onOpenChange={(next) => { setOpen(next); setQuery("") }}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className="flex h-9 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span className={`truncate ${selected ? "text-gray-900" : "text-gray-400"}`}>
+            {selected ? `${selected.firstName} ${selected.lastName}` : placeholder}
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" onOpenAutoFocus={(event) => event.preventDefault()}>
+        <div className="border-b border-gray-100 p-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Rechercher un élève..."
+              className="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        </div>
+        <div className="max-h-60 overflow-y-auto p-1">
+          {filtered.length === 0 && <p className="px-2 py-3 text-center text-sm text-gray-400">Aucun élève trouvé.</p>}
+          {filtered.map((student) => (
+            <button
+              key={student.id}
+              type="button"
+              onClick={() => { onChange(student.id); setOpen(false) }}
+              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-emerald-50 ${student.id === value ? "bg-emerald-50 text-emerald-900" : "text-gray-700"}`}
+            >
+              <Check className={`h-3.5 w-3.5 shrink-0 ${student.id === value ? "text-emerald-600" : "opacity-0"}`} />
+              <span className="truncate">{student.firstName} {student.lastName}</span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

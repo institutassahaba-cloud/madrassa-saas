@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { ensurePaymentAliasSchema, normalizePaymentAlias } from "@/lib/payment-alias-schema"
+import { ensureDirectorPayerAliasSchema, isKnownDirectorPayer } from "@/lib/director-payer-alias"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 import { encryptSecret, decryptSecret } from "@/lib/secrets"
 
@@ -107,11 +108,17 @@ function extractReference(source: string, text: string, fallback: string) {
   return match?.[1] || fallback
 }
 
-function extractPayerName(text: string) {
-  const patterns = [
+function extractPayerName(source: string, text: string) {
+  // Wise : "Vous avez reçu .. EUR de "Nom Prénom"" — le nom est entre guillemets.
+  const wisePatterns = [
+    /(?:reçu|recu|received)[^"]*?\b(?:de|from)\s+"([^"]{2,80})"/i,
+    /\b(?:de|from)\s+"([^"]{2,80})"/i,
+  ]
+  const commonPatterns = [
     /(?:de|from|payeur|payer)\s*:\s*([A-Za-zÀ-ÿ' -]{3,80})/i,
     /([A-Za-zÀ-ÿ' -]{3,80})\s+(?:vous a envoyé|sent you|paid you)/i,
   ]
+  const patterns = source === "WISE" ? [...wisePatterns, ...commonPatterns] : commonPatterns
   for (const pattern of patterns) {
     const match = text.match(pattern)
     if (match?.[1]) return match[1].trim()
@@ -303,6 +310,7 @@ function afterDateQuery(date: Date) {
 export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEmailsOptions = {}) {
   await ensurePaymentScanSettingsColumns()
   await ensurePaymentAliasSchema()
+  await ensureDirectorPayerAliasSchema()
   const requireEnabled = options.requireEnabled ?? true
   const autoConfirmEnabled = process.env.PAYMENT_SCAN_AUTO_CONFIRM === "true"
   const scanSettings = await prisma.tenantSettings.findUnique({
@@ -373,8 +381,28 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       skipped += 1
       continue
     }
-    const detectedPayerName = extractPayerName(combined)
+    const detectedPayerName = extractPayerName(source, combined)
     const paymentLabel = extractLabel(subject, combined)
+
+    if (await isKnownDirectorPayer(tenantId, source, detectedPayerName)) {
+      await prisma.paymentMatch.create({
+        data: {
+          tenantId,
+          source,
+          gmailMessageId: reference,
+          receivedAmount: amount,
+          detectedPayerName,
+          paymentLabel,
+          paymentDate: dateHeader ? new Date(dateHeader) : null,
+          status: "DIRECTOR",
+          reason: "Payeur connu : paiement pour le directeur (non comptabilisé).",
+          rawSubject: subject || null,
+        },
+      })
+      created += 1
+      continue
+    }
+
     const suggestion = await suggestStudentForPayment(tenantId, source, detectedPayerName, paymentLabel)
     const certainPendingPayment = await findCertainPendingPayment({
       tenantId,

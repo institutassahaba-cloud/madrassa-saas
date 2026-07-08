@@ -39,6 +39,7 @@ model Tenant {
   timeSlots            TimeSlot[]
   paymentMatches       PaymentMatch[]
   paymentAliases       PaymentAlias[]
+  directorPayerAliases DirectorPayerAlias[]
   secretaryCommissions SecretaryCommission[]
   teacherContracts     TeacherContract[]
   books                Book[]
@@ -205,6 +206,24 @@ model PaymentAlias {
   @@unique([tenantId, studentId, type, normalized])
   @@index([tenantId, normalized])
   @@index([tenantId, type])
+}
+
+// Payeurs identifiés comme étant pour le directeur (pas un élève) : virements
+// personnels (ex: épouse, fille...) reçus sur la même boîte de facturation.
+// Appris manuellement une fois, puis reconnus automatiquement au scan suivant.
+model DirectorPayerAlias {
+  id         String    @id @default(cuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type       String    @default("ANY") // PAYPAL | WISE | ANY
+  alias      String
+  normalized String
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([tenantId, type, normalized])
+  @@index([tenantId, normalized])
 }
 
 // ─── SCHEDULE ────────────────────────────────────────────────────────────────

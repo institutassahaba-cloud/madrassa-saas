@@ -19,7 +19,7 @@ export default async function PaymentsPage() {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [payments, students, teachers, lessonSessions, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
+  const [payments, students, teachers, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -49,8 +49,13 @@ export default async function PaymentsPage() {
     }),
     prisma.lessonSession.findMany({
       where: { tenantId: user.tenantId },
-      select: { id: true, studentId: true, teacherId: true, subject: true, number: true, isComplete: true },
+      select: { id: true, studentId: true, teacherId: true, subject: true, number: true, isComplete: true, frequency: true, duration: true, paymentRequestedAt: true },
       orderBy: [{ teacher: { name: "asc" } }, { student: { lastName: "asc" } }, { number: "asc" }],
+    }),
+    // Paiements par session → sert uniquement à calculer paidBySession (date + statut, jamais le montant).
+    prisma.payment.findMany({
+      where: { tenantId: user.tenantId, sessionNumber: { not: null }, status: { not: "REJECTED" } },
+      select: { studentId: true, sessionNumber: true, paidDate: true },
     }),
     prisma.paymentMatch.findMany({
       where: { tenantId: user.tenantId, status: "TO_VERIFY" },
@@ -84,6 +89,14 @@ export default async function PaymentsPage() {
       orderBy: { updatedAt: "desc" },
       take: 50,
     }),
+    prisma.paymentMatch.findMany({
+      where: { tenantId: user.tenantId, status: "DIRECTOR" },
+      include: {
+        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    }),
     prisma.payment.findMany({
       where: { tenantId: user.tenantId, status: { in: [...PAYMENT_AWAITING_STATUSES] } },
       include: {
@@ -103,6 +116,15 @@ export default async function PaymentsPage() {
       orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
     }),
   ])
+
+  // Clé "studentId:sessionNumber" -> date du paiement le plus récent.
+  const paidBySession: Record<string, string> = {}
+  for (const p of sessionPayments) {
+    if (!p.paidDate) continue
+    const key = `${p.studentId}:${p.sessionNumber}`
+    const iso = p.paidDate.toISOString()
+    if (!paidBySession[key] || iso > paidBySession[key]) paidBySession[key] = iso
+  }
 
   const periodMap = new Map<string, { id: string; label: string; start: string | null; end: string | null; isCurrent?: boolean }>()
   let latestPeriodEnd: Date | null = null
@@ -140,6 +162,7 @@ export default async function PaymentsPage() {
       students={students as any}
       teachers={teachers}
       lessonSessions={lessonSessions}
+      paidBySession={paidBySession}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       paymentMatches={paymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -148,6 +171,8 @@ export default async function PaymentsPage() {
       confirmedPaymentMatches={confirmedPaymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       trashedPaymentMatches={trashedPaymentMatches as any}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      directorPaymentMatches={directorPaymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pendingPayments={pendingPayments as any}
       paymentPeriods={paymentPeriods}
