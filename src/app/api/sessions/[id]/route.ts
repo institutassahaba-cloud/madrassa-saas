@@ -32,6 +32,27 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  // Réinitialisation du paiement d'une session (erreur d'attribution) : les paiements
+  // qui marquent cette session « payée » passent en REJECTED (trace comptable conservée,
+  // supprimables ensuite depuis le tableau des paiements). La session repasse « non payée ».
+  if (body.resetPayment === true) {
+    if (!["DIRECTOR", "SECRETARY"].includes(user.role)) {
+      return NextResponse.json({ error: "Réservé au directeur ou à la secrétaire." }, { status: 403 })
+    }
+    const reset = await prisma.payment.updateMany({
+      where: {
+        tenantId: user.tenantId,
+        status: { not: "REJECTED" },
+        OR: [
+          { lessonSessionId: id },
+          { studentId: existing.studentId, sessionNumber: existing.number },
+        ],
+      },
+      data: { status: "REJECTED", notes: `Paiement réinitialisé (erreur) le ${new Date().toLocaleDateString("fr-FR")} — session ${existing.number} repassée non payée.` },
+    })
+    return NextResponse.json({ ok: true, resetCount: reset.count })
+  }
+
   // Renumérotation d'une session : réservée au directeur/secrétaire (impacte le suivi
   // des paiements). Les paiements déjà enregistrés pour cette session suivent le nouveau
   // numéro ; les prochaines sessions créées reprendront l'auto-incrément à partir de lui.

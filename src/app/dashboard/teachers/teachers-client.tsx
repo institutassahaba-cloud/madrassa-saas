@@ -675,6 +675,7 @@ function SessionCard({
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
+  const [resettingPayment, setResettingPayment] = useState(false)
 
   const done = session.lessons.filter((l) => l.status !== "PENDING").length
   const total = session.lessons.length
@@ -705,7 +706,29 @@ function SessionCard({
     setDeletingSession(true)
     const res = await fetch(`/api/sessions/${session.id}`, { method: "DELETE" })
     if (res.ok) window.location.reload()
-    else setDeletingSession(false)
+    else {
+      const data = await res.json().catch(() => ({}))
+      alert(data.error || `Suppression impossible (erreur ${res.status}). Réessayez ou contactez le support.`)
+      setDeletingSession(false)
+    }
+  }
+
+  async function handleResetPaymentClick() {
+    if (!confirm(`Réinitialiser le paiement de la Session ${session.number} ?\nLa session repassera « non payée ». Le(s) paiement(s) concerné(s) passeront en « Rejeté » (trace conservée, supprimables dans l'onglet Paiements).`)) return
+    setResettingPayment(true)
+    try {
+      const res = await fetch(`/api/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resetPayment: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Réinitialisation impossible.")
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Réinitialisation impossible.")
+      setResettingPayment(false)
+    }
   }
 
   return (
@@ -722,6 +745,17 @@ function SessionCard({
               <PaidDateBadgeEditor key={paidAt} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
             )}
             {paidAt && !canMarkPaymentDate && <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}</span>}
+            {paidAt && canSetLegacyBoundary && (
+              <button
+                type="button"
+                onClick={handleResetPaymentClick}
+                disabled={resettingPayment}
+                className="text-xs font-medium text-red-500 underline-offset-2 hover:text-red-700 hover:underline disabled:opacity-50"
+                title="Erreur d'attribution : repasser cette session en « non payée » (le paiement passe en Rejeté, supprimable ensuite dans Paiements)"
+              >
+                {resettingPayment ? "Réinitialisation…" : "Réinitialiser le paiement"}
+              </button>
+            )}
             {!paidAt && (
               <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                 <AlertTriangle className="h-3 w-3" />
