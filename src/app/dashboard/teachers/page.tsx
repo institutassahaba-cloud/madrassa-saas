@@ -54,6 +54,7 @@ export default async function TeachersPage() {
         groupId: true,
         lessonsPerWeek: true,
         duration: true,
+        monthlyFee: true,
         status: true,
         group: { select: { name: true, teacherId: true } },
       },

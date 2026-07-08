@@ -120,6 +120,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       })
       nextSessionForResponse = nextSession
       const amount = student.monthlyFee || 0
+      if (amount <= 0) return NextResponse.json({ ...updated, nextSession: nextSessionForResponse })
       const requestData = {
         amount,
         dueDate: closingAt,

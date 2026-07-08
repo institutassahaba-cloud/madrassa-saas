@@ -36,6 +36,9 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     },
   })
   if (!lessonSession) return NextResponse.json({ error: "Session introuvable." }, { status: 404 })
+  if (lessonSession.student.monthlyFee <= 0) {
+    return NextResponse.json({ error: "Cet élève est rattaché à un paiement familial : aucun paiement séparé n'est à dater." }, { status: 400 })
+  }
 
   const paymentMonth = paidDate.getMonth() + 1
   const paymentYear = paidDate.getFullYear()

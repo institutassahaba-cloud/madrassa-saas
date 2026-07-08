@@ -53,6 +53,7 @@ interface Student {
   groupId: string | null
   lessonsPerWeek: number | null
   duration: string | null
+  monthlyFee: number
   status: string
   group: { name: string; teacherId: string | null } | null
 }
@@ -991,6 +992,7 @@ function StudentPaymentRow({
   const [editing, setEditing] = useState(false)
   const [date, setDate] = useState(() => paidAt ? new Date(paidAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10))
   const [saving, setSaving] = useState(false)
+  const hasSeparatePayment = student.monthlyFee > 0
 
   const showEditor = canMarkPaymentDate && session && (editing || !paidAt)
 
@@ -1005,7 +1007,11 @@ function StudentPaymentRow({
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <span className="font-medium text-gray-700">{shortName(student)}</span>
-      {paidAt ? (
+      {!hasSeparatePayment ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+          Paiement familial
+        </span>
+      ) : paidAt ? (
         <>
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
             <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
@@ -1106,7 +1112,9 @@ function MergedGroupCahier({
   // Demande de paiement pour toute la classe : quand la Session N se termine,
   // on demande la Session N+1 aux élèves qui n'ont pas encore une demande ouverte.
   const nextSessionNumber = selNum + 1
+  const billableStudentIds = new Set(students.filter((student) => student.monthlyFee > 0).map((student) => student.id))
   const sessionsNeedingNextPaymentRequest = sessList.filter((s) => (
+    billableStudentIds.has(s.student.id) &&
     !paidBySession[`${s.student.id}:${nextSessionNumber}`] &&
     !undatedPaymentBySession[`${s.student.id}:${nextSessionNumber}`]
   ))
@@ -1124,7 +1132,8 @@ function MergedGroupCahier({
       alert(LAST_LESSON_NOT_VALIDATED_MESSAGE)
       return
     }
-    if (!confirm(`${anyIncomplete ? `Terminer la Session ${selNum} et demander` : "Demander"} le paiement de la Session ${nextSessionNumber} pour la classe (${students.map(shortName).join(", ")}) ?`)) return
+    const billedNames = students.filter((student) => billableStudentIds.has(student.id)).map(shortName)
+    if (!confirm(`${anyIncomplete ? `Terminer la Session ${selNum} et demander` : "Demander"} le paiement de la Session ${nextSessionNumber} pour la classe (${billedNames.join(", ")}) ?`)) return
     sessionsNeedingNextPaymentRequest.forEach((s) => onCloseSession(s.id))
   }
 
@@ -1733,6 +1742,7 @@ function GroupCard({
   const [editingGroup, setEditingGroup] = useState(false)
   const [savingGroup, setSavingGroup] = useState(false)
   const [groupError, setGroupError] = useState<string | null>(null)
+  const [groupOpen, setGroupOpen] = useState(false)
   const [groupForm, setGroupForm] = useState({
     name: group.name,
     level: group.level ?? "",
@@ -1878,6 +1888,17 @@ function GroupCard({
               {deletingClass ? "…" : "Supprimer"}
             </button>
           )}
+          {activeStudents.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => setGroupOpen((open) => !open)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+              title={groupOpen ? "Masquer les sessions de la classe" : "Afficher les sessions de la classe"}
+              aria-label={groupOpen ? `Masquer les sessions de ${group.name}` : `Afficher les sessions de ${group.name}`}
+            >
+              {groupOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1965,22 +1986,24 @@ function GroupCard({
               </span>
             ))}
           </div>
-          <MergedGroupCahier
-            students={activeStudents}
-            sessions={sessions}
-            paidBySession={paidBySession}
-            undatedPaymentBySession={undatedPaymentBySession}
-            canSetLegacyBoundary={canSetLegacyBoundary}
-            canMarkPaymentDate={canMarkPaymentDate}
-            onUpdateLesson={onUpdateLesson}
-            onAddLesson={onAddLesson}
-            onCloseSession={onCloseSession}
-            onNewSession={onNewSession}
-            onDeleteLesson={onDeleteLesson}
-            onMarkPaymentDate={onMarkPaymentDate}
-            onEnsureLesson={onEnsureLesson}
-            onRenumberSession={onRenumberSession}
-          />
+          {groupOpen && (
+            <MergedGroupCahier
+              students={activeStudents}
+              sessions={sessions}
+              paidBySession={paidBySession}
+              undatedPaymentBySession={undatedPaymentBySession}
+              canSetLegacyBoundary={canSetLegacyBoundary}
+              canMarkPaymentDate={canMarkPaymentDate}
+              onUpdateLesson={onUpdateLesson}
+              onAddLesson={onAddLesson}
+              onCloseSession={onCloseSession}
+              onNewSession={onNewSession}
+              onDeleteLesson={onDeleteLesson}
+              onMarkPaymentDate={onMarkPaymentDate}
+              onEnsureLesson={onEnsureLesson}
+              onRenumberSession={onRenumberSession}
+            />
+          )}
         </div>
       ) : (
         <div className="space-y-2">
