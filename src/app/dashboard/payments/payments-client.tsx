@@ -159,6 +159,7 @@ export function PaymentsClient({
   const [trashOpen, setTrashOpen] = useState(false)
   const [directorOpen, setDirectorOpen] = useState(false)
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
+  const [paymentDeleteLoading, setPaymentDeleteLoading] = useState<string | null>(null)
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [nowTime] = useState(() => Date.now())
 
@@ -286,6 +287,21 @@ export function PaymentsClient({
       alert(error instanceof Error ? error.message : "Action impossible.")
     } finally {
       setMatchActionLoading(null)
+    }
+  }
+
+  async function deletePayment(payment: Payment) {
+    const label = `${payment.student.firstName} ${payment.student.lastName} · ${formatCurrency(payment.amount)}${payment.sessionNumber ? ` · session ${payment.sessionNumber}` : ""}`
+    if (!window.confirm(`Supprimer définitivement ce paiement ?\n${label}\nLa session liée repassera « non payée ». Action irréversible.`)) return
+    setPaymentDeleteLoading(payment.id)
+    try {
+      const res = await fetch(`/api/payments/${payment.id}`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Suppression impossible.")
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Suppression impossible.")
+      setPaymentDeleteLoading(null)
     }
   }
 
@@ -806,9 +822,22 @@ export function PaymentsClient({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => { setEditPayment(p); setDialogOpen(true) }}>
-                          Modifier
-                        </Button>
+                        <div className="flex items-center">
+                          <Button variant="ghost" size="sm" onClick={() => { setEditPayment(p); setDialogOpen(true) }}>
+                            Modifier
+                          </Button>
+                          {isDirector && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deletePayment(p)}
+                              disabled={paymentDeleteLoading === p.id}
+                              title="Supprimer ce paiement (erreur / test)"
+                            >
+                              {paymentDeleteLoading === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )

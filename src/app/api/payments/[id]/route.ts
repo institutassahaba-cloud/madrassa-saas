@@ -79,3 +79,20 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
   }
   return NextResponse.json(updated)
 })
+
+// Suppression définitive d'un paiement (erreur de saisie, test) — directeur
+// uniquement. L'allocation éventuelle vers un PaymentMatch est supprimée en
+// cascade ; la session liée repasse « non payée » (statut dérivé des Payment).
+export const DELETE = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const user = session.user
+  if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Réservé au directeur." }, { status: 403 })
+
+  const { id } = await params
+  const payment = await prisma.payment.findFirst({ where: { id, tenantId: user.tenantId }, select: { id: true } })
+  if (!payment) return NextResponse.json({ error: "Paiement introuvable." }, { status: 404 })
+
+  await prisma.payment.delete({ where: { id } })
+  return NextResponse.json({ ok: true })
+})
