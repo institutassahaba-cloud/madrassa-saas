@@ -969,6 +969,19 @@ function PaymentMatchDialog({
     return map
   }, [lessonSessions])
 
+  // "teacherId:studentId" -> matières distinctes, affichées entre parenthèses
+  // dans la liste d'élèves (un élève peut avoir plusieurs matières avec le même prof).
+  const subjectsByTeacherStudent = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const session of lessonSessions) {
+      const key = `${session.teacherId}:${session.studentId}`
+      const list = map.get(key) ?? []
+      if (!list.includes(session.subject)) list.push(session.subject)
+      map.set(key, list)
+    }
+    return map
+  }, [lessonSessions])
+
   function updateRow(id: string, patch: Partial<AllocationRow>) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row))
   }
@@ -1155,6 +1168,7 @@ function PaymentMatchDialog({
                     </Select>
                     <StudentCombobox
                       students={selectableStudents}
+                      subjectsFor={(studentId) => subjectsByTeacherStudent.get(`${row.teacherId}:${studentId}`) ?? []}
                       value={row.studentId}
                       onChange={(value) => onStudentChange(row, value)}
                       disabled={!row.teacherId}
@@ -1269,12 +1283,14 @@ function PaymentMatchDialog({
 
 function StudentCombobox({
   students,
+  subjectsFor,
   value,
   onChange,
   disabled,
   placeholder,
 }: {
   students: Student[]
+  subjectsFor?: (studentId: string) => string[]
   value: string
   onChange: (studentId: string) => void
   disabled?: boolean
@@ -1283,7 +1299,13 @@ function StudentCombobox({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const selected = students.find((student) => student.id === value)
-  const filtered = students.filter((student) => `${student.firstName} ${student.lastName}`.toLowerCase().includes(query.toLowerCase()))
+  const subjectsLabel = (studentId: string) => {
+    const subjects = subjectsFor?.(studentId) ?? []
+    return subjects.length > 0 ? ` (${subjects.join(", ")})` : ""
+  }
+  const filtered = students.filter((student) =>
+    `${student.firstName} ${student.lastName}${subjectsLabel(student.id)}`.toLowerCase().includes(query.toLowerCase())
+  )
 
   return (
     <Popover open={open} onOpenChange={(next) => { setOpen(next); setQuery("") }}>
@@ -1294,7 +1316,7 @@ function StudentCombobox({
           className="flex h-9 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className={`truncate ${selected ? "text-gray-900" : "text-gray-400"}`}>
-            {selected ? `${selected.firstName} ${selected.lastName}` : placeholder}
+            {selected ? <>{selected.firstName} {selected.lastName}<span className="text-gray-400">{subjectsLabel(selected.id)}</span></> : placeholder}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </button>
@@ -1322,7 +1344,7 @@ function StudentCombobox({
               className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-emerald-50 ${student.id === value ? "bg-emerald-50 text-emerald-900" : "text-gray-700"}`}
             >
               <Check className={`h-3.5 w-3.5 shrink-0 ${student.id === value ? "text-emerald-600" : "opacity-0"}`} />
-              <span className="truncate">{student.firstName} {student.lastName}</span>
+              <span className="truncate">{student.firstName} {student.lastName}<span className="text-gray-400">{subjectsLabel(student.id)}</span></span>
             </button>
           ))}
         </div>
