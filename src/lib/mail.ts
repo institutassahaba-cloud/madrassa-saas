@@ -4,6 +4,11 @@ const BREVO_API_KEY = process.env.BREVO_API_KEY ?? ""
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "contact@institut-assahaba.com"
 const FROM_NAME = process.env.FROM_NAME ?? "Institut As-Sahaba"
 const DEFAULT_COMPTA_EMAIL = "comptabilite.institutassahaba@gmail.com"
+const PUBLIC_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  process.env.APP_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.institut-assahaba.com")
+const EMAIL_LOGO_URL = `${PUBLIC_BASE_URL.replace(/\/$/, "")}/logo-assahaba.png`
 
 export async function sendEmail({
   to,
@@ -126,7 +131,7 @@ export function sessionEndEmailHtml({
         <!-- Bandeau / Logo -->
         <tr>
           <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
-            <img src="https://www.institut-assahaba.com/embleme-white.png" alt="Institut As-Sahaba" width="78" style="display:block;margin:0 auto 12px;width:78px;max-width:78px;height:auto;border:0;" />
+            <img src="${EMAIL_LOGO_URL}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
             <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
             <div style="font-size:11px;letter-spacing:2px;color:#9CC0DD;margin-top:5px;text-transform:uppercase;">Comprendre · Apprendre · Progresser</div>
           </td>
@@ -275,7 +280,7 @@ export function paymentThanksEmailHtml({
 
         <tr>
           <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
-            <img src="https://www.institut-assahaba.com/embleme-white.png" alt="Institut As-Sahaba" width="78" style="display:block;margin:0 auto 12px;width:78px;max-width:78px;height:auto;border:0;" />
+            <img src="${EMAIL_LOGO_URL}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
             <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
             <div style="font-size:11px;letter-spacing:2px;color:#9CC0DD;margin-top:5px;text-transform:uppercase;">Comprendre · Apprendre · Progresser</div>
           </td>

@@ -103,13 +103,13 @@ const STATUS_CYCLE: Record<string, string> = {
 }
 
 const statusIcon = (s: string) => {
-  if (s === "PRESENT") return <Check className="h-3.5 w-3.5 text-emerald-600" />
+  if (s === "PRESENT") return <Check className="h-3.5 w-3.5 text-blue-600" />
   if (s === "ABSENT") return <X className="h-3.5 w-3.5 text-red-500" />
   return <Clock className="h-3.5 w-3.5 text-gray-300" />
 }
 
 const statusBg = (s: string) => {
-  if (s === "PRESENT") return "bg-emerald-50 border-emerald-200"
+  if (s === "PRESENT") return "bg-blue-50 border-blue-200"
   if (s === "ABSENT") return "bg-red-50 border-red-200"
   return "bg-gray-50 border-gray-200"
 }
@@ -274,7 +274,7 @@ function MeetingLinkControl({
           type="button"
           onClick={save}
           disabled={saving}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
           title="Enregistrer le lien visio"
         >
           <Check className="h-3.5 w-3.5" />
@@ -413,7 +413,7 @@ function LessonRow({
               {formatMins(actualMin)}{isShort && ` (−${diff} min)`}
             </span>
           )}
-          {lesson.status === "PRESENT" && <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700">Présente</span>}
+          {lesson.status === "PRESENT" && <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Présente</span>}
           {lesson.status === "ABSENT" && <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">Absente</span>}
           {lesson.legacyPayrollBoundary && <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>}
           <button
@@ -503,14 +503,14 @@ function PaymentDateEditor({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
+    <div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2 text-xs font-medium text-blue-700">
         <CheckCircle2 className="h-3.5 w-3.5" />
         {paidAt ? "Modifier la date du paiement" : "Marquer la date du paiement"}
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 bg-white text-xs sm:w-40" />
-        <Button size="sm" className="h-8 bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700" disabled={saving || !date} onClick={save}>
+        <Button size="sm" className="h-8 bg-blue-600 px-3 text-xs text-white hover:bg-blue-700" disabled={saving || !date} onClick={save}>
           {saving ? "Enregistrement..." : (paidAt ? "Mettre à jour" : "OK")}
         </Button>
       </div>
@@ -555,7 +555,7 @@ function PaidDateBadgeEditor({
         />
         <Button
           size="sm"
-          className="h-7 bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-700"
+          className="h-7 bg-blue-600 px-2 text-xs text-white hover:bg-blue-700"
           disabled={saving || !date}
           onClick={save}
         >
@@ -575,7 +575,7 @@ function PaidDateBadgeEditor({
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
       <CheckCircle2 className="h-3 w-3" />
       Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
       <button
@@ -586,7 +586,7 @@ function PaidDateBadgeEditor({
           setError(null)
           setEditing(true)
         }}
-        className="-mr-0.5 ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-emerald-500 hover:bg-emerald-200 hover:text-emerald-700"
+        className="-mr-0.5 ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-blue-500 hover:bg-blue-200 hover:text-blue-700"
         title="Modifier la date de paiement"
       >
         <Pencil className="h-3 w-3" />
@@ -614,7 +614,7 @@ function SessionNumberEditor({
       <button
         type="button"
         onClick={() => { setValue(String(currentNumber)); setError(null); setEditing(true) }}
-        className="text-gray-300 hover:text-emerald-600"
+        className="text-gray-300 hover:text-blue-600"
         title="Modifier le numéro de cette session"
       >
         <Pencil className="h-3 w-3" />
@@ -732,9 +732,9 @@ function SessionCard({
   }
 
   return (
-    <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-emerald-200 bg-white shadow-sm"}`}>
+    <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-blue-200 bg-white shadow-sm"}`}>
       <div className="flex w-full items-center gap-3 p-4 text-left">
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-blue-100 text-blue-700"}`}>
           {session.number}
         </div>
         <div className="flex-1">
@@ -744,7 +744,7 @@ function SessionCard({
             {paidAt && canMarkPaymentDate && (
               <PaidDateBadgeEditor key={paidAt} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
             )}
-            {paidAt && !canMarkPaymentDate && <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}</span>}
+            {paidAt && !canMarkPaymentDate && <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"><CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}</span>}
             {paidAt && canSetLegacyBoundary && (
               <button
                 type="button"
@@ -772,7 +772,7 @@ function SessionCard({
         </div>
         <div className="hidden w-24 sm:block">
           <div className="h-1.5 rounded-full bg-gray-100">
-            <div className="h-1.5 rounded-full bg-emerald-400 transition-all" style={{ width: total > 0 ? `${(done / total) * 100}%` : "0%" }} />
+            <div className="h-1.5 rounded-full bg-blue-400 transition-all" style={{ width: total > 0 ? `${(done / total) * 100}%` : "0%" }} />
           </div>
         </div>
       </div>
@@ -836,8 +836,8 @@ function SessionCard({
           <PaymentDateEditor key={paidAt ?? "unpaid"} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
         )}
         {nextPaidAt ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-xs text-emerald-700">
+          <div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-blue-700">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Session {nextSessionNumber} déjà payée
             </div>
@@ -1047,13 +1047,13 @@ function StudentPaymentRow({
         </span>
       ) : paidAt ? (
         <>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
             <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
           </span>
           {canMarkPaymentDate && session && (
             <button
               onClick={() => { setDate(new Date(paidAt).toISOString().slice(0, 10)); setEditing((v) => !v) }}
-              className="text-gray-300 hover:text-emerald-600"
+              className="text-gray-300 hover:text-blue-600"
               title="Modifier la date de paiement"
             >
               <Pencil className="h-3 w-3" />
@@ -1072,7 +1072,7 @@ function StudentPaymentRow({
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 w-36 bg-white text-xs" />
           <Button
             size="sm"
-            className="h-7 bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-700"
+            className="h-7 bg-blue-600 px-2 text-xs text-white hover:bg-blue-700"
             disabled={saving || !date}
             onClick={save}
             title="Enregistrer la date de paiement de cet élève"
@@ -1224,7 +1224,7 @@ function MergedGroupCahier({
             <button
               key={num}
               onClick={() => setSelectedNumber(num)}
-              className={"shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " + (isSel ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
+              className={"shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " + (isSel ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
             >
               Session {num}
             </button>
@@ -1233,9 +1233,9 @@ function MergedGroupCahier({
       </div>
       {subjectLabel && <p className="text-xs text-gray-400">Matière : {subjectLabel}</p>}
 
-      <div className={`rounded-xl border ${allComplete ? "border-gray-200 bg-gray-50" : "border-emerald-200 bg-white shadow-sm"}`}>
+      <div className={`rounded-xl border ${allComplete ? "border-gray-200 bg-gray-50" : "border-blue-200 bg-white shadow-sm"}`}>
         <div className="flex items-center gap-3 border-b border-gray-100 p-4">
-          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${allComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${allComplete ? "bg-gray-200 text-gray-500" : "bg-blue-100 text-blue-700"}`}>
             {selNum}
           </div>
           <span className="font-semibold text-gray-900">Session {selNum}</span>
@@ -1305,7 +1305,7 @@ function MergedGroupCahier({
 
           {sessList.length > 0 && (
             <Button
-              className={`w-full text-white disabled:cursor-not-allowed disabled:opacity-50 ${canSendNextPaymentRequestForClass ? "bg-emerald-600 hover:bg-emerald-700" : "cursor-not-allowed bg-emerald-400 hover:bg-emerald-400"}`}
+              className={`w-full text-white disabled:cursor-not-allowed disabled:opacity-50 ${canSendNextPaymentRequestForClass ? "bg-blue-600 hover:bg-blue-700" : "cursor-not-allowed bg-blue-400 hover:bg-blue-400"}`}
               disabled={sessionsNeedingNextPaymentRequest.length === 0}
               aria-disabled={!canSendNextPaymentRequestForClass}
               onClick={requestPaymentForClass}
@@ -1404,10 +1404,10 @@ function StudentCahier({
                 key={slot.id}
                 href={`/dashboard/schedule?teacherId=${slot.teacherId}`}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-emerald-100"
+                className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-blue-100"
                 title="Modifier ce créneau dans le planning"
               >
-                <Clock className="h-3 w-3 text-emerald-600" />
+                <Clock className="h-3 w-3 text-blue-600" />
                 🇫🇷 {scheduleLabel(slot)}
               </a>
             ))}
@@ -1423,7 +1423,7 @@ function StudentCahier({
             e.stopPropagation()
             setOpen((current) => !current)
           }}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           title={open ? "Masquer les sessions" : "Afficher les sessions"}
           aria-label={open ? `Masquer les sessions de ${name}` : `Afficher les sessions de ${name}`}
         >
@@ -1456,7 +1456,7 @@ function StudentCahier({
               {sortedSessions.map((s) => {
                 const isSel = selected?.id === s.id
                 return (
-                  <button key={s.id} onClick={() => setSelectedId(s.id)} className={"shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " + (isSel ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                  <button key={s.id} onClick={() => setSelectedId(s.id)} className={"shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " + (isSel ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
                     Session {s.number}
                   </button>
                 )
@@ -1483,8 +1483,8 @@ function StudentCahier({
             />
           )}
           {choosingSessionModel ? (
-            <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 space-y-3">
-              <p className="text-sm font-medium text-emerald-700">Choisir le type de session</p>
+            <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 space-y-3">
+              <p className="text-sm font-medium text-blue-700">Choisir le type de session</p>
               {creationError && (
                 <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
                   {creationError}
@@ -1495,7 +1495,7 @@ function StudentCahier({
                   type="button"
                   variant="outline"
                   disabled={!selected}
-                  className="h-auto justify-start border-emerald-200 bg-white px-3 py-3 text-left"
+                  className="h-auto justify-start border-blue-200 bg-white px-3 py-3 text-left"
                   onClick={async () => {
                     if (!selected) return
                     setCreationError(null)
@@ -1525,7 +1525,7 @@ function StudentCahier({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-auto justify-start border-emerald-200 bg-white px-3 py-3 text-left"
+                  className="h-auto justify-start border-blue-200 bg-white px-3 py-3 text-left"
                   onClick={() => {
                     setCreationError(null)
                     setNewSubject(selected?.subject ?? student.subject ?? "")
@@ -1549,8 +1549,8 @@ function StudentCahier({
               }}>Annuler</Button>
             </div>
           ) : creating ? (
-            <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 space-y-3">
-              <p className="text-sm font-medium text-emerald-700">Nouvelle session</p>
+            <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 space-y-3">
+              <p className="text-sm font-medium text-blue-700">Nouvelle session</p>
               <Select value={newSubject} onValueChange={setNewSubject}>
                 <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir la matière…" /></SelectTrigger>
                 <SelectContent>{SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
@@ -1562,7 +1562,7 @@ function StudentCahier({
                 </Select>
               )}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-emerald-700" htmlFor={`teacher-lesson-count-${student.id}`}>
+                <label className="text-xs font-medium text-blue-700" htmlFor={`teacher-lesson-count-${student.id}`}>
                   Nombre de cours
                 </label>
                 <Input
@@ -1661,7 +1661,7 @@ function AddMemberForm({ onAdded, canAddSecretary }: { onAdded: () => void; canA
   if (!open) {
     return (
       <div className="grid gap-2 sm:flex">
-        <button onClick={() => { setRole("TEACHER"); setOpen(true) }} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 sm:justify-start">
+        <button onClick={() => { setRole("TEACHER"); setOpen(true) }} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:justify-start">
           + Ajouter un professeur
         </button>
         {canAddSecretary && (
@@ -1676,7 +1676,7 @@ function AddMemberForm({ onAdded, canAddSecretary }: { onAdded: () => void; canA
   const isSecretary = role === "SECRETARY"
 
   return (
-    <form onSubmit={handleSubmit} className={`rounded-2xl border p-5 space-y-3 ${isSecretary ? "border-blue-200 bg-blue-50" : "border-emerald-200 bg-emerald-50"}`}>
+    <form onSubmit={handleSubmit} className={`rounded-2xl border p-5 space-y-3 ${isSecretary ? "border-blue-200 bg-blue-50" : "border-blue-200 bg-blue-50"}`}>
       <h3 className="font-semibold text-gray-900">{isSecretary ? "Nouvelle secrétaire" : "Nouveau professeur"}</h3>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -1696,11 +1696,11 @@ function AddMemberForm({ onAdded, canAddSecretary }: { onAdded: () => void; canA
         </div>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {successMsg && <p className="text-sm text-emerald-700 bg-emerald-100 rounded-lg px-3 py-2">{successMsg}</p>}
+      {successMsg && <p className="text-sm text-blue-700 bg-blue-100 rounded-lg px-3 py-2">{successMsg}</p>}
       <div className="grid grid-cols-2 gap-2 sm:flex">
         {!successMsg ? (
           <>
-            <button type="submit" disabled={saving} className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${isSecretary ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>
+            <button type="submit" disabled={saving} className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${isSecretary ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-600 hover:bg-blue-700"}`}>
               {saving ? "Enregistrement…" : "Créer le compte"}
             </button>
             <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Annuler</button>
@@ -1880,7 +1880,7 @@ function GroupCard({
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
             activeStudents.length <= 1 ? "bg-blue-50 text-blue-700" :
             activeStudents.length === 2 ? "bg-amber-50 text-amber-700" :
-            "bg-emerald-50 text-emerald-700"
+            "bg-blue-50 text-blue-700"
           }`}>
             {groupType} · {rate}€/h
           </span>
@@ -2167,7 +2167,7 @@ function TeacherCard({
         onClick={() => setExpanded(!expanded)}
         className="flex w-full cursor-pointer items-center gap-4 p-5 text-left"
       >
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-lg font-bold text-emerald-700">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-lg font-bold text-blue-700">
           {initialFromName(teacher.name)}
         </div>
         <div className="flex-1 min-w-0">
@@ -2196,7 +2196,7 @@ function TeacherCard({
         </div>
         <div className="flex gap-4 text-center">
           <div>
-            <p className="text-lg font-bold text-emerald-600">{totalGroups}</p>
+            <p className="text-lg font-bold text-blue-600">{totalGroups}</p>
             <p className="text-xs text-gray-400">{totalGroups > 1 ? "classes" : "classe"}</p>
           </div>
           <div>
@@ -2224,7 +2224,7 @@ function TeacherCard({
             e.stopPropagation()
             setExpanded((open) => !open)
           }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           title={isOpen ? "Masquer les élèves" : "Afficher les élèves"}
           aria-label={isOpen ? `Masquer les élèves de ${teacher.name}` : `Afficher les élèves de ${teacher.name}`}
         >
@@ -2637,7 +2637,7 @@ export function TeachersClient({
       <div className="mb-5 grid gap-3 sm:mb-6 sm:grid-cols-3 sm:gap-4">
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <Users className="h-4 w-4 text-emerald-500" />
+            <Users className="h-4 w-4 text-blue-500" />
             <span className="text-xs font-medium text-gray-500">Professeurs</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">{teachers.length}</p>
@@ -2690,7 +2690,7 @@ export function TeachersClient({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher un élève (nom)…"
-          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         {search && (
           <button

@@ -141,13 +141,13 @@ const STATUS_CYCLE: Record<string, string> = {
 }
 
 const statusIcon = (s: string) => {
-  if (s === "PRESENT") return <Check className="h-3.5 w-3.5 text-emerald-600" />
+  if (s === "PRESENT") return <Check className="h-3.5 w-3.5 text-blue-600" />
   if (s === "ABSENT")  return <X     className="h-3.5 w-3.5 text-red-500" />
   return                        <Clock className="h-3.5 w-3.5 text-gray-300" />
 }
 
 const statusBg = (s: string) => {
-  if (s === "PRESENT") return "bg-emerald-50 border-emerald-200"
+  if (s === "PRESENT") return "bg-blue-50 border-blue-200"
   if (s === "ABSENT")  return "bg-red-50 border-red-200"
   return "bg-gray-50 border-gray-200"
 }
@@ -265,7 +265,7 @@ function LessonRow({
             </span>
           )}
           {lesson.status === "PRESENT" && (
-            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700">Présente</span>
+            <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Présente</span>
           )}
           {lesson.status === "ABSENT" && (
             <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">Absente</span>
@@ -457,10 +457,10 @@ function SessionCard({
   }
 
   return (
-    <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-emerald-200 bg-white shadow-sm"}`}>
+    <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-blue-200 bg-white shadow-sm"}`}>
       {/* Header */}
       <div className="flex w-full items-start gap-3 p-3 text-left sm:p-4">
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-blue-100 text-blue-700"}`}>
           {session.number}
         </div>
         <div className="min-w-0 flex-1">
@@ -472,7 +472,7 @@ function SessionCard({
               </span>
             )}
             {paidAt && (
-              <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                 <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
               </span>
             )}
@@ -506,7 +506,7 @@ function SessionCard({
         <div className="hidden w-24 sm:block">
           <div className="h-1.5 rounded-full bg-gray-100">
             <div
-              className="h-1.5 rounded-full bg-emerald-400 transition-all"
+              className="h-1.5 rounded-full bg-blue-400 transition-all"
               style={{ width: total > 0 ? `${(done / total) * 100}%` : "0%" }}
             />
           </div>
@@ -586,8 +586,8 @@ function SessionCard({
 
       <div className="border-t border-gray-100 p-3 sm:p-4">
         {nextPaidAt ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-xs text-emerald-700">
+          <div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-blue-700">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Session {nextSessionNumber} déjà payée
             </div>
@@ -685,7 +685,7 @@ function StudentCahier({
         onClick={() => setOpen(!open)}
         className="flex w-full items-start gap-3 p-4 text-left sm:items-center sm:gap-4 sm:p-5"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700 sm:h-10 sm:w-10">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700 sm:h-10 sm:w-10">
           {initialFromName(name)}
         </div>
         <div className="flex-1 min-w-0">
@@ -700,10 +700,10 @@ function StudentCahier({
               <a
                 key={slot.id}
                 href={`/dashboard/schedule?teacherId=${slot.teacherId}`}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-emerald-100"
+                className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-blue-100"
                 title="Modifier ce créneau dans le planning"
               >
-                <Clock className="h-3 w-3 text-emerald-600" />
+                <Clock className="h-3 w-3 text-blue-600" />
                 🇫🇷 {scheduleLabel(slot)}
               </a>
             ))}
@@ -758,7 +758,7 @@ function StudentCahier({
                     className={
                       "shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " +
                       (isSel
-                        ? "bg-emerald-600 text-white"
+                        ? "bg-blue-600 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200")
                     }
                     title={s.isComplete ? "Session terminée" : "Session en cours"}
@@ -790,8 +790,8 @@ function StudentCahier({
 
           {/* New session choice / form */}
           {choosingSessionModel ? (
-            <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 space-y-3">
-              <p className="text-sm font-medium text-emerald-700">Choisir le type de session</p>
+            <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 space-y-3">
+              <p className="text-sm font-medium text-blue-700">Choisir le type de session</p>
               {creationError && (
                 <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
                   {creationError}
@@ -802,7 +802,7 @@ function StudentCahier({
                   type="button"
                   variant="outline"
                   disabled={!selected}
-                  className="h-auto justify-start border-emerald-200 bg-white px-3 py-3 text-left"
+                  className="h-auto justify-start border-blue-200 bg-white px-3 py-3 text-left"
                   onClick={async () => {
                     if (!selected) return
                     setCreationError(null)
@@ -832,7 +832,7 @@ function StudentCahier({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-auto justify-start border-emerald-200 bg-white px-3 py-3 text-left"
+                  className="h-auto justify-start border-blue-200 bg-white px-3 py-3 text-left"
                   onClick={() => {
                     setCreationError(null)
                     setNewSubject(selected?.subject ?? student.subject ?? "")
@@ -856,8 +856,8 @@ function StudentCahier({
               }}>Annuler</Button>
             </div>
           ) : creating ? (
-            <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 space-y-3">
-              <p className="text-sm font-medium text-emerald-700">Nouvelle session</p>
+            <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 space-y-3">
+              <p className="text-sm font-medium text-blue-700">Nouvelle session</p>
               <Select value={newSubject} onValueChange={setNewSubject}>
                 <SelectTrigger className="bg-white">
                   <SelectValue placeholder="Choisir la matière…" />
@@ -877,7 +877,7 @@ function StudentCahier({
                 </Select>
               )}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-emerald-700" htmlFor={`lesson-count-${student.id}`}>
+                <label className="text-xs font-medium text-blue-700" htmlFor={`lesson-count-${student.id}`}>
                   Nombre de cours
                 </label>
                 <Input
@@ -1171,9 +1171,9 @@ function MergedSessionCard({
   }
 
   return (
-    <div className={`rounded-xl border ${allComplete ? "border-gray-200 bg-gray-50" : "border-emerald-200 bg-white shadow-sm"}`}>
+    <div className={`rounded-xl border ${allComplete ? "border-gray-200 bg-gray-50" : "border-blue-200 bg-white shadow-sm"}`}>
       <div className="flex items-center gap-3 border-b border-gray-100 p-4">
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${allComplete ? "bg-gray-200 text-gray-500" : "bg-emerald-100 text-emerald-700"}`}>
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${allComplete ? "bg-gray-200 text-gray-500" : "bg-blue-100 text-blue-700"}`}>
           {sessionNumber}
         </div>
         <span className="font-semibold text-gray-900">Session {sessionNumber}</span>
@@ -1235,7 +1235,7 @@ function MergedSessionCard({
               <div key={student.id} className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="font-medium text-gray-700">{shortName(student)}</span>
                 {paidAt ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                     <CheckCircle2 className="h-3 w-3" /> Payé le {new Date(paidAt).toLocaleDateString("fr-FR")}
                   </span>
                 ) : session ? (
@@ -1253,7 +1253,7 @@ function MergedSessionCard({
         {/* Fin de session / demande de paiement pour toute la classe */}
         {sessions.length > 0 && (
           <Button
-            className={`w-full text-white disabled:cursor-not-allowed disabled:opacity-50 ${canSendNextPaymentRequestForClass ? "bg-emerald-600 hover:bg-emerald-700" : "cursor-not-allowed bg-emerald-400 hover:bg-emerald-400"}`}
+            className={`w-full text-white disabled:cursor-not-allowed disabled:opacity-50 ${canSendNextPaymentRequestForClass ? "bg-blue-600 hover:bg-blue-700" : "cursor-not-allowed bg-blue-400 hover:bg-blue-400"}`}
             disabled={sessionsNeedingNextPaymentRequest.length === 0}
             aria-disabled={!canSendNextPaymentRequestForClass}
             onClick={requestPaymentForClass}
@@ -1339,15 +1339,15 @@ function GroupCahier({
   const planning = schedule && schedule.length > 0
 
   return (
-    <div className="rounded-xl border border-emerald-200 bg-white shadow-sm sm:rounded-2xl">
+    <div className="rounded-xl border border-blue-200 bg-white shadow-sm sm:rounded-2xl">
       <button onClick={() => setOpen(!open)} className="flex w-full items-start gap-3 p-4 text-left sm:items-center sm:gap-4 sm:p-5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700 sm:h-10 sm:w-10">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700 sm:h-10 sm:w-10">
           {students.length}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-gray-900">{groupName}</p>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
               {students.length === 2 ? "Binôme" : `Classe de ${students.length}`}
             </span>
           </div>
@@ -1355,8 +1355,8 @@ function GroupCahier({
           {planning && (
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               {schedule?.map((slot) => (
-                <a key={slot.id} href={`/dashboard/schedule?teacherId=${slot.teacherId}`} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-emerald-100" title="Modifier ce créneau dans le planning">
-                  <Clock className="h-3 w-3 text-emerald-600" /> 🇫🇷 {scheduleLabel(slot)}
+                <a key={slot.id} href={`/dashboard/schedule?teacherId=${slot.teacherId}`} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-gray-700 hover:bg-blue-100" title="Modifier ce créneau dans le planning">
+                  <Clock className="h-3 w-3 text-blue-600" /> 🇫🇷 {scheduleLabel(slot)}
                 </a>
               ))}
             </div>
@@ -1377,7 +1377,7 @@ function GroupCahier({
                     <button
                       key={num}
                       onClick={() => setSelectedNumber(num)}
-                      className={"shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " + (isSel ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
+                      className={"shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 " + (isSel ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
                     >
                       Session {num}
                     </button>
