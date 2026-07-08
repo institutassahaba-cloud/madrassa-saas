@@ -880,6 +880,16 @@ type AllocationRow = {
   amount: string
 }
 
+// Entrée de la recherche globale d'élève : un couple (élève, professeur).
+type StudentOption = {
+  key: string
+  studentId: string
+  teacherId: string
+  name: string
+  subjects: string[]
+  teacherName: string
+}
+
 type PaymentSortKey = "student" | "teacher" | "amount" | "method" | "paidDate"
 type SortDirection = "asc" | "desc"
 
@@ -959,16 +969,6 @@ function PaymentMatchDialog({
   // (paiement entièrement pour le directeur = bouton dédié sur la carte, pas ce dialogue).
   const hasRemainder = allocated > 0 && remaining > 0.01
 
-  const studentsByTeacher = useMemo(() => {
-    const map = new Map<string, Set<string>>()
-    for (const session of lessonSessions) {
-      const set = map.get(session.teacherId) ?? new Set<string>()
-      set.add(session.studentId)
-      map.set(session.teacherId, set)
-    }
-    return map
-  }, [lessonSessions])
-
   // "teacherId:studentId" -> matières distinctes, affichées entre parenthèses
   // dans la liste d'élèves (un élève peut avoir plusieurs matières avec le même prof).
   const subjectsByTeacherStudent = useMemo(() => {
@@ -982,6 +982,34 @@ function PaymentMatchDialog({
     return map
   }, [lessonSessions])
 
+  // Recherche globale : une entrée par couple (élève, professeur), pour taper
+  // directement un nom d'élève sans passer par le professeur — la sélection
+  // pré-remplit le professeur. Un élève sans session connue reste proposé via
+  // le professeur de son groupe.
+  const studentOptions = useMemo<StudentOption[]>(() => {
+    const teacherName = (teacherId: string) => teachers.find((teacher) => teacher.id === teacherId)?.name ?? ""
+    const options: StudentOption[] = []
+    for (const student of students) {
+      const teacherIds = new Set<string>()
+      for (const session of lessonSessions) {
+        if (session.studentId === student.id) teacherIds.add(session.teacherId)
+      }
+      if (teacherIds.size === 0 && student.group?.teacherId) teacherIds.add(student.group.teacherId)
+      for (const teacherId of teacherIds) {
+        const subjects = subjectsByTeacherStudent.get(`${teacherId}:${student.id}`) ?? []
+        options.push({
+          key: `${student.id}:${teacherId}`,
+          studentId: student.id,
+          teacherId,
+          name: `${student.firstName} ${student.lastName}`,
+          subjects,
+          teacherName: teacherName(teacherId),
+        })
+      }
+    }
+    return options.sort((a, b) => a.name.localeCompare(b.name, "fr"))
+  }, [students, teachers, lessonSessions, subjectsByTeacherStudent])
+
   function updateRow(id: string, patch: Partial<AllocationRow>) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row))
   }
@@ -990,8 +1018,9 @@ function PaymentMatchDialog({
     updateRow(row.id, { teacherId, studentId: "", lessonSessionIds: [], amount: "" })
   }
 
-  function onStudentChange(row: AllocationRow, studentId: string) {
-    updateRow(row.id, { studentId, lessonSessionIds: [], amount: "" })
+  // La sélection d'un élève depuis la recherche globale pré-remplit aussi son professeur.
+  function onStudentChange(row: AllocationRow, studentId: string, teacherId?: string) {
+    updateRow(row.id, { studentId, ...(teacherId ? { teacherId } : {}), lessonSessionIds: [], amount: "" })
   }
 
   function toggleSession(rowId: string, sessionKey: string, isPaid: boolean) {
@@ -1133,10 +1162,6 @@ function PaymentMatchDialog({
 
           <div className="space-y-3">
             {rows.map((row, index) => {
-              const teacherStudentIds = row.teacherId ? studentsByTeacher.get(row.teacherId) : null
-              const selectableStudents = row.teacherId
-                ? students.filter((student) => student.group?.teacherId === row.teacherId || teacherStudentIds?.has(student.id))
-                : []
               const selectableSessions = lessonSessions.filter((session) => (
                 session.teacherId === row.teacherId && session.studentId === row.studentId
               ))
@@ -1167,12 +1192,11 @@ function PaymentMatchDialog({
                       </SelectContent>
                     </Select>
                     <StudentCombobox
-                      students={selectableStudents}
-                      subjectsFor={(studentId) => subjectsByTeacherStudent.get(`${row.teacherId}:${studentId}`) ?? []}
-                      value={row.studentId}
-                      onChange={(value) => onStudentChange(row, value)}
-                      disabled={!row.teacherId}
-                      placeholder={row.teacherId ? "Élève" : "Choisir professeur"}
+                      options={row.teacherId ? studentOptions.filter((option) => option.teacherId === row.teacherId) : studentOptions}
+                      showTeacher={!row.teacherId}
+                      value={row.studentId ? `${row.studentId}:${row.teacherId}` : ""}
+                      onChange={(option) => onStudentChange(row, option.studentId, option.teacherId)}
+                      placeholder="Rechercher un élève..."
                     />
                     <Input
                       type="number"
@@ -1282,41 +1306,36 @@ function PaymentMatchDialog({
 }
 
 function StudentCombobox({
-  students,
-  subjectsFor,
+  options,
+  showTeacher,
   value,
   onChange,
-  disabled,
   placeholder,
 }: {
-  students: Student[]
-  subjectsFor?: (studentId: string) => string[]
+  options: StudentOption[]
+  showTeacher: boolean
   value: string
-  onChange: (studentId: string) => void
-  disabled?: boolean
+  onChange: (option: StudentOption) => void
   placeholder: string
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const selected = students.find((student) => student.id === value)
-  const subjectsLabel = (studentId: string) => {
-    const subjects = subjectsFor?.(studentId) ?? []
-    return subjects.length > 0 ? ` (${subjects.join(", ")})` : ""
-  }
-  const filtered = students.filter((student) =>
-    `${student.firstName} ${student.lastName}${subjectsLabel(student.id)}`.toLowerCase().includes(query.toLowerCase())
-  )
+  const selected = options.find((option) => option.key === value)
+  const optionLabel = (option: StudentOption) =>
+    `${option.name}${option.subjects.length ? ` (${option.subjects.join(", ")})` : ""}${option.teacherName ? ` — ${option.teacherName}` : ""}`
+  const filtered = options.filter((option) => optionLabel(option).toLowerCase().includes(query.toLowerCase()))
 
   return (
     <Popover open={open} onOpenChange={(next) => { setOpen(next); setQuery("") }}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          disabled={disabled}
           className="flex h-9 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className={`truncate ${selected ? "text-gray-900" : "text-gray-400"}`}>
-            {selected ? <>{selected.firstName} {selected.lastName}<span className="text-gray-400">{subjectsLabel(selected.id)}</span></> : placeholder}
+            {selected
+              ? <>{selected.name}<span className="text-gray-400">{selected.subjects.length ? ` (${selected.subjects.join(", ")})` : ""}</span></>
+              : placeholder}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </button>
@@ -1336,15 +1355,19 @@ function StudentCombobox({
         </div>
         <div className="max-h-60 overflow-y-auto p-1">
           {filtered.length === 0 && <p className="px-2 py-3 text-center text-sm text-gray-400">Aucun élève trouvé.</p>}
-          {filtered.map((student) => (
+          {filtered.map((option) => (
             <button
-              key={student.id}
+              key={option.key}
               type="button"
-              onClick={() => { onChange(student.id); setOpen(false) }}
-              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-emerald-50 ${student.id === value ? "bg-emerald-50 text-emerald-900" : "text-gray-700"}`}
+              onClick={() => { onChange(option); setOpen(false) }}
+              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-emerald-50 ${option.key === value ? "bg-emerald-50 text-emerald-900" : "text-gray-700"}`}
             >
-              <Check className={`h-3.5 w-3.5 shrink-0 ${student.id === value ? "text-emerald-600" : "opacity-0"}`} />
-              <span className="truncate">{student.firstName} {student.lastName}<span className="text-gray-400">{subjectsLabel(student.id)}</span></span>
+              <Check className={`h-3.5 w-3.5 shrink-0 ${option.key === value ? "text-emerald-600" : "opacity-0"}`} />
+              <span className="min-w-0 truncate">
+                {option.name}
+                <span className="text-gray-400">{option.subjects.length ? ` (${option.subjects.join(", ")})` : ""}</span>
+                {showTeacher && option.teacherName && <span className="text-gray-400"> — {option.teacherName}</span>}
+              </span>
             </button>
           ))}
         </div>
