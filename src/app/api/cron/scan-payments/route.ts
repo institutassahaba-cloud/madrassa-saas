@@ -33,16 +33,20 @@ export const GET = wrap(async (req: Request) => {
 
   const results = []
   for (const setting of settings) {
+    let lastError: string | null = null
     try {
       const result = await scanPaymentEmails(setting.tenantId, { startedAt: setting.paymentScanStartedAt })
       results.push({ tenantId: setting.tenantId, ...result })
     } catch (error) {
-      results.push({
-        tenantId: setting.tenantId,
-        ok: false,
-        error: error instanceof Error ? error.message : "Lecture Gmail impossible.",
-      })
+      lastError = error instanceof Error ? error.message : "Lecture Gmail impossible."
+      results.push({ tenantId: setting.tenantId, ok: false, error: lastError })
     }
+    // Santé du scan : visible sur la page Paiements pour éviter les pannes silencieuses
+    // (ex: jeton Gmail expiré → « invalid_grant » alors que le cron répond 200 à l'Apps Script).
+    await prisma.tenantSettings.update({
+      where: { tenantId: setting.tenantId },
+      data: { paymentScanLastRunAt: new Date(), paymentScanLastError: lastError },
+    }).catch(() => {})
   }
 
   return NextResponse.json({

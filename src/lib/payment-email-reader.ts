@@ -335,9 +335,12 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     "-in:sent",
   ].filter(Boolean).join(" ")
 
+  // 100 (et non 25) : après une panne de plusieurs jours (jeton Gmail expiré,
+  // déclencheur arrêté...), un seul passage doit pouvoir rattraper tout le retard.
+  // La dé-duplication par référence garantit qu'aucun paiement déjà classé ne revient.
   const list = await gmail.users.messages.list({
     userId: "me",
-    maxResults: 25,
+    maxResults: 100,
     q: query,
   })
   const messages = list.data.messages ?? []

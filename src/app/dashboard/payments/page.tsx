@@ -110,7 +110,7 @@ export default async function PaymentsPage() {
     }),
     prisma.tenantSettings.findUnique({
       where: { tenantId: user.tenantId },
-      select: { paymentScanEnabled: true, paymentScanStartedAt: true },
+      select: { paymentScanEnabled: true, paymentScanStartedAt: true, paymentScanLastRunAt: true, paymentScanLastError: true },
     }),
     prisma.teacherSalary.findMany({
       where: { tenantId: user.tenantId, periodStart: { not: null }, periodEnd: { not: null } },
@@ -184,6 +184,8 @@ export default async function PaymentsPage() {
       scanControl={{
         enabled: Boolean(scanSettings?.paymentScanEnabled),
         startedAt: scanSettings?.paymentScanStartedAt?.toISOString() ?? null,
+        lastRunAt: scanSettings?.paymentScanLastRunAt?.toISOString() ?? null,
+        lastError: scanSettings?.paymentScanLastError ?? null,
       }}
     />
   )

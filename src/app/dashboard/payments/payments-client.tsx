@@ -140,7 +140,7 @@ export function PaymentsClient({
   currentMonth: number
   currentYear: number
   isDirector: boolean
-  scanControl: { enabled: boolean; startedAt: string | null }
+  scanControl: { enabled: boolean; startedAt: string | null; lastRunAt?: string | null; lastError?: string | null }
 }) {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
@@ -392,7 +392,7 @@ export function PaymentsClient({
       {isDirector && <SecretaryPayBlock />}
 
       {isDirector && (
-        <Card className={scanState.enabled ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"}>
+        <Card className={scanControl.lastError ? "border-red-300 bg-red-50" : scanState.enabled ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"}>
           <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="font-semibold text-gray-900">Scan automatique des paiements</h3>
@@ -401,6 +401,20 @@ export function PaymentsClient({
                   ? `Actif uniquement pour les mails reçus depuis ${scanState.startedAt ? formatDate(scanState.startedAt) : "l'activation"}.`
                   : "En pause : les mails reçus ne sont pas consommés automatiquement."}
               </p>
+              {scanControl.lastError && (
+                <div className="mt-2 rounded-lg border border-red-200 bg-white px-3 py-2">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-red-700">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Le scan tourne mais échoue : aucun paiement n&apos;est lu.
+                  </p>
+                  <p className="mt-0.5 text-xs text-red-600">
+                    {/invalid_grant/i.test(scanControl.lastError)
+                      ? <>Connexion Gmail expirée : allez dans <a href="/dashboard/connexions" className="font-semibold underline">Connexions</a> et reconnectez la boîte facturation.</>
+                      : <>Erreur : {scanControl.lastError}</>}
+                    {scanControl.lastRunAt ? ` (dernier essai : ${formatDate(scanControl.lastRunAt)})` : ""}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="grid gap-2 sm:flex">
               <Button

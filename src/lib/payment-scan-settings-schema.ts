@@ -14,6 +14,10 @@ export function ensurePaymentScanSettingsColumns() {
   paymentScanSettingsReady ??= Promise.all([
     addColumn('ALTER TABLE "TenantSettings" ADD COLUMN "paymentScanEnabled" BOOLEAN NOT NULL DEFAULT false'),
     addColumn('ALTER TABLE "TenantSettings" ADD COLUMN "paymentScanStartedAt" DATETIME'),
+    // Santé du scan : dernier passage + dernière erreur (ex: Gmail « invalid_grant »)
+    // pour afficher une alerte visible au lieu d'un échec silencieux.
+    addColumn('ALTER TABLE "TenantSettings" ADD COLUMN "paymentScanLastRunAt" DATETIME'),
+    addColumn('ALTER TABLE "TenantSettings" ADD COLUMN "paymentScanLastError" TEXT'),
   ]).then(() => undefined)
 
   return paymentScanSettingsReady
