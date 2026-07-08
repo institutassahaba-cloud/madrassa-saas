@@ -84,6 +84,10 @@ function readPayloadText(payload: unknown): string {
 
 function cleanText(value: string | null | undefined) {
   return (value || "")
+    // Blocs <style>/<script> : leur CONTENU (CSS/JS) survivrait au retrait des balises
+    // et polluerait l'extraction du nom (ex: « interpolation-mode:bicubic » → payeur "bicubic").
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -115,7 +119,8 @@ function extractPayerName(source: string, text: string) {
     /\b(?:de|from)\s+"([^"]{2,80})"/i,
   ]
   const commonPatterns = [
-    /(?:de|from|payeur|payer)\s*:\s*([A-Za-zÀ-ÿ' -]{3,80})/i,
+    // \b obligatoire : sans lui, « mode:bicubic » (CSS) matche via la fin de « moDE : »
+    /\b(?:de|from|payeur|payer)\s*:\s*([A-Za-zÀ-ÿ' -]{3,80})/i,
     /([A-Za-zÀ-ÿ' -]{3,80})\s+(?:vous a envoyé|sent you|paid you)/i,
   ]
   const patterns = source === "WISE" ? [...wisePatterns, ...commonPatterns] : commonPatterns
