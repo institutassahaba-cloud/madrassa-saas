@@ -34,6 +34,15 @@ const EMPTY_EXTRA = {
   subject: "", groupId: "", hourlyRate: "", lessonsPerWeek: "", duration: "", startSession: "",
 }
 
+const todayIso = () => new Date().toISOString().slice(0, 10)
+
+const EMPTY_INITIAL_PAYMENT = {
+  received: false,
+  method: "Virement",
+  paidDate: todayIso(),
+  reference: "",
+}
+
 type PaymentAliasFormRow = {
   id: string
   type: "PAYPAL" | "WISE"
@@ -68,6 +77,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
   const [newClassTime, setNewClassTime] = useState("")
   const [multiProf, setMultiProf] = useState(false)
   const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
+  const [initialPayment, setInitialPayment] = useState({ ...EMPTY_INITIAL_PAYMENT })
   const [extraTeacherId, setExtraTeacherId] = useState("")
   const [extra, setExtra] = useState({ ...EMPTY_EXTRA })
   const [groupInfo, setGroupInfo] = useState<{ count: number; subject?: string; lessonsPerWeek?: number; duration?: string; newRate?: number } | null>(null)
@@ -126,12 +136,14 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
       setNewClassName("")
       setNewClassDay("")
       setNewClassTime("")
+      setInitialPayment({ ...EMPTY_INITIAL_PAYMENT, paidDate: todayIso() })
     } else {
       setStudentCount(1)
       setIdentities([{ ...EMPTY_IDENTITY }])
       setShared({ ...EMPTY_SHARED })
       setTeacherId("")
       setPaymentAliases([])
+      setInitialPayment({ ...EMPTY_INITIAL_PAYMENT, paidDate: todayIso() })
       setJoinExisting(false)
       setNewClassName("")
       setNewClassDay("")
@@ -181,6 +193,10 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
 
   function removePaymentAlias(id: string) {
     setPaymentAliases((prev) => prev.filter((row) => row.id !== id))
+  }
+
+  function setInitialPaymentField(key: keyof typeof EMPTY_INITIAL_PAYMENT, value: string | boolean) {
+    setInitialPayment((current) => ({ ...current, [key]: value }))
   }
 
   const filteredGroups = teacherId ? groups.filter(g => g.teacherId === teacherId) : groups
@@ -242,7 +258,17 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
         // Create mode: one or multiple students
         const groupId = await resolveGroupId()
         for (let i = 0; i < studentCount; i++) {
-          const form = { ...identities[i], ...shared, groupId, joinExisting: true }
+          const form = {
+            ...identities[i],
+            ...shared,
+            groupId,
+            joinExisting: true,
+            paymentAliases,
+            initialPaymentReceived: initialPayment.received,
+            initialPaymentMethod: initialPayment.method,
+            initialPaymentPaidDate: initialPayment.paidDate,
+            initialPaymentReference: initialPayment.reference,
+          }
           if (!form.startSession) form.startSession = "1"
           const res = await fetch("/api/students", {
             method: "POST",
@@ -267,6 +293,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                 lessonsPerWeek: extra.lessonsPerWeek,
                 duration: extra.duration,
                 startSession: extra.startSession,
+                initialPaymentReceived: false,
               }),
             })
             if (!res2.ok) {
@@ -397,8 +424,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                 </span>
               </label>
             </div>
-            {student && (
-              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-800">Noms associés aux paiements</p>
@@ -442,6 +468,55 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                     ))
                   )}
                 </div>
+              </div>
+            {!student && (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <label className="flex items-start gap-2 text-sm text-emerald-950">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-emerald-300"
+                    checked={initialPayment.received}
+                    onChange={(e) => setInitialPaymentField("received", e.target.checked)}
+                  />
+                  <span>
+                    Paiement reçu à l&apos;inscription
+                    <span className="block text-xs text-emerald-700">
+                      Enregistre la première session comme payée : forfait mensuel + 10 € de frais d&apos;inscription par élève.
+                    </span>
+                  </span>
+                </label>
+                {initialPayment.received && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label>Moyen</Label>
+                      <Select value={initialPayment.method} onValueChange={(value) => setInitialPaymentField("method", value)}>
+                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Virement">Virement</SelectItem>
+                          <SelectItem value="PayPal">PayPal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Date</Label>
+                      <Input
+                        type="date"
+                        value={initialPayment.paidDate}
+                        onChange={(e) => setInitialPaymentField("paidDate", e.target.value)}
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Référence</Label>
+                      <Input
+                        value={initialPayment.reference}
+                        onChange={(e) => setInitialPaymentField("reference", e.target.value)}
+                        placeholder="Optionnel"
+                        className="bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

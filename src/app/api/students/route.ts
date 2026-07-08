@@ -28,10 +28,15 @@ const studentSchema = z.object({
   parentName: z.string().optional(),
   parentPhone: z.string().optional(),
   parentEmail: z.string().email().optional().or(z.literal("")),
+  paymentGraceAllowed: z.boolean().optional(),
   paymentAliases: z.array(z.object({
     type: z.enum(["PAYPAL", "WISE", "ANY"]).optional(),
     alias: z.string().optional(),
   })).optional(),
+  initialPaymentReceived: z.boolean().optional(),
+  initialPaymentMethod: z.enum(["Virement", "PayPal"]).optional(),
+  initialPaymentPaidDate: z.string().optional(),
+  initialPaymentReference: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -76,6 +81,7 @@ export const POST = wrap(async (req: Request) => {
       level: data.level || null,
       subject: data.subject || null,
       monthlyFee: data.monthlyFee,
+      paymentGraceAllowed: user.role === "DIRECTOR" ? data.paymentGraceAllowed === true : false,
       hourlyRate: data.hourlyRate ?? null,
       lessonsPerWeek: data.lessonsPerWeek ?? null,
       duration: data.duration || null,
@@ -108,13 +114,15 @@ export const POST = wrap(async (req: Request) => {
         if (maxSession) sessionNumber = maxSession.number
       }
 
-      await prisma.lessonSession.create({
+      const lessonSession = await prisma.lessonSession.create({
         data: {
           tenantId: user.tenantId,
           studentId: student.id,
           teacherId: group.teacherId,
           subject: data.subject || "Coran",
           number: sessionNumber,
+          frequency: data.lessonsPerWeek ?? null,
+          duration: data.duration || null,
           lessons: {
             create: Array.from({ length: 8 }, (_, i) => ({
               tenantId: user.tenantId,
@@ -124,6 +132,42 @@ export const POST = wrap(async (req: Request) => {
           },
         },
       })
+
+      if (data.initialPaymentReceived) {
+        const paidDate = data.initialPaymentPaidDate ? new Date(data.initialPaymentPaidDate) : new Date()
+        const paymentMonth = paidDate.getMonth() + 1
+        const paymentYear = paidDate.getFullYear()
+        const now = new Date()
+        const initialAmount = data.monthlyFee + 10
+        const billingStudent = await prisma.student.findUnique({
+          where: { id: student.id },
+          select: { payerName: true },
+        })
+
+        await prisma.payment.create({
+          data: {
+            tenantId: user.tenantId,
+            studentId: student.id,
+            amount: initialAmount,
+            status: "CONFIRMED",
+            method: data.initialPaymentMethod || "Virement",
+            month: paymentMonth,
+            year: paymentYear,
+            reference: data.initialPaymentReference || null,
+            paidDate,
+            dueDate: new Date(paymentYear, paymentMonth - 1, 5),
+            invoiceNumber: `FAC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+            source: "MANUAL",
+            lessonSessionId: lessonSession.id,
+            sessionNumber: lessonSession.number,
+            expectedAmount: initialAmount,
+            receivedAmount: initialAmount,
+            expectedPayerName: billingStudent?.payerName ?? null,
+            confirmedAt: new Date(),
+            notes: "Paiement initial incluant 10 € de frais d'inscription.",
+          },
+        })
+      }
     }
   }
 
