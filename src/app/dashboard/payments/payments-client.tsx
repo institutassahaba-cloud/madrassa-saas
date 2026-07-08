@@ -98,6 +98,13 @@ interface PaymentMatch {
     payerName: string | null
     paymentType: string | null
   } | null
+  allocations?: { amount: number }[]
+}
+
+// Total réellement validé (alloué) d'un match ; null si aucune allocation connue.
+function allocatedTotal(match: PaymentMatch) {
+  if (!match.allocations || match.allocations.length === 0) return null
+  return match.allocations.reduce((sum, item) => sum + Number(item.amount), 0)
 }
 
 export function PaymentsClient({
@@ -563,12 +570,16 @@ export function PaymentsClient({
               </span>
             </button>
             {confirmedOpen && <div className="space-y-2">
-              {confirmedPaymentMatches.map((match) => (
+              {confirmedPaymentMatches.map((match) => {
+                const allocated = allocatedTotal(match)
+                const partial = allocated != null && match.receivedAmount - allocated > 0.01
+                return (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-blue-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
-                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                      <p className="font-semibold text-gray-900">{formatCurrency(partial ? allocated : match.receivedAmount)}{partial ? " validés" : ""}</p>
+                      {partial && <p className="text-xs text-gray-500">sur {formatCurrency(match.receivedAmount)} reçus</p>}
                       <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
@@ -586,7 +597,8 @@ export function PaymentsClient({
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Annuler / Ré-attribuer"}
                   </Button>
                 </div>
-              ))}
+                )
+              })}
             </div>}
           </CardContent>
         </Card>
@@ -908,11 +920,13 @@ function PaymentMatchDialog({
   const [mode, setMode] = useState<"sessions" | "students">("sessions")
   const [rows, setRows] = useState<AllocationRow[]>(() => [newAllocationRow(hintedStudent)])
   const [note, setNote] = useState("")
+  const [remainderForDirector, setRemainderForDirector] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   const allocated = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
   const remaining = match.receivedAmount - allocated
+  const hasRemainder = remaining > 0.01
 
   const studentsByTeacher = useMemo(() => {
     const map = new Map<string, Set<string>>()
@@ -990,7 +1004,7 @@ function PaymentMatchDialog({
 
       if (expandedAllocations.length === 0) throw new Error("Choisissez au moins une session à valider.")
 
-      const payload = { note, mode, allocations: expandedAllocations }
+      const payload = { note, mode, allocations: expandedAllocations, remainderForDirector: hasRemainder && remainderForDirector }
       const res = await fetch(`/api/payment-matches/${match.id}/allocate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1047,9 +1061,30 @@ function PaymentMatchDialog({
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
             <div className="grid gap-2 text-sm sm:grid-cols-3">
               <div><span className="text-gray-400">Reçu</span><p className="font-semibold">{formatCurrency(match.receivedAmount)}</p></div>
-              <div><span className="text-gray-400">Validé</span><p className="font-semibold">{formatCurrency(allocated)}</p></div>
+              <div><span className="text-gray-400">Validé pour les sessions</span><p className="font-semibold">{formatCurrency(allocated)}</p></div>
               <div><span className="text-gray-400">Reste</span><p className={`font-semibold ${remaining < -0.01 ? "text-red-600" : "text-gray-900"}`}>{formatCurrency(remaining)}</p></div>
             </div>
+            {hasRemainder && (
+              <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-2.5">
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-violet-900">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-violet-300"
+                    checked={remainderForDirector}
+                    onChange={(event) => setRemainderForDirector(event.target.checked)}
+                  />
+                  <span>
+                    Le reste ({formatCurrency(remaining)}) est <strong>pour le directeur</strong> — il ne sera pas compté
+                    dans les paiements des élèves et restera trouvable dans « Paiements pour le directeur ».
+                  </span>
+                </label>
+                {!remainderForDirector && (
+                  <p className="mt-1.5 pl-6 text-xs text-violet-700">
+                    Seul le montant « validé pour les sessions » sera comptabilisé. Ne gonflez pas le montant d&apos;une session pour solder le reste.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">

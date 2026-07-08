@@ -69,6 +69,7 @@ export default async function PaymentsPage() {
       where: { tenantId: user.tenantId, status: "AUTO_CONFIRMED" },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+        allocations: { select: { amount: true } },
       },
       orderBy: { confirmedAt: "desc" },
       take: 30,
@@ -77,6 +78,7 @@ export default async function PaymentsPage() {
       where: { tenantId: user.tenantId, status: "CONFIRMED" },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+        allocations: { select: { amount: true } },
       },
       orderBy: { confirmedAt: "desc" },
       take: 30,

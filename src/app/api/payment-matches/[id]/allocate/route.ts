@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
+import { DIRECTOR_REMAINDER_SUFFIX } from "@/lib/director-payer-alias"
 import { wrap } from "@/lib/api"
 
 type AllocationInput = {
@@ -153,6 +154,34 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
       match.detectedPayerName,
       match.source,
     ).catch((err) => console.error("[alias] apprentissage échoué:", err))
+  }
+
+  // Part « directeur » : le reste non alloué du virement est tracé comme un
+  // PaymentMatch DIRECTOR séparé (trouvable, jamais compté dans les revenus).
+  // Le nom du payeur n'est PAS appris comme payeur directeur : il paie aussi
+  // des sessions d'élèves.
+  const remainder = +(match.receivedAmount - totalAllocated).toFixed(2)
+  if (body.remainderForDirector === true && remainder > 0.01) {
+    await prisma.paymentMatch.upsert({
+      where: { tenantId_gmailMessageId: { tenantId: user.tenantId, gmailMessageId: `${providerReference}${DIRECTOR_REMAINDER_SUFFIX}` } },
+      create: {
+        tenantId: user.tenantId,
+        source: match.source,
+        gmailMessageId: `${providerReference}${DIRECTOR_REMAINDER_SUFFIX}`,
+        receivedAmount: remainder,
+        detectedPayerName: match.detectedPayerName,
+        paymentLabel: match.paymentLabel,
+        paymentDate: match.paymentDate,
+        status: "DIRECTOR",
+        reason: `Part pour le directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
+        rawSubject: match.rawSubject,
+      },
+      update: {
+        receivedAmount: remainder,
+        status: "DIRECTOR",
+        reason: `Part pour le directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
+      },
+    })
   }
 
   await prisma.paymentMatch.update({

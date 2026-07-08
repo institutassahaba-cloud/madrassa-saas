@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { forgetLearnedPaymentAlias } from "@/lib/student-payment-aliases"
+import { DIRECTOR_REMAINDER_SUFFIX } from "@/lib/director-payer-alias"
 import { wrap } from "@/lib/api"
 
 // Annulation d'un paiement confirmé → ré-attribuable.
@@ -59,6 +60,11 @@ export const POST = wrap(async (_req: Request, { params }: { params: Promise<{ i
     prisma.paymentMatch.update({
       where: { id: match.id },
       data: { status: "TO_VERIFY", confirmedAt: null },
+    }),
+    // La part « directeur » créée lors de la validation repart avec elle :
+    // la ré-attribution repart du montant total reçu.
+    prisma.paymentMatch.deleteMany({
+      where: { tenantId: user.tenantId, gmailMessageId: `${match.gmailMessageId}${DIRECTOR_REMAINDER_SUFFIX}`, status: "DIRECTOR" },
     }),
   ])
 

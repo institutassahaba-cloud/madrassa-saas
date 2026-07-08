@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { normalizePaymentAlias } from "@/lib/payment-alias-schema"
 
+// Suffixe de la référence (gmailMessageId) du PaymentMatch créé pour la part
+// « directeur » d'un virement partiellement alloué à des sessions.
+export const DIRECTOR_REMAINDER_SUFFIX = "#directeur"
+
 let directorPayerAliasSchemaReady: Promise<void> | null = null
 
 async function execIgnoreExisting(sql: string) {
