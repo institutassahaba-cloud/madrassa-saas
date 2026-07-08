@@ -19,7 +19,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
 
   const lesson = await prisma.lesson.findFirst({
     where: { id, tenantId: user.tenantId },
-    include: { session: { select: { studentId: true, teacherId: true, subject: true } } },
+    include: { session: { select: { studentId: true, teacherId: true } } },
   })
   if (!lesson) return NextResponse.json({ error: "Not found" }, { status: 404 })
   if (user.role === "TEACHER" && lesson.session.teacherId !== user.id) {
@@ -44,8 +44,6 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
             legacyPayrollBoundary: true,
             session: {
               studentId: lesson.session.studentId,
-              teacherId: lesson.session.teacherId,
-              subject: lesson.session.subject,
             },
           },
           data: { legacyPayrollBoundary: false },
