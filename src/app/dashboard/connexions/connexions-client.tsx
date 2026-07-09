@@ -102,7 +102,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
         alert(data.error || "Lecture de la boîte facturation impossible.")
         return
       }
-      alert(`${data.created ?? 0} nouveau(x) paiement(s) détecté(s). ${data.skipped ?? 0} email(s) ignoré(s).`)
+      alert(`${data.created ?? 0} nouveau(x) paiement(s) détecté(s). ${data.updated ?? 0} complété(s) (nom rattrapé). ${data.skipped ?? 0} email(s) ignoré(s).`)
       window.location.href = "/dashboard/payments"
     } finally {
       setScanLoading(false)

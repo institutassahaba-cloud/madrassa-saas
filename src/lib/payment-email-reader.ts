@@ -112,8 +112,30 @@ function extractReference(source: string, text: string, fallback: string) {
   return match?.[1] || fallback
 }
 
-function extractPayerName(source: string, text: string) {
-  // Wise : "Vous avez reçu .. EUR de "Nom Prénom"" — le nom est entre guillemets.
+function cleanPayerName(raw: string) {
+  return raw
+    .replace(/["'«»]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function extractPayerName(source: string, text: string, subject = "") {
+  if (source === "WISE") {
+    // Sujet Wise (sans guillemets), ex. « Argent reçu de Nom Prénom ».
+    // Le sujet est sur une seule ligne : on capture jusqu'à la fin de ligne.
+    const subjectPatterns = [
+      /re[çc]u\s+de\s+l['’]argent\s+de\s+(.+)$/i,
+      /\bde\s+la\s+part\s+de\s+(.+)$/i,
+      /argent\s+re[çc]u\s+de\s+(.+)$/i,
+      /re[çc]u\s+de\s+(.+)$/i,
+    ]
+    for (const pattern of subjectPatterns) {
+      const match = subject.match(pattern)
+      const name = match?.[1] ? cleanPayerName(match[1]) : ""
+      if (name.length >= 2) return name
+    }
+  }
+  // Wise ancien format : "Vous avez reçu .. EUR de "Nom Prénom"" — le nom est entre guillemets.
   const wisePatterns = [
     /(?:reçu|recu|received)[^"]*?\b(?:de|from)\s+"([^"]{2,80})"/i,
     /\b(?:de|from)\s+"([^"]{2,80})"/i,
@@ -126,7 +148,7 @@ function extractPayerName(source: string, text: string) {
   const patterns = source === "WISE" ? [...wisePatterns, ...commonPatterns] : commonPatterns
   for (const pattern of patterns) {
     const match = text.match(pattern)
-    if (match?.[1]) return match[1].trim()
+    if (match?.[1]) return cleanPayerName(match[1])
   }
   return null
 }
@@ -324,10 +346,10 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   })
   const startedAt = options.startedAt ?? scanSettings?.paymentScanStartedAt ?? null
   if (requireEnabled && !scanSettings?.paymentScanEnabled) {
-    return { ok: true, disabled: true, created: 0, skipped: 0, scanned: 0 }
+    return { ok: true, disabled: true, created: 0, updated: 0, skipped: 0, scanned: 0 }
   }
   if (requireEnabled && !startedAt) {
-    return { ok: true, disabled: true, created: 0, skipped: 0, scanned: 0 }
+    return { ok: true, disabled: true, created: 0, updated: 0, skipped: 0, scanned: 0 }
   }
 
   const gmail = await getGmailClient(tenantId)
@@ -350,6 +372,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   })
   const messages = list.data.messages ?? []
   let created = 0
+  let updated = 0
   let skipped = 0
 
   for (const message of messages) {
@@ -381,16 +404,38 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       continue
     }
     const reference = extractReference(source, combined, `gmail:${message.id}`)
+    const detectedPayerName = extractPayerName(source, combined, subject)
+    const paymentLabel = extractLabel(subject, combined)
     const existing = await prisma.paymentMatch.findUnique({
       where: { tenantId_gmailMessageId: { tenantId, gmailMessageId: reference } },
-      select: { id: true },
+      select: { id: true, status: true, detectedPayerName: true, paymentLabel: true, studentId: true },
     })
     if (existing) {
+      // Rattrapage : un paiement encore « à vérifier » mais sans nom détecté
+      // (créé pendant une coupure du scan ou par l'ancien bug d'extraction Wise)
+      // est complété a posteriori. On ne touche JAMAIS aux paiements déjà validés,
+      // classés directeur ou supprimés — et on ne recrée jamais de doublon.
+      if (existing.status === "TO_VERIFY" && !existing.detectedPayerName && detectedPayerName) {
+        const backfillLabel = existing.paymentLabel ?? paymentLabel
+        const suggestion = existing.studentId
+          ? null
+          : await suggestStudentForPayment(tenantId, source, detectedPayerName, backfillLabel)
+        await prisma.paymentMatch.update({
+          where: { id: existing.id },
+          data: {
+            detectedPayerName,
+            paymentLabel: backfillLabel,
+            ...(suggestion
+              ? { studentId: suggestion.studentId, score: suggestion.score, reason: suggestion.reason }
+              : {}),
+          },
+        })
+        updated += 1
+        continue
+      }
       skipped += 1
       continue
     }
-    const detectedPayerName = extractPayerName(source, combined)
-    const paymentLabel = extractLabel(subject, combined)
 
     if (await isKnownDirectorPayer(tenantId, source, detectedPayerName)) {
       await prisma.paymentMatch.create({
@@ -455,5 +500,5 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     created += 1
   }
 
-  return { ok: true, created, skipped, scanned: messages.length }
+  return { ok: true, created, updated, skipped, scanned: messages.length }
 }
