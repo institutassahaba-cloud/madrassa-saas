@@ -16,7 +16,7 @@ interface StudentDialogProps {
   student: any | null
   groups: { id: string; name: string; teacherId: string | null }[]
   teachers: { id: string; name: string }[]
-  // Paiements détectés non traités : permet de lier le 1er paiement du nouvel
+  // Paiements détectés non traités : permet de lier le paiement de chaque nouvel
   // élève à un virement/PayPal reçu (validé + retiré des non traités d'un coup).
   paymentMatches?: {
     id: string
@@ -25,6 +25,8 @@ interface StudentDialogProps {
     detectedPayerName: string | null
     paymentDate: string | Date | null
   }[]
+  // Paiement pré-sélectionné pour le 1er élève (celui d'où l'on a cliqué « nouvel élève »).
+  preselectedPaymentMatchId?: string
 }
 
 const EMPTY_IDENTITY = {
@@ -75,7 +77,7 @@ function addDurationToTime(time: string, duration: string): string {
   return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
 }
 
-export function StudentDialog({ open, onClose, student, groups, teachers, paymentMatches }: StudentDialogProps) {
+export function StudentDialog({ open, onClose, student, groups, teachers, paymentMatches, preselectedPaymentMatchId }: StudentDialogProps) {
   const [studentCount, setStudentCount] = useState(1)
   const [identities, setIdentities] = useState([{ ...EMPTY_IDENTITY }])
   const [shared, setShared] = useState({ ...EMPTY_SHARED })
@@ -87,7 +89,9 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
   const [multiProf, setMultiProf] = useState(false)
   const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
   const [initialPayment, setInitialPayment] = useState({ ...EMPTY_INITIAL_PAYMENT })
-  const [initialPaymentMatchId, setInitialPaymentMatchId] = useState("")
+  // Un paiement détecté à associer par élève (index aligné sur `identities`).
+  // L'élève 1 est pré-rempli avec le paiement cliqué ; les suivants sont optionnels.
+  const [matchIds, setMatchIds] = useState<string[]>([""])
   const [extraTeacherId, setExtraTeacherId] = useState("")
   const [extra, setExtra] = useState({ ...EMPTY_EXTRA })
   const [groupInfo, setGroupInfo] = useState<{ count: number; subject?: string; lessonsPerWeek?: number; duration?: string; newRate?: number } | null>(null)
@@ -147,6 +151,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       setNewClassDay("")
       setNewClassTime("")
       setInitialPayment({ ...EMPTY_INITIAL_PAYMENT, paidDate: todayIso() })
+      setMatchIds([""])
     } else {
       setStudentCount(1)
       setIdentities([{ ...EMPTY_IDENTITY }])
@@ -154,6 +159,8 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       setTeacherId("")
       setPaymentAliases([])
       setInitialPayment({ ...EMPTY_INITIAL_PAYMENT, paidDate: todayIso() })
+      // Élève 1 pré-rempli avec le paiement d'où l'on a cliqué « nouvel élève ».
+      setMatchIds([preselectedPaymentMatchId || ""])
       setJoinExisting(false)
       setNewClassName("")
       setNewClassDay("")
@@ -163,7 +170,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     setExtra({ ...EMPTY_EXTRA })
     setExtraTeacherId("")
     setError("")
-  }, [student, open, groups])
+  }, [student, open, groups, preselectedPaymentMatchId])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function updateCount(newCount: number) {
@@ -175,10 +182,32 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       }
       return prev.slice(0, newCount)
     })
+    setMatchIds((prev) => {
+      if (newCount > prev.length) {
+        return [...prev, ...Array.from({ length: newCount - prev.length }, () => "")]
+      }
+      return prev.slice(0, newCount)
+    })
   }
 
   function setIdentity(idx: number, key: string, value: string) {
     setIdentities((prev) => prev.map((item, i) => i === idx ? { ...item, [key]: value } : item))
+  }
+
+  function setMatchId(idx: number, value: string) {
+    setMatchIds((prev) => {
+      const next = [...prev]
+      while (next.length <= idx) next.push("")
+      next[idx] = value
+      return next
+    })
+  }
+
+  // Paiements encore sélectionnables pour l'élève `idx` : on retire ceux déjà
+  // choisis par les autres élèves du binôme pour éviter d'associer deux fois le même.
+  function availableMatches(idx: number) {
+    const taken = new Set(matchIds.filter((_, j) => j !== idx).filter(Boolean))
+    return (paymentMatches ?? []).filter((match) => !taken.has(match.id))
   }
 
   function setSharedField(key: string, value: string | boolean) {
@@ -268,18 +297,21 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
         // Create mode: one or multiple students
         const groupId = await resolveGroupId()
         for (let i = 0; i < studentCount; i++) {
+          // Chaque élève reçoit son propre paiement détecté (élève 1 = paiement cliqué,
+          // élèves suivants = choisis dans le menu, optionnels). À défaut de paiement
+          // associé, on retombe sur la saisie manuelle partagée (« paiement reçu »).
+          const matchId = matchIds[i] || undefined
           const form = {
             ...identities[i],
             ...shared,
             groupId,
             joinExisting: true,
             paymentAliases,
-            initialPaymentReceived: initialPayment.received,
+            initialPaymentReceived: Boolean(matchId) || initialPayment.received,
             initialPaymentMethod: initialPayment.method,
             initialPaymentPaidDate: initialPayment.paidDate,
-            initialPaymentReference: initialPayment.reference,
-            // Le paiement détecté n'est alloué qu'une fois (au 1er élève d'une fratrie).
-            initialPaymentMatchId: i === 0 && initialPaymentMatchId ? initialPaymentMatchId : undefined,
+            initialPaymentReference: matchId ? "" : initialPayment.reference,
+            initialPaymentMatchId: matchId,
           }
           if (!form.startSession) form.startSession = "1"
           const res = await fetch("/api/students", {
@@ -413,6 +445,31 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                   </div>
                 )}
               </div>
+
+              {/* Paiement détecté à associer à CET élève (scan PayPal/Wise). Élève 1
+                  pré-rempli avec le paiement cliqué (modifiable) ; élèves suivants optionnels. */}
+              {!student && (paymentMatches?.length ?? 0) > 0 && (
+                <div className="space-y-1.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <Label>Paiement à associer {studentCount > 1 ? `(élève ${idx + 1})` : ""}</Label>
+                  <Select value={matchIds[idx] || "NONE"} onValueChange={(value) => setMatchId(idx, value === "NONE" ? "" : value)}>
+                    <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir un paiement reçu…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">— Aucun —</SelectItem>
+                      {availableMatches(idx).map((match) => (
+                        <SelectItem key={match.id} value={match.id}>
+                          {match.source === "PAYPAL" ? "PayPal" : "Wise"} · {match.receivedAmount.toFixed(2)} € · {match.detectedPayerName || "payeur non détecté"}
+                          {match.paymentDate ? ` · ${new Date(match.paymentDate).toLocaleDateString("fr-FR")}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {matchIds[idx] && (
+                    <p className="text-xs text-emerald-700">
+                      Validé pour la 1ʳᵉ session de cet élève, retiré des « non traités », payeur mémorisé pour les prochains mois.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ))}
 
@@ -491,35 +548,13 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                     onChange={(e) => setInitialPaymentField("received", e.target.checked)}
                   />
                   <span>
-                    Paiement reçu à l&apos;inscription
+                    Paiement reçu à l&apos;inscription (saisie manuelle)
                     <span className="block text-xs text-emerald-700">
-                      Enregistre la première session comme payée : forfait mensuel + 10 € de frais d&apos;inscription par élève.
+                      Pour un élève <strong>sans</strong> paiement détecté associé ci-dessus : enregistre la première session comme payée (forfait mensuel + 10 € de frais d&apos;inscription par élève).
                     </span>
                   </span>
                 </label>
-                {initialPayment.received && (paymentMatches?.length ?? 0) > 0 && (
-                  <div className="mt-3 space-y-1.5">
-                    <Label>Paiement reçu détecté (scan PayPal/Wise)</Label>
-                    <Select value={initialPaymentMatchId || "NONE"} onValueChange={(value) => setInitialPaymentMatchId(value === "NONE" ? "" : value)}>
-                      <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir un paiement reçu…" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NONE">— Saisie manuelle (aucun) —</SelectItem>
-                        {paymentMatches!.map((match) => (
-                          <SelectItem key={match.id} value={match.id}>
-                            {match.source === "PAYPAL" ? "PayPal" : "Wise"} · {match.receivedAmount.toFixed(2)} € · {match.detectedPayerName || "payeur non détecté"}
-                            {match.paymentDate ? ` · ${new Date(match.paymentDate).toLocaleDateString("fr-FR")}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {initialPaymentMatchId && (
-                      <p className="text-xs text-emerald-700">
-                        Ce paiement sera validé pour la 1ʳᵉ session de l&apos;élève, retiré des « non traités », et le payeur sera mémorisé pour les prochains mois.
-                      </p>
-                    )}
-                  </div>
-                )}
-                {initialPayment.received && !initialPaymentMatchId && (
+                {initialPayment.received && (
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
                     <div className="space-y-1.5">
                       <Label>Moyen</Label>

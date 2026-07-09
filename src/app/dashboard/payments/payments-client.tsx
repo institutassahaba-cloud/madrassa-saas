@@ -155,6 +155,8 @@ export function PaymentsClient({
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<PaymentMatch | null>(null)
   const [newStudentOpen, setNewStudentOpen] = useState(false)
+  // Paiement d'où l'on a cliqué « nouvel élève » : pré-rempli pour l'élève 1 du formulaire.
+  const [newStudentPaymentId, setNewStudentPaymentId] = useState("")
   const [scanState, setScanState] = useState(scanControl)
   const [scanLoading, setScanLoading] = useState(false)
   const [unprocessedOpen, setUnprocessedOpen] = useState(paymentMatches.length > 0)
@@ -883,13 +885,23 @@ export function PaymentsClient({
           teachers={teachers}
           lessonSessions={lessonSessions}
           paidBySession={paidBySession}
-          onNewStudent={() => setNewStudentOpen(true)}
+          onNewStudent={(matchId) => { setNewStudentPaymentId(matchId); setNewStudentOpen(true) }}
           onClose={() => setSelectedMatch(null)}
         />
       )}
       {/* Création d'un nouvel élève depuis un paiement non traité : même formulaire
-          que « Fiches élèves » (classe, planning, alias payeur, 1er paiement...). */}
-      <StudentDialog open={newStudentOpen} onClose={() => setNewStudentOpen(false)} student={null} groups={groups} teachers={teachers} paymentMatches={paymentMatches} />
+          que « Fiches élèves » (classe, planning, alias payeur, 1er paiement...).
+          Le paiement cliqué est pré-associé à l'élève 1 ; un binôme peut associer
+          un paiement distinct à chaque élève via le menu de sa carte. */}
+      <StudentDialog
+        open={newStudentOpen}
+        onClose={() => { setNewStudentOpen(false); setNewStudentPaymentId("") }}
+        student={null}
+        groups={groups}
+        teachers={teachers}
+        paymentMatches={paymentMatches}
+        preselectedPaymentMatchId={newStudentPaymentId}
+      />
     </div>
   )
 }
@@ -976,7 +988,7 @@ function PaymentMatchDialog({
   teachers: Teacher[]
   lessonSessions: LessonSessionOption[]
   paidBySession: Record<string, string>
-  onNewStudent: () => void
+  onNewStudent: (matchId: string) => void
   onClose: () => void
 }) {
   const hintedStudent = students.find((student) => student.id === match.student?.id) ?? null
@@ -1133,7 +1145,7 @@ function PaymentMatchDialog({
             <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
             <button
               type="button"
-              onClick={() => { onNewStudent(); onClose() }}
+              onClick={() => { onNewStudent(match.id); onClose() }}
               className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
             >
               <Plus className="h-4 w-4" />
