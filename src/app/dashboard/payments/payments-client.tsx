@@ -745,6 +745,7 @@ export function PaymentsClient({
                         )}
                         <p className="text-xs opacity-80">
                           {payment.lessonSession?.subject || "Session"} · Session {payment.sessionNumber ?? payment.lessonSession?.number ?? "—"}
+                          {` · Professeur : ${paymentTeacherName(payment)}`}
                           {payment.student.group?.name ? ` · ${payment.student.group.name}` : ""}
                         </p>
                       </div>
