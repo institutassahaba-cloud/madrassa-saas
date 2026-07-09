@@ -1,6 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -30,6 +30,7 @@ const STATUS_CONFIG = {
 interface Payment {
   id: string
   amount: number
+  receivedAmount: number | null
   status: string
   month: number
   year: number
@@ -106,6 +107,10 @@ interface PaymentMatch {
 function allocatedTotal(match: PaymentMatch) {
   if (!match.allocations || match.allocations.length === 0) return null
   return match.allocations.reduce((sum, item) => sum + Number(item.amount), 0)
+}
+
+function paymentReceivedAmount(payment: Pick<Payment, "amount" | "receivedAmount">) {
+  return Number(payment.receivedAmount ?? payment.amount ?? 0)
 }
 
 export function PaymentsClient({
@@ -198,7 +203,7 @@ export function PaymentsClient({
       ? true
       : period.isCurrent && !period.start
         ? false
-      : (!period.start || paymentDate > new Date(period.start).getTime()) && (!period.end || paymentDate <= new Date(period.end).getTime())
+      : (!period.start || paymentDate >= new Date(period.start).getTime()) && (!period.end || paymentDate <= new Date(period.end).getTime())
     return matchSearch && matchStatus && matchTeacher && matchPeriod
   }).sort((a, b) => {
     const direction = sortDirection === "asc" ? 1 : -1
@@ -212,7 +217,7 @@ export function PaymentsClient({
   })
 
   const summary = {
-    paid: filtered.filter((p) => (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)).reduce((sum, p) => sum + p.amount, 0),
+    paid: filtered.filter((p) => (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)).reduce((sum, p) => sum + paymentReceivedAmount(p), 0),
     sentRequests: pendingPayments.length,
     toVerify: paymentMatches.length,
   }
@@ -745,7 +750,18 @@ export function PaymentsClient({
                       </div>
                       <Badge variant={days >= 6 ? "destructive" : days >= 4 ? "warning" : "success"}>{days} j</Badge>
                     </div>
-                    <p className="mt-2 text-sm font-semibold">{formatCurrency(payment.amount)}</p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-semibold">{formatCurrency(payment.amount)}</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full justify-center bg-white/90 text-gray-900 hover:bg-white sm:w-auto"
+                        onClick={() => { setEditPayment(payment); setDialogOpen(true) }}
+                      >
+                        <ArrowUpRight className="h-4 w-4" />
+                        Ajouter manuellement le paiement
+                      </Button>
+                    </div>
                   </div>
                 )
               })}
@@ -833,7 +849,7 @@ export function PaymentsClient({
                         {p.student.group && <p className="text-xs text-gray-500">{p.student.group.name}</p>}
                       </TableCell>
                       <TableCell className="text-sm text-gray-700">{paymentTeacherName(p)}</TableCell>
-                      <TableCell><span className="font-semibold">{formatCurrency(p.amount)}</span></TableCell>
+                      <TableCell><span className="font-semibold">{formatCurrency(paymentReceivedAmount(p))}</span></TableCell>
                       <TableCell className="text-sm text-gray-600">{p.method ?? "—"}</TableCell>
                       <TableCell className="text-sm">{p.paidDate ? formatDate(p.paidDate) : "—"}</TableCell>
                       <TableCell>

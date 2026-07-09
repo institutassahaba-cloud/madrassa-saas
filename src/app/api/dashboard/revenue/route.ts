@@ -17,18 +17,19 @@ export const GET = wrap(async () => {
 
   const year = new Date().getFullYear()
 
-  const payments = await prisma.payment.groupBy({
-    by: ["month", "year"],
-    where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] }, year, paidDate: { lte: new Date() } },
-    _sum: { amount: true },
-    orderBy: { month: "asc" },
+  const payments = await prisma.payment.findMany({
+    where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] } },
+    select: { amount: true, receivedAmount: true, confirmedAt: true, paidDate: true, createdAt: true },
   })
 
   const data = Array.from({ length: 12 }, (_, i) => {
-    const found = payments.find((p) => p.month === i + 1)
+    const monthPayments = payments.filter((payment) => {
+      const receivedAt = payment.confirmedAt ?? payment.paidDate ?? payment.createdAt
+      return receivedAt.getFullYear() === year && receivedAt.getMonth() === i
+    })
     return {
       month: MONTHS_FR[i].slice(0, 3),
-      amount: found ? Number(found._sum.amount ?? 0) : 0,
+      amount: monthPayments.reduce((sum, payment) => sum + Number(payment.receivedAmount ?? payment.amount ?? 0), 0),
     }
   })
 

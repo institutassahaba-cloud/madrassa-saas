@@ -12,6 +12,7 @@ const STATUS_CONFIG = {
 interface Payment {
   id: string
   amount: number
+  receivedAmount?: number | null
   status: string
   month: number
   year: number
@@ -45,7 +46,7 @@ export function RecentPayments({ payments }: { payments: Payment[] }) {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge variant={cfg.variant}>{cfg.label}</Badge>
-                    <span className="text-sm font-semibold text-gray-900">{formatCurrency(p.amount)}</span>
+                    <span className="text-sm font-semibold text-gray-900">{formatCurrency(p.receivedAmount ?? p.amount)}</span>
                   </div>
                 </div>
               )

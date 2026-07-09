@@ -23,12 +23,24 @@ async function getStats(tenantId: string) {
   if (now < startOfBillingMonth) {
     startOfBillingMonth.setMonth(startOfBillingMonth.getMonth() - 1)
   }
+  const scanSettings = await prisma.tenantSettings.findUnique({
+    where: { tenantId },
+    select: { paymentScanStartedAt: true },
+  })
+  const revenueStart = scanSettings?.paymentScanStartedAt ?? startOfBillingMonth
+  const receivedPaymentDateFilter = {
+    OR: [
+      { confirmedAt: { gte: revenueStart, lte: now } },
+      { confirmedAt: null, paidDate: { gte: revenueStart, lte: now } },
+      { confirmedAt: null, paidDate: null, createdAt: { gte: revenueStart, lte: now } },
+    ],
+  }
 
   const [
     totalStudents,
     activeStudents,
     latePayments,
-    monthRevenue,
+    receivedPayments,
     totalTeachers,
     totalAttendances,
     presentAttendances,
@@ -43,15 +55,19 @@ async function getStats(tenantId: string) {
     prisma.payment.count({
       where: { tenantId, status: { in: [...PAYMENT_AWAITING_STATUSES] }, dueDate: { lt: now } },
     }),
-    prisma.payment.aggregate({
-      where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] }, paidDate: { gte: startOfBillingMonth, lte: now } },
-      _sum: { amount: true },
+    prisma.payment.findMany({
+      where: {
+        tenantId,
+        status: { in: [...PAYMENT_PAID_STATUSES] },
+        ...receivedPaymentDateFilter,
+      },
+      select: { amount: true, receivedAmount: true },
     }),
     prisma.user.count({ where: { tenantId, role: "TEACHER", isActive: true } }),
     prisma.attendance.count({ where: { tenantId } }),
     prisma.attendance.count({ where: { tenantId, status: "PRESENT" } }),
     prisma.payment.findMany({
-      where: { tenantId },
+      where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] } },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { student: { select: { firstName: true, lastName: true } } },
@@ -72,14 +88,14 @@ async function getStats(tenantId: string) {
     totalStudents,
     activeStudents,
     latePayments,
-    monthRevenue: Number(monthRevenue._sum.amount ?? 0),
+    monthRevenue: receivedPayments.reduce((sum, payment) => sum + Number(payment.receivedAmount ?? payment.amount ?? 0), 0),
     totalTeachers,
     attendanceRate: totalAttendances > 0 ? Math.round((presentAttendances / totalAttendances) * 100) : 0,
     recentPayments,
     paymentsByStatus,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     activeBySubject: (activeBySubject as any[]).map((g: any) => ({ subject: g.subject, count: g._count })),
-    billingStart: startOfBillingMonth,
+    billingStart: revenueStart,
     month,
     year,
   }

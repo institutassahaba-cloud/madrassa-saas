@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatCurrency } from "@/lib/utils"
+import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 
 interface Teacher {
   id: string
@@ -90,6 +91,7 @@ export function PaymentDialog({
   const [rows, setRows] = useState<ManualPaymentRow[]>(() => [newManualPaymentRow()])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const isPendingPayment = Boolean(payment && (PAYMENT_AWAITING_STATUSES as readonly string[]).includes(payment.status))
 
   const selectedStudent = students.find((s) => s.id === form.studentId)
   const filteredStudents = useMemo(() => {
@@ -235,7 +237,7 @@ export function PaymentDialog({
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
       <DialogContent className={payment ? "max-w-lg" : "max-w-4xl"} onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>{payment ? "Modifier le paiement manuel" : "Enregistrer un paiement manuel"}</DialogTitle>
+          <DialogTitle>{isPendingPayment ? "Ajouter manuellement le paiement reçu" : payment ? "Modifier le paiement manuel" : "Enregistrer un paiement manuel"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {payment ? (
@@ -429,8 +431,13 @@ export function PaymentDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Référence</Label>
-            <Input value={form.reference} onChange={(e) => set("reference", e.target.value)} placeholder="ex: TRF-001234 ou ID PayPal" />
+            <Label>Numéro de transaction / référence{isPendingPayment ? " *" : ""}</Label>
+            <Input
+              value={form.reference}
+              onChange={(e) => set("reference", e.target.value)}
+              placeholder="ex: ID PayPal, référence Wise ou virement"
+              required={isPendingPayment}
+            />
           </div>
 
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-medium text-emerald-700">
@@ -445,11 +452,11 @@ export function PaymentDialog({
             <Button
               type="submit"
               disabled={loading || !form.paidDate || !form.method || (payment
-                ? (!form.teacherId || !form.studentId || !form.lessonSessionId || !form.amount)
+                ? (!form.teacherId || !form.studentId || !form.lessonSessionId || !form.amount || (isPendingPayment && !form.reference.trim()))
                 : rows.some((row) => !row.teacherId || !row.studentId || !row.lessonSessionId || !row.amount || (students.find((student) => student.id === row.studentId) && Number(row.amount) !== students.find((student) => student.id === row.studentId)!.monthlyFee && !row.amountOverrideReason)))}
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {payment ? "Enregistrer" : "Ajouter"}
+              {isPendingPayment ? "Valider le paiement" : payment ? "Enregistrer" : "Ajouter"}
             </Button>
           </div>
         </form>
