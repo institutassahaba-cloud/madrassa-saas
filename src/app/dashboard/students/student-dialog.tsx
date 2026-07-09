@@ -16,6 +16,15 @@ interface StudentDialogProps {
   student: any | null
   groups: { id: string; name: string; teacherId: string | null }[]
   teachers: { id: string; name: string }[]
+  // Paiements détectés non traités : permet de lier le 1er paiement du nouvel
+  // élève à un virement/PayPal reçu (validé + retiré des non traités d'un coup).
+  paymentMatches?: {
+    id: string
+    source: string
+    receivedAmount: number
+    detectedPayerName: string | null
+    paymentDate: string | Date | null
+  }[]
 }
 
 const EMPTY_IDENTITY = {
@@ -66,7 +75,7 @@ function addDurationToTime(time: string, duration: string): string {
   return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
 }
 
-export function StudentDialog({ open, onClose, student, groups, teachers }: StudentDialogProps) {
+export function StudentDialog({ open, onClose, student, groups, teachers, paymentMatches }: StudentDialogProps) {
   const [studentCount, setStudentCount] = useState(1)
   const [identities, setIdentities] = useState([{ ...EMPTY_IDENTITY }])
   const [shared, setShared] = useState({ ...EMPTY_SHARED })
@@ -78,6 +87,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
   const [multiProf, setMultiProf] = useState(false)
   const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
   const [initialPayment, setInitialPayment] = useState({ ...EMPTY_INITIAL_PAYMENT })
+  const [initialPaymentMatchId, setInitialPaymentMatchId] = useState("")
   const [extraTeacherId, setExtraTeacherId] = useState("")
   const [extra, setExtra] = useState({ ...EMPTY_EXTRA })
   const [groupInfo, setGroupInfo] = useState<{ count: number; subject?: string; lessonsPerWeek?: number; duration?: string; newRate?: number } | null>(null)
@@ -268,6 +278,8 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
             initialPaymentMethod: initialPayment.method,
             initialPaymentPaidDate: initialPayment.paidDate,
             initialPaymentReference: initialPayment.reference,
+            // Le paiement détecté n'est alloué qu'une fois (au 1er élève d'une fratrie).
+            initialPaymentMatchId: i === 0 && initialPaymentMatchId ? initialPaymentMatchId : undefined,
           }
           if (!form.startSession) form.startSession = "1"
           const res = await fetch("/api/students", {
@@ -485,7 +497,29 @@ export function StudentDialog({ open, onClose, student, groups, teachers }: Stud
                     </span>
                   </span>
                 </label>
-                {initialPayment.received && (
+                {initialPayment.received && (paymentMatches?.length ?? 0) > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    <Label>Paiement reçu détecté (scan PayPal/Wise)</Label>
+                    <Select value={initialPaymentMatchId || "NONE"} onValueChange={(value) => setInitialPaymentMatchId(value === "NONE" ? "" : value)}>
+                      <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir un paiement reçu…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">— Saisie manuelle (aucun) —</SelectItem>
+                        {paymentMatches!.map((match) => (
+                          <SelectItem key={match.id} value={match.id}>
+                            {match.source === "PAYPAL" ? "PayPal" : "Wise"} · {match.receivedAmount.toFixed(2)} € · {match.detectedPayerName || "payeur non détecté"}
+                            {match.paymentDate ? ` · ${new Date(match.paymentDate).toLocaleDateString("fr-FR")}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {initialPaymentMatchId && (
+                      <p className="text-xs text-emerald-700">
+                        Ce paiement sera validé pour la 1ʳᵉ session de l&apos;élève, retiré des « non traités », et le payeur sera mémorisé pour les prochains mois.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {initialPayment.received && !initialPaymentMatchId && (
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
                     <div className="space-y-1.5">
                       <Label>Moyen</Label>

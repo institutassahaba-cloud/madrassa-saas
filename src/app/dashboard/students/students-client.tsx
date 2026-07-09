@@ -167,7 +167,7 @@ function parseCSV(text: string): ImportRow[] {
   }).filter((r) => r.firstName)
 }
 
-export function StudentsClient({ students, groups, teachers, role }: { students: Student[]; groups: Group[]; teachers: Teacher[]; role: string }) {
+export function StudentsClient({ students, groups, teachers, role, paymentMatches }: { students: Student[]; groups: Group[]; teachers: Teacher[]; role: string; paymentMatches?: { id: string; source: string; receivedAmount: number; detectedPayerName: string | null; paymentDate: string | null }[] }) {
   const [search, setSearch]         = useState("")
   const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["ACTIVE"]))
   const [teacherFilter, setTeacherFilter] = useState("ALL")
@@ -578,7 +578,7 @@ export function StudentsClient({ students, groups, teachers, role }: { students:
         </CardContent>
       </Card>
 
-      <StudentDialog open={dialogOpen} onClose={() => setDialogOpen(false)} student={editStudent} groups={groups} teachers={teachers} />
+      <StudentDialog open={dialogOpen} onClose={() => setDialogOpen(false)} student={editStudent} groups={groups} teachers={teachers} paymentMatches={paymentMatches} />
     </div>
   )
 }

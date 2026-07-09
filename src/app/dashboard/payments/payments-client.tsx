@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { PaymentDialog } from "./payment-dialog"
+import { StudentDialog } from "../students/student-dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { PAYMENT_PAID_STATUSES, PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 
@@ -111,6 +112,7 @@ export function PaymentsClient({
   payments,
   students,
   teachers,
+  groups,
   lessonSessions,
   paidBySession,
   paymentMatches,
@@ -128,6 +130,7 @@ export function PaymentsClient({
   payments: Payment[]
   students: Student[]
   teachers: Teacher[]
+  groups: { id: string; name: string; teacherId: string | null }[]
   lessonSessions: LessonSessionOption[]
   paidBySession: Record<string, string>
   paymentMatches: PaymentMatch[]
@@ -151,6 +154,7 @@ export function PaymentsClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<PaymentMatch | null>(null)
+  const [newStudentOpen, setNewStudentOpen] = useState(false)
   const [scanState, setScanState] = useState(scanControl)
   const [scanLoading, setScanLoading] = useState(false)
   const [unprocessedOpen, setUnprocessedOpen] = useState(paymentMatches.length > 0)
@@ -879,9 +883,13 @@ export function PaymentsClient({
           teachers={teachers}
           lessonSessions={lessonSessions}
           paidBySession={paidBySession}
+          onNewStudent={() => setNewStudentOpen(true)}
           onClose={() => setSelectedMatch(null)}
         />
       )}
+      {/* Création d'un nouvel élève depuis un paiement non traité : même formulaire
+          que « Fiches élèves » (classe, planning, alias payeur, 1er paiement...). */}
+      <StudentDialog open={newStudentOpen} onClose={() => setNewStudentOpen(false)} student={null} groups={groups} teachers={teachers} paymentMatches={paymentMatches} />
     </div>
   )
 }
@@ -960,6 +968,7 @@ function PaymentMatchDialog({
   teachers,
   lessonSessions,
   paidBySession,
+  onNewStudent,
   onClose,
 }: {
   match: PaymentMatch
@@ -967,6 +976,7 @@ function PaymentMatchDialog({
   teachers: Teacher[]
   lessonSessions: LessonSessionOption[]
   paidBySession: Record<string, string>
+  onNewStudent: () => void
   onClose: () => void
 }) {
   const hintedStudent = students.find((student) => student.id === match.student?.id) ?? null
@@ -1121,6 +1131,14 @@ function PaymentMatchDialog({
               <p className="mt-0.5 text-xs text-gray-500">Libellé : {match.paymentLabel || match.rawSubject}</p>
             )}
             <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
+            <button
+              type="button"
+              onClick={() => { onNewStudent(); onClose() }}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
+            >
+              <Plus className="h-4 w-4" />
+              C&apos;est un nouvel élève — créer sa fiche
+            </button>
           </div>
           <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose} aria-label="Fermer">
             <X className="h-5 w-5" />

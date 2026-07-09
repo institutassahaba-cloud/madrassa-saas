@@ -19,7 +19,7 @@ export default async function PaymentsPage() {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [payments, students, teachers, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
+  const [payments, students, teachers, groups, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -45,6 +45,12 @@ export default async function PaymentsPage() {
     prisma.user.findMany({
       where: { tenantId: user.tenantId, role: "TEACHER", isActive: true },
       select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    // Pour le formulaire « Ajouter un nouvel élève » depuis un paiement non traité
+    prisma.group.findMany({
+      where: { tenantId: user.tenantId, isActive: true },
+      select: { id: true, name: true, teacherId: true },
       orderBy: { name: "asc" },
     }),
     prisma.lessonSession.findMany({
@@ -163,6 +169,7 @@ export default async function PaymentsPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       students={students as any}
       teachers={teachers}
+      groups={groups}
       lessonSessions={lessonSessions}
       paidBySession={paidBySession}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -12,7 +12,7 @@ export default async function StudentsPage() {
   await ensurePaymentAliasSchema()
   await ensureStudentPaymentColumns()
 
-  const [students, groups, teachers, slots] = await Promise.all([
+  const [students, groups, teachers, slots, paymentMatches] = await Promise.all([
     prisma.student.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -53,6 +53,13 @@ export default async function StudentsPage() {
       },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
     }),
+    // Paiements détectés non traités : proposés comme « 1er paiement » à l'ajout d'un élève.
+    prisma.paymentMatch.findMany({
+      where: { tenantId: user.tenantId, status: "TO_VERIFY" },
+      select: { id: true, source: true, receivedAmount: true, detectedPayerName: true, paymentDate: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
   ])
 
   const scheduleByGroup: Record<string, { id: string; day: number; start: string; end: string; teacherId: string; teacherTimezone: string }[]> = {}
@@ -82,6 +89,14 @@ export default async function StudentsPage() {
     schedule: s.groupId ? (scheduleByGroup[s.groupId] ?? []) : [],
   }))
 
+  const paymentMatchOptions = paymentMatches.map((m) => ({
+    id: m.id,
+    source: m.source,
+    receivedAmount: m.receivedAmount,
+    detectedPayerName: m.detectedPayerName,
+    paymentDate: m.paymentDate?.toISOString() ?? null,
+  }))
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <StudentsClient students={enriched as any} groups={groups as any} teachers={teachers} role={user.role} />
+  return <StudentsClient students={enriched as any} groups={groups as any} teachers={teachers} role={user.role} paymentMatches={paymentMatchOptions} />
 }

@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
-import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
+import { replaceStudentPaymentAliases, learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
 import { wrap } from "@/lib/api"
 import { z } from "zod"
 
@@ -37,6 +37,9 @@ const studentSchema = z.object({
   initialPaymentMethod: z.enum(["Virement", "PayPal"]).optional(),
   initialPaymentPaidDate: z.string().optional(),
   initialPaymentReference: z.string().optional(),
+  // Paiement détecté (scan PayPal/Wise) à utiliser comme 1er paiement : validé,
+  // alloué à la 1re session, retiré des « non traités », payeur mémorisé.
+  initialPaymentMatchId: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -134,39 +137,62 @@ export const POST = wrap(async (req: Request) => {
       })
 
       if (data.initialPaymentReceived) {
-        const paidDate = data.initialPaymentPaidDate ? new Date(data.initialPaymentPaidDate) : new Date()
+        // Paiement détecté sélectionné : ses données (montant, date, référence) font foi.
+        const match = data.initialPaymentMatchId
+          ? await prisma.paymentMatch.findFirst({
+              where: { id: data.initialPaymentMatchId, tenantId: user.tenantId, status: "TO_VERIFY" },
+            })
+          : null
+
+        const paidDate = match?.paymentDate ?? (data.initialPaymentPaidDate ? new Date(data.initialPaymentPaidDate) : new Date())
         const paymentMonth = paidDate.getMonth() + 1
         const paymentYear = paidDate.getFullYear()
         const now = new Date()
-        const initialAmount = data.monthlyFee + 10
+        const expectedInitialAmount = data.monthlyFee + 10
+        const initialAmount = match ? match.receivedAmount : expectedInitialAmount
         const billingStudent = await prisma.student.findUnique({
           where: { id: student.id },
           select: { payerName: true },
         })
 
-        await prisma.payment.create({
+        const payment = await prisma.payment.create({
           data: {
             tenantId: user.tenantId,
             studentId: student.id,
             amount: initialAmount,
             status: "CONFIRMED",
-            method: data.initialPaymentMethod || "Virement",
+            method: match ? (match.source === "PAYPAL" ? "PayPal" : "Virement") : (data.initialPaymentMethod || "Virement"),
             month: paymentMonth,
             year: paymentYear,
-            reference: data.initialPaymentReference || null,
+            reference: match ? match.gmailMessageId : (data.initialPaymentReference || null),
             paidDate,
             dueDate: new Date(paymentYear, paymentMonth - 1, 5),
             invoiceNumber: `FAC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
-            source: "MANUAL",
+            source: match ? match.source : "MANUAL",
             lessonSessionId: lessonSession.id,
             sessionNumber: lessonSession.number,
-            expectedAmount: initialAmount,
+            expectedAmount: expectedInitialAmount,
             receivedAmount: initialAmount,
             expectedPayerName: billingStudent?.payerName ?? null,
+            detectedPayerName: match?.detectedPayerName ?? null,
             confirmedAt: new Date(),
             notes: "Paiement initial incluant 10 € de frais d'inscription.",
           },
         })
+
+        if (match) {
+          await prisma.paymentAllocation.create({
+            data: { paymentMatchId: match.id, paymentId: payment.id, amount: initialAmount },
+          })
+          await prisma.paymentMatch.update({
+            where: { id: match.id },
+            data: { status: "CONFIRMED", studentId: student.id, confirmedAt: new Date() },
+          })
+          // Le payeur de ce virement devient un alias du nouvel élève : les
+          // prochains paiements du même payeur seront suggérés automatiquement.
+          await learnPaymentAliasFromConfirmation(user.tenantId, student.id, match.detectedPayerName, match.source)
+            .catch((err) => console.error("[alias] apprentissage échoué:", err))
+        }
       }
     }
   }
