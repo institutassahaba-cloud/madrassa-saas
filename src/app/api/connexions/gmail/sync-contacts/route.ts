@@ -3,6 +3,21 @@ import { auth } from "@/lib/auth"
 import { wrap } from "@/lib/api"
 import { syncAllStudentGoogleContacts } from "@/lib/google-contacts"
 
+function friendlyContactsError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  const projectMatch = message.match(/project\s+(\d+)/i)
+  const projectId = projectMatch?.[1]
+
+  if (/people api.*disabled|people\.googleapis\.com|has not been used/i.test(message)) {
+    const url = projectId
+      ? `https://console.developers.google.com/apis/api/people.googleapis.com/overview?project=${projectId}`
+      : "https://console.developers.google.com/apis/api/people.googleapis.com/overview"
+    return `Google Contacts n'est pas encore activé sur le projet Google Cloud. Activez l'API People ici : ${url} puis attendez quelques minutes et relancez la synchronisation.`
+  }
+
+  return message
+}
+
 export const POST = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
@@ -14,7 +29,6 @@ export const POST = wrap(async () => {
     const result = await syncAllStudentGoogleContacts(session.user.tenantId)
     return NextResponse.json({ ok: true, synced: result.synced })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error)
-    return NextResponse.json({ error: message }, { status: 400 })
+    return NextResponse.json({ error: friendlyContactsError(error) }, { status: 400 })
   }
 })
