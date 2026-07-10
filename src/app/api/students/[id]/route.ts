@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
 import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
 import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
@@ -91,6 +92,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
   const user = session.user
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   await ensureStudentPaymentColumns()
+  await ensureStudentContactColumns()
 
   const { id } = await params
   const body = await req.json()
@@ -196,6 +198,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   const user = session.user
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   await ensureStudentPaymentColumns()
+  await ensureStudentContactColumns()
 
   const { id } = await params
   const body = await req.json()
@@ -237,6 +240,7 @@ export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ 
   if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const { id } = await params
+  await ensureStudentContactColumns()
   const student = await prisma.student.findFirst({ where: { id, tenantId: user.tenantId } })
   if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 })
 

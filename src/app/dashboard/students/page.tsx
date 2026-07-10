@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
 import { ensurePaymentAliasSchema } from "@/lib/payment-alias-schema"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
 import { StudentsClient } from "./students-client"
 
 export default async function StudentsPage() {
@@ -11,6 +12,7 @@ export default async function StudentsPage() {
   if (user.role === "TEACHER") redirect("/dashboard")
   await ensurePaymentAliasSchema()
   await ensureStudentPaymentColumns()
+  await ensureStudentContactColumns()
 
   const [students, groups, teachers, slots, paymentMatches] = await Promise.all([
     prisma.student.findMany({

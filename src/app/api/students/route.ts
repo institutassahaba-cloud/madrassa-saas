@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
 import { replaceStudentPaymentAliases, learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
 import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
@@ -115,6 +116,7 @@ export const GET = wrap(async () => {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const tenantId = (session.user).tenantId
   await ensureStudentPaymentColumns()
+  await ensureStudentContactColumns()
 
   const students = await prisma.student.findMany({
     where: { tenantId },
@@ -130,6 +132,7 @@ export const POST = wrap(async (req: Request) => {
   const user = session.user
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   await ensureStudentPaymentColumns()
+  await ensureStudentContactColumns()
 
   const body = await req.json()
   const parsed = studentSchema.safeParse(body)
