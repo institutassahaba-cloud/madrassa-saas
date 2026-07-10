@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Bell, Check, Clock, Inbox, Loader2, Mail, Send, ShieldAlert, Users } from "lucide-react"
+import { Bell, Check, Clock, History, Inbox, Loader2, Mail, Send, ShieldAlert, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,15 @@ type NotificationItem = {
 type TeacherRecipient = {
   id: string
   name: string
+}
+
+// Une ligne = un message envoyé à un prof ; regroupées côté client par envoi.
+type SentMessage = {
+  id: string
+  title: string
+  body: string
+  recipient: string | null
+  createdAt: string
 }
 
 type StudentRecipient = {
@@ -77,13 +86,16 @@ export function NotificationsClient({
   canSend = false,
   teachers = [],
   students = [],
+  sentMessages: initialSentMessages = [],
 }: {
   notifications: NotificationItem[]
   canSend?: boolean
   teachers?: TeacherRecipient[]
   students?: StudentRecipient[]
+  sentMessages?: SentMessage[]
 }) {
   const [notifications, setNotifications] = useState(initialNotifications)
+  const [sentMessages, setSentMessages] = useState(initialSentMessages)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [title, setTitle] = useState("")
   const [message, setMessage] = useState("")
@@ -97,6 +109,26 @@ export function NotificationsClient({
     () => notifications.filter((notification) => notification.status !== "READ").length,
     [notifications]
   )
+
+  // Regroupe les lignes envoyées par envoi (même titre/corps/minute) et liste les profs
+  // destinataires de chaque envoi.
+  const sentGroups = useMemo(() => {
+    const teacherName = new Map(teachers.map((teacher) => [teacher.id, teacher.name]))
+    const groups = new Map<string, { title: string; body: string; createdAt: string; recipients: string[] }>()
+    for (const message of sentMessages) {
+      const key = `${message.title}||${message.body}||${message.createdAt.slice(0, 16)}`
+      const group = groups.get(key) ?? {
+        title: message.title,
+        body: visibleNotificationBody(message.body),
+        createdAt: message.createdAt,
+        recipients: [],
+      }
+      const name = message.recipient ? teacherName.get(message.recipient) : null
+      group.recipients.push(name || "Professeur")
+      groups.set(key, group)
+    }
+    return Array.from(groups.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }, [sentMessages, teachers])
 
   function studentLabel(student: StudentRecipient) {
     const baseName = student.displayName || `${student.firstName} ${student.lastName}`
@@ -138,6 +170,16 @@ export function NotificationsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Envoi impossible.")
+      // Ajout optimiste à l'historique (une ligne par prof destinataire).
+      const now = new Date().toISOString()
+      const newRows: SentMessage[] = Array.from(teacherIds).map((tid) => ({
+        id: `local-${tid}-${now}`,
+        title,
+        body: message,
+        recipient: tid,
+        createdAt: now,
+      }))
+      if (newRows.length > 0) setSentMessages((prev) => [...newRows, ...prev])
       setTitle("")
       setMessage("")
       setTeacherIds(new Set())
@@ -269,6 +311,35 @@ export function NotificationsClient({
           </div>
           {sendResult && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{sendResult}</p>}
           {sendError && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{sendError}</p>}
+        </section>
+      )}
+
+      {canSend && sentGroups.length > 0 && (
+        <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <History className="h-5 w-5 text-gray-500" />
+            <h2 className="font-semibold text-gray-900">Messages envoyés aux professeurs</h2>
+          </div>
+          <div className="space-y-3">
+            {sentGroups.map((group, index) => (
+              <article key={index} className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-semibold text-gray-900">{group.title}</h3>
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatDate(group.createdAt)}
+                  </span>
+                </div>
+                <p className="mt-1 whitespace-pre-line text-sm leading-6 text-gray-600">{group.body}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-gray-400">Envoyé à&nbsp;:</span>
+                  {group.recipients.map((name, recipientIndex) => (
+                    <Badge key={recipientIndex} variant="secondary">{name}</Badge>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
       )}
 

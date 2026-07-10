@@ -46,6 +46,22 @@ export default async function NotificationsPage() {
       ])
     : [[], []]
 
+  // Historique des messages manuels envoyés aux professeurs (directeur uniquement).
+  // Une ligne Notification par (message × prof) : le client les regroupe par envoi.
+  const sentMessages = user.role === "DIRECTOR" && teachers.length > 0
+    ? await prisma.notification.findMany({
+        where: {
+          tenantId: user.tenantId,
+          type: "DIRECTOR_MESSAGE",
+          channel: "APP",
+          recipient: { in: teachers.map((teacher) => teacher.id) },
+        },
+        select: { id: true, title: true, body: true, recipient: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      })
+    : []
+
   return (
     <NotificationsClient
       notifications={notifications.map((notification) => ({
@@ -56,6 +72,10 @@ export default async function NotificationsPage() {
       canSend={user.role === "DIRECTOR"}
       teachers={teachers}
       students={students}
+      sentMessages={sentMessages.map((message) => ({
+        ...message,
+        createdAt: message.createdAt.toISOString(),
+      }))}
     />
   )
 }
