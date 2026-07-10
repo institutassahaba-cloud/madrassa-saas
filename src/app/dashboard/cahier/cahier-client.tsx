@@ -6,6 +6,7 @@ import {
   X, CheckCircle2, Search, Bell, MessageCircle, AlertTriangle,
 } from "lucide-react"
 import { whatsappLink } from "@/lib/phone"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -51,7 +52,7 @@ interface Student {
   duration: string | null
   paymentGraceAllowed: boolean
   status: string
-  group: { name: string; teacherId: string | null } | null
+  group: { name: string; teacherId: string | null; teacher?: { name: string } | null } | null
 }
 
 interface Slot {
@@ -731,7 +732,7 @@ function StudentCahier({
     sortedSessions.find((s) => s.id === selectedId) ??
     sortedSessions.find((s) => !s.isComplete) ??
     sortedSessions[0]
-  const name = student.displayName || `${student.firstName} ${student.lastName}`.trim()
+  const name = shortName(student)
   const forfait  = formatForfait(student.lessonsPerWeek, student.duration)
   const planning = schedule && schedule.length > 0
 
@@ -1008,7 +1009,10 @@ function StudentCahier({
 // Le paiement est affiché par élève (chacun garde son propre suivi).
 
 function shortName(student: Student) {
-  return (student.displayName || student.firstName || student.lastName || "?").trim()
+  return studentLabelWithTeacherEmoji(
+    (student.displayName || student.firstName || student.lastName || "?").trim(),
+    student.group?.teacher?.name ?? null
+  )
 }
 
 // Une ligne « Cours N » dans le tableau de classe : contenu partagé + un rond de présence par élève.

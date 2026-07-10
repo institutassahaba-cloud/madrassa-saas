@@ -55,6 +55,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
   const [loading, setLoading] = useState<string | null>(null)
   const [testLoading, setTestLoading] = useState(false)
   const [scanLoading, setScanLoading] = useState(false)
+  const [contactsLoading, setContactsLoading] = useState(false)
 
   async function toggleActive(id: string, isActive: boolean) {
     if (isActive && !confirm("Désactiver ce compte ? Le membre ne pourra plus se connecter.")) return
@@ -109,6 +110,21 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
     }
   }
 
+  async function syncStudentContacts() {
+    setContactsLoading(true)
+    try {
+      const res = await fetch("/api/connexions/gmail/sync-contacts", { method: "POST" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error || "Synchronisation des contacts impossible.")
+        return
+      }
+      alert(`${data.synced ?? 0} contact(s) élève synchronisé(s) dans Google Contacts.`)
+    } finally {
+      setContactsLoading(false)
+    }
+  }
+
   const active = members.filter((m) => m.isActive)
   const inactive = members.filter((m) => !m.isActive)
 
@@ -156,6 +172,10 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
             <Button size="sm" onClick={scanFacturationInbox} disabled={!mailStatus.paymentInbox.connected || scanLoading}>
               <CreditCard className="h-3.5 w-3.5" />
               {scanLoading ? "Scan..." : "Scanner les paiements"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={syncStudentContacts} disabled={!mailStatus.paymentInbox.connected || contactsLoading}>
+              <UserCheck className="h-3.5 w-3.5" />
+              {contactsLoading ? "Synchronisation..." : "Synchroniser les contacts élèves"}
             </Button>
           </div>
         </div>

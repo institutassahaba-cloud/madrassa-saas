@@ -10,6 +10,7 @@ import {
 import { whatsappLink } from "@/lib/phone"
 import { gmailComposeLink } from "@/lib/contact-links"
 import { rateForSize } from "@/lib/group-rates"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -55,7 +56,7 @@ interface Student {
   duration: string | null
   monthlyFee: number
   status: string
-  group: { name: string; teacherId: string | null } | null
+  group: { name: string; teacherId: string | null; teacher?: { name: string } | null } | null
 }
 
 interface Group {
@@ -96,10 +97,34 @@ const DEFAULT_LESSON_COUNT = 8
 const LAST_LESSON_NOT_VALIDATED_MESSAGE = "بارك الله فيك, la session n'est pas encore terminée : le dernier cours doit être validé présent ou absent avant d'envoyer la demande de paiement."
 const SUBJECTS = ["Apprentissage du Coran", "Nouraniya", "Langue arabe", "Tajwid", "Fiqh", "Moutoun", "Autre"]
 
+const NO_SUBJECT = "Sans matière"
+
 const STATUS_CYCLE: Record<string, string> = {
   PENDING: "PRESENT",
   PRESENT: "ABSENT",
   ABSENT: "PENDING",
+}
+
+// Tri insensible aux accents et à la casse, avec ordre naturel sur les nombres
+// (« Classe 2 » avant « Classe 10 »).
+const collator = new Intl.Collator("fr", { sensitivity: "base", numeric: true })
+
+function studentSortKey(student: Student): string {
+  return student.displayName?.trim() || `${student.firstName} ${student.lastName}`
+}
+
+function sortStudentsByName<T extends Student>(students: T[]): T[] {
+  return [...students].sort((a, b) => collator.compare(studentSortKey(a), studentSortKey(b)))
+}
+
+// Les matières connues gardent l'ordre du cursus ; les autres passent après, par ordre alphabétique.
+function compareSubjects(a: string, b: string): number {
+  const ia = SUBJECTS.indexOf(a)
+  const ib = SUBJECTS.indexOf(b)
+  if (ia !== -1 && ib !== -1) return ia - ib
+  if (ia !== -1) return -1
+  if (ib !== -1) return 1
+  return collator.compare(a, b)
 }
 
 const statusIcon = (s: string) => {
@@ -887,8 +912,39 @@ function SessionCard({
 // Les élèves d'une même classe partagent UN seul tableau de sessions : présence
 // par élève (contenu/date communs) et paiement affiché/marqué par élève.
 
+// Chips WhatsApp d'un élève. `withName` préfixe par le prénom, utile dans une classe
+// où plusieurs élèves affichent leurs numéros côte à côte.
+function PhoneChips({ student, withName = false }: { student: Student; withName?: boolean }) {
+  const chips = [
+    { label: "Élève", num: student.phone },
+    { label: "Parent", num: student.parentPhone },
+  ]
+    .map(({ label, num }) => {
+      const wa = whatsappLink(num)
+      if (!wa) return null
+      return (
+        <a
+          key={label}
+          href={wa}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          {withName ? `${shortName(student)} · ${label}` : label} · {num}
+        </a>
+      )
+    })
+    .filter(Boolean)
+  return chips.length > 0 ? <>{chips}</> : null
+}
+
 function shortName(student: Student) {
-  return (student.displayName || student.firstName || student.lastName || "?").trim()
+  return studentLabelWithTeacherEmoji(
+    (student.displayName || student.firstName || student.lastName || "?").trim(),
+    student.group?.teacher?.name ?? null
+  )
 }
 
 // Ligne « Cours N » fusionnée : contenu partagé + un rond de présence par élève.
@@ -1387,7 +1443,7 @@ function StudentCahier({
     sortedSessions.find((s) => s.id === selectedId) ??
     sortedSessions.find((s) => !s.isComplete) ??
     sortedSessions[0]
-  const name = student.displayName || `${student.firstName} ${student.lastName}`.trim()
+  const name = shortName(student)
   const forfait = formatForfait(student.lessonsPerWeek, student.duration)
   const planning = schedule && schedule.length > 0
 
@@ -1440,21 +1496,9 @@ function StudentCahier({
         </button>
       </div>
 
-      {(student.phone || student.parentPhone) && (
+      {open && (student.phone || student.parentPhone) && (
         <div className="flex flex-wrap items-center gap-2 px-4 pb-3 -mt-1">
-          {[
-            { label: "Élève", num: student.phone },
-            { label: "Parent", num: student.parentPhone },
-          ].map(({ label, num }) => {
-            const wa = whatsappLink(num)
-            if (!wa) return null
-            return (
-              <a key={label} href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-100">
-                <MessageCircle className="h-3.5 w-3.5" />
-                {label} · {num}
-              </a>
-            )
-          })}
+          <PhoneChips student={student} />
         </div>
       )}
 
@@ -2008,7 +2052,7 @@ function GroupCard({
                 {shortName(student)}
                 {canArchive && (
                   <button
-                    onClick={() => handleArchiveStudent(student.id, student.displayName || `${student.firstName} ${student.lastName}`)}
+                    onClick={() => handleArchiveStudent(student.id, shortName(student))}
                     disabled={archiving === student.id}
                     className="text-gray-300 hover:text-orange-500 disabled:opacity-50"
                     title="Arrêter cet élève (→ Anciens élèves)"
@@ -2029,6 +2073,13 @@ function GroupCard({
               </span>
             ))}
           </div>
+          {groupOpen && activeStudents.some((s) => s.phone || s.parentPhone) && (
+            <div className="flex flex-wrap items-center gap-2 pb-1">
+              {activeStudents.map((student) => (
+                <PhoneChips key={student.id} student={student} withName />
+              ))}
+            </div>
+          )}
           {groupOpen && (
             <MergedGroupCahier
               students={activeStudents}
@@ -2055,7 +2106,7 @@ function GroupCard({
               <div className="absolute right-3 top-4 z-10 flex items-center gap-1">
                 {canArchive && (
                   <button
-                    onClick={() => handleArchiveStudent(student.id, student.displayName || `${student.firstName} ${student.lastName}`)}
+                    onClick={() => handleArchiveStudent(student.id, shortName(student))}
                     disabled={archiving === student.id}
                     className="rounded-full p-1 text-gray-300 hover:bg-orange-50 hover:text-orange-500 disabled:opacity-50"
                     title="Arrêter cet élève (→ Anciens élèves)"
@@ -2092,11 +2143,12 @@ function GroupCard({
 
 function TeacherCard({
   teacher, teacherStudents, sessions, paidBySession, undatedPaymentBySession, scheduleByGroup, teachers, currentUserId, currentRole,
-  showSessionsWithoutPaymentDate, studentSearch = "",
+  showSessionsWithoutPaymentDate, studentSearch = "", subjects = [],
   onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson, onRenumberSession, onUpdateRates,
 }: {
   teacher: Teacher
   teacherStudents: Student[]
+  subjects?: string[]
   sessions: LessonSession[]
   paidBySession: Record<string, string>
   undatedPaymentBySession: Record<string, boolean>
@@ -2139,10 +2191,12 @@ function TeacherCard({
   const searchActive = q.length > 0
   const matchesQuery = (s: Student) =>
     !q || `${s.firstName} ${s.lastName} ${s.displayName ?? ""}`.toLowerCase().includes(q)
-  const visibleTeacherStudents = (showSessionsWithoutPaymentDate
-    ? teacherStudents.filter((student) => visibleStudentIds.has(student.id))
-    : teacherStudents
-  ).filter(matchesQuery)
+  const visibleTeacherStudents = sortStudentsByName(
+    (showSessionsWithoutPaymentDate
+      ? teacherStudents.filter((student) => visibleStudentIds.has(student.id))
+      : teacherStudents
+    ).filter(matchesQuery)
+  )
 
   const activeStudents = visibleTeacherStudents.filter(s => s.status === "ACTIVE")
   const pausedStudents = visibleTeacherStudents.filter(s => s.status === "PAUSED")
@@ -2153,6 +2207,7 @@ function TeacherCard({
       activeInGroup: activeStudents.filter((student) => student.groupId === group.id),
     }))
     .filter((entry) => !searchActive || entry.activeInGroup.length > 0)
+    .sort((a, b) => collator.compare(a.group.name, b.group.name))
   // Déplie automatiquement la fiche quand une recherche est active.
   const isOpen = expanded || searchActive
   const areClassesOpen = classesOpen || searchActive
@@ -2180,7 +2235,14 @@ function TeacherCard({
           {initialFromName(teacher.name)}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900">{teacher.name}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-gray-900">{teacher.name}</p>
+            {subjects.map((subject) => (
+              <span key={subject} className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                {subject}
+              </span>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-3 mt-0.5">
             {(() => {
               const mail = gmailComposeLink(teacher.email)
@@ -2486,6 +2548,7 @@ export function TeachersClient({
   const [undatedPaymentBySession, setUndatedPaymentBySession] = useState(initialUndatedPaymentBySession)
   const [showSessionsWithoutPaymentDate, setShowSessionsWithoutPaymentDate] = useState(false)
   const [search, setSearch] = useState("")
+  const [sortMode, setSortMode] = useState<"name" | "subject">("name")
 
   const totalStudents = teachers.reduce(
     (sum, t) => sum + t.teacherGroups.reduce((s, g) => s + g.students.filter(st => st.status === "ACTIVE").length, 0), 0
@@ -2506,6 +2569,21 @@ export function TeachersClient({
 
   function getTeacherSessions(teacherId: string) {
     return sessions.filter(s => s.teacher.id === teacherId)
+  }
+
+  // Aucune matière n'est stockée sur le professeur : on la déduit de ses sessions,
+  // et à défaut (prof sans session) de la matière déclarée sur ses élèves.
+  function getTeacherSubjects(teacherId: string): string[] {
+    const found = new Set<string>()
+    for (const session of getTeacherSessions(teacherId)) {
+      if (session.subject) found.add(session.subject)
+    }
+    if (found.size === 0) {
+      for (const student of getTeacherStudents(teacherId)) {
+        if (student.subject) found.add(student.subject)
+      }
+    }
+    return [...found].sort(compareSubjects)
   }
 
   async function handleUpdateLesson(lessonId: string, data: Partial<Lesson>) {
@@ -2693,26 +2771,46 @@ export function TeachersClient({
         </label>
       )}
 
-      {/* Recherche élève */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un élève (nom)…"
-          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-        />
-        {search && (
-          <button
-            type="button"
-            onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            title="Effacer"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      {/* Recherche élève + tri */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un élève (nom)…"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              title="Effacer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex shrink-0 rounded-xl border border-gray-200 bg-white p-1">
+          {([
+            { value: "name", label: "A → Z" },
+            { value: "subject", label: "Par matière" },
+          ] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSortMode(value)}
+              aria-pressed={sortMode === value}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                sortMode === value ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Teacher list */}
@@ -2723,13 +2821,14 @@ export function TeachersClient({
         </div>
       ) : (() => {
         const q = search.trim().toLowerCase()
-        const shownTeachers = q
+        const shownTeachers = [...(q
           ? teachers.filter((t) =>
               getTeacherStudents(t.id).some((s) =>
                 `${s.firstName} ${s.lastName} ${s.displayName ?? ""}`.toLowerCase().includes(q)
               )
             )
           : teachers
+        )].sort((a, b) => collator.compare(a.name, b.name))
         if (shownTeachers.length === 0) {
           return (
             <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
@@ -2737,34 +2836,71 @@ export function TeachersClient({
             </div>
           )
         }
+
+        const renderCard = (teacher: Teacher) => (
+          <TeacherCard
+            key={teacher.id}
+            teacher={teacher}
+            teacherStudents={getTeacherStudents(teacher.id)}
+            sessions={getTeacherSessions(teacher.id)}
+            subjects={getTeacherSubjects(teacher.id)}
+            paidBySession={paidBySession}
+            undatedPaymentBySession={undatedPaymentBySession}
+            scheduleByGroup={scheduleByGroup}
+            teachers={teachersList}
+            currentUserId={currentUserId}
+            currentRole={currentRole}
+            showSessionsWithoutPaymentDate={showSessionsWithoutPaymentDate}
+            studentSearch={search}
+            onUpdateLesson={handleUpdateLesson}
+            onAddLesson={handleAddLesson}
+            onCloseSession={handleCloseSession}
+            onNewSession={handleNewSession}
+            onDeleteLesson={handleDeleteLesson}
+            onMarkPaymentDate={handleMarkPaymentDate}
+            onEnsureLesson={handleEnsureLesson}
+            onRenumberSession={handleRenumberSession}
+            onUpdateRates={handleUpdateRates}
+          />
+        )
+
+        if (sortMode === "name") {
+          return <div className="space-y-3">{shownTeachers.map(renderCard)}</div>
+        }
+
+        // Un professeur qui enseigne plusieurs matières apparaît dans chaque section.
+        const bySubject = new Map<string, Teacher[]>()
+        for (const teacher of shownTeachers) {
+          const subjects = getTeacherSubjects(teacher.id)
+          for (const subject of subjects.length > 0 ? subjects : [NO_SUBJECT]) {
+            const bucket = bySubject.get(subject)
+            if (bucket) bucket.push(teacher)
+            else bySubject.set(subject, [teacher])
+          }
+        }
+        const sections = [...bySubject.entries()].sort(([a], [b]) => {
+          if (a === NO_SUBJECT) return 1
+          if (b === NO_SUBJECT) return -1
+          return compareSubjects(a, b)
+        })
+
         return (
-        <div className="space-y-3">
-          {shownTeachers.map((teacher) => (
-            <TeacherCard
-              key={teacher.id}
-              teacher={teacher}
-              teacherStudents={getTeacherStudents(teacher.id)}
-              sessions={getTeacherSessions(teacher.id)}
-              paidBySession={paidBySession}
-              undatedPaymentBySession={undatedPaymentBySession}
-              scheduleByGroup={scheduleByGroup}
-              teachers={teachersList}
-              currentUserId={currentUserId}
-              currentRole={currentRole}
-              showSessionsWithoutPaymentDate={showSessionsWithoutPaymentDate}
-              studentSearch={search}
-              onUpdateLesson={handleUpdateLesson}
-              onAddLesson={handleAddLesson}
-              onCloseSession={handleCloseSession}
-              onNewSession={handleNewSession}
-              onDeleteLesson={handleDeleteLesson}
-              onMarkPaymentDate={handleMarkPaymentDate}
-              onEnsureLesson={handleEnsureLesson}
-              onRenumberSession={handleRenumberSession}
-              onUpdateRates={handleUpdateRates}
-            />
-          ))}
-        </div>
+          <div className="space-y-6">
+            {sections.map(([subject, subjectTeachers]) => (
+              <div key={subject} className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <h2 className={`text-sm font-semibold ${subject === NO_SUBJECT ? "text-gray-400" : "text-gray-700"}`}>
+                    {subject}
+                  </h2>
+                  <span className="text-xs text-gray-400">
+                    {subjectTeachers.length} professeur{subjectTeachers.length > 1 ? "s" : ""}
+                  </span>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
+                <div className="space-y-3">{subjectTeachers.map(renderCard)}</div>
+              </div>
+            ))}
+          </div>
         )
       })()}
     </div>

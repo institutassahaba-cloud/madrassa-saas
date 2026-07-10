@@ -6,6 +6,7 @@ import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
 import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
+import { syncStudentGoogleContact } from "@/lib/google-contacts"
 
 const DEFAULT_SLOT_COLOR = "#10b981"
 
@@ -182,6 +183,10 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
     }
   }
 
+  await syncStudentGoogleContact(updated.id).catch((error) => {
+    console.error("[contacts] student update sync failed:", error)
+  })
+
   return NextResponse.json(updated)
 })
 
@@ -217,6 +222,11 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   if (body.status && body.status !== student.status && student.groupId) {
     await recalcGroupRate(student.groupId, user.tenantId)
   }
+
+  await syncStudentGoogleContact(updated.id).catch((error) => {
+    console.error("[contacts] student patch sync failed:", error)
+  })
+
   return NextResponse.json(updated)
 })
 

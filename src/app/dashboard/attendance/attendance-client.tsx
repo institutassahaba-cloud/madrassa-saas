@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 import { cn, formatDate } from "@/lib/utils"
 
 type Status = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"
@@ -40,6 +41,10 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
   const [saved, setSaved] = useState(false)
 
   const group = groups.find((g) => g.id === selectedGroup)
+
+  function studentLabel(student: Student) {
+    return studentLabelWithTeacherEmoji(`${student.firstName} ${student.lastName}`, group?.teacher?.name)
+  }
 
   function setStatus(studentId: string, status: Status) {
     setStatuses((s) => ({ ...s, [studentId]: status }))
@@ -168,7 +173,7 @@ export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: 
                         <span className="text-sm font-medium text-gray-400 w-6">{idx + 1}</span>
                         <div>
                           <p className="text-sm font-medium text-gray-900">
-                            {student.firstName} {student.lastName}
+                            {studentLabel(student)}
                           </p>
                           <p className="text-xs text-gray-400">
                             {student.gender === "MALE" ? "Garçon" : "Fille"}

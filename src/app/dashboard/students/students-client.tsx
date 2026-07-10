@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StudentDialog } from "./student-dialog"
 import { formatCurrency } from "@/lib/utils"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 
 const STATUS_CONFIG = {
   ACTIVE:   { label: "Actif",    variant: "success"   as const },
@@ -127,6 +128,11 @@ function paymentAliasLabel(type: string | null) {
   if (type === "PAYPAL") return "PayPal"
   if (type === "WISE") return "Virement"
   return "Associé"
+}
+
+function studentLabel(student: Student) {
+  const baseName = student.displayName || `${student.firstName} ${student.lastName}`
+  return studentLabelWithTeacherEmoji(baseName, student.teacherName)
 }
 
 interface Group {
@@ -441,7 +447,7 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
                     <TableRow key={student.id} className={student.status === "ARCHIVED" ? "opacity-60" : ""}>
                       <TableCell>
                         <div>
-                          <p className="font-medium text-gray-900">{student.displayName || `${student.firstName} ${student.lastName}`}</p>
+                          <p className="font-medium text-gray-900">{studentLabel(student)}</p>
                           <p className="text-xs text-gray-400">
                             {student.gender === "MALE" ? "Garçon" : student.gender === "FEMALE" ? "Fille" : ""}
                             {student.level && ` · ${student.level}`}
@@ -546,7 +552,7 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
                       <TableCell>
                         <div className="flex gap-1">
                           <Button asChild variant="ghost" size="icon" title="Voir les sessions et demandes de paiement">
-                            <Link href={`/dashboard/cahier?q=${encodeURIComponent(student.displayName || `${student.firstName} ${student.lastName}`)}`}>
+                            <Link href={`/dashboard/cahier?q=${encodeURIComponent(studentLabel(student))}`}>
                               <Clock className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -554,7 +560,7 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
                             <Edit className="h-4 w-4" />
                           </Button>
                           {student.status !== "ARCHIVED" ? (
-                            <Button variant="ghost" size="icon" onClick={() => handleArchive(student.id, `${student.firstName} ${student.lastName}`)} title="Archiver">
+                            <Button variant="ghost" size="icon" onClick={() => handleArchive(student.id, studentLabel(student))} title="Archiver">
                               <Archive className="h-4 w-4" />
                             </Button>
                           ) : (
@@ -563,7 +569,7 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
                             </Button>
                           )}
                           {role === "DIRECTOR" && (
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id, `${student.firstName} ${student.lastName}`)} title="Effacer définitivement (RGPD)" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id, studentLabel(student))} title="Effacer définitivement (RGPD)" className="text-red-600 hover:text-red-700 hover:bg-red-50">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}

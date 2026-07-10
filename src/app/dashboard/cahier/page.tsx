@@ -39,7 +39,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
         duration: true,
         paymentGraceAllowed: true,
         status: true,
-        group: { select: { name: true, teacherId: true } },
+        group: { select: { name: true, teacherId: true, teacher: { select: { name: true } } } },
       },
       orderBy: { firstName: "asc" },
     }),

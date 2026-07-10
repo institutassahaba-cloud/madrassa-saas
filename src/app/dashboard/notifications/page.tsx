@@ -32,7 +32,15 @@ export default async function NotificationsPage() {
         }),
         prisma.student.findMany({
           where: { tenantId: user.tenantId, status: { not: "ARCHIVED" } },
-          select: { id: true, firstName: true, lastName: true, displayName: true, email: true, parentEmail: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            displayName: true,
+            email: true,
+            parentEmail: true,
+            group: { select: { teacher: { select: { name: true } } } },
+          },
           orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
         }),
       ])

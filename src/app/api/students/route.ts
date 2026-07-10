@@ -6,6 +6,7 @@ import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { replaceStudentPaymentAliases, learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
 import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
+import { syncStudentGoogleContact } from "@/lib/google-contacts"
 import { z } from "zod"
 
 const DEFAULT_SLOT_COLOR = "#10b981"
@@ -272,6 +273,10 @@ export const POST = wrap(async (req: Request) => {
       }
     }
   }
+
+  await syncStudentGoogleContact(student.id).catch((error) => {
+    console.error("[contacts] student create sync failed:", error)
+  })
 
   if (data.groupId) {
     const activeCount = await prisma.student.count({

@@ -7,7 +7,10 @@ import { ensureDirectorPayerAliasSchema, isKnownDirectorPayer } from "@/lib/dire
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 import { encryptSecret, decryptSecret } from "@/lib/secrets"
 
-const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+const GMAIL_SCOPES = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/contacts",
+]
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
 
 function getBaseUrl() {

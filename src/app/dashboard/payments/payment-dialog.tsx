@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatCurrency } from "@/lib/utils"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 
 interface Teacher {
   id: string
@@ -118,6 +119,14 @@ export function PaymentDialog({
   }, [lessonSessions])
 
   const manualTotal = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+
+  function teacherNameById(teacherId: string | null | undefined) {
+    return teachers.find((teacher) => teacher.id === teacherId)?.name ?? null
+  }
+
+  function studentLabel(student: Student) {
+    return studentLabelWithTeacherEmoji(`${student.firstName} ${student.lastName}`, teacherNameById(student.group?.teacherId ?? null))
+  }
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -261,7 +270,7 @@ export function PaymentDialog({
                   <SelectContent>
                     {filteredStudents.map((student) => (
                       <SelectItem key={student.id} value={student.id}>
-                        {student.firstName} {student.lastName}
+                        {studentLabel(student)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -364,7 +373,7 @@ export function PaymentDialog({
                         <SelectTrigger><SelectValue placeholder={row.teacherId ? "Élève" : "Choisir professeur"} /></SelectTrigger>
                         <SelectContent>
                           {selectableStudents.map((student) => (
-                            <SelectItem key={student.id} value={student.id}>{student.firstName} {student.lastName}</SelectItem>
+                            <SelectItem key={student.id} value={student.id}>{studentLabel(student)}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

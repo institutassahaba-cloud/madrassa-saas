@@ -5,6 +5,7 @@ import { Bell, Check, Clock, Inbox, Loader2, Mail, Send, ShieldAlert, Users } fr
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 
 const PSEUDO_REQUEST_SEPARATOR = "\n\n---\n"
 
@@ -35,6 +36,7 @@ type StudentRecipient = {
   displayName: string | null
   email: string | null
   parentEmail: string | null
+  group: { teacher: { name: string } | null } | null
 }
 
 const typeStyles: Record<string, { label: string; icon: typeof Bell; badge: "default" | "warning" | "info" | "secondary" }> = {
@@ -95,6 +97,11 @@ export function NotificationsClient({
     () => notifications.filter((notification) => notification.status !== "READ").length,
     [notifications]
   )
+
+  function studentLabel(student: StudentRecipient) {
+    const baseName = student.displayName || `${student.firstName} ${student.lastName}`
+    return studentLabelWithTeacherEmoji(baseName, student.group?.teacher?.name)
+  }
 
   async function markAsRead(id: string) {
     setLoadingId(id)
@@ -223,7 +230,7 @@ export function NotificationsClient({
                 <div className="max-h-56 space-y-1 overflow-y-auto p-2">
                   {students.map((student) => {
                     const hasEmail = Boolean(student.email || student.parentEmail)
-                    const name = student.displayName || `${student.firstName} ${student.lastName}`
+                    const name = studentLabel(student)
                     return (
                       <label key={student.id} className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm ${hasEmail ? "text-gray-700 hover:bg-gray-50" : "text-gray-300"}`}>
                         <input

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 import { formatCurrency, formatDate, getMonthName } from "@/lib/utils"
 
 const STATUS_CONFIG = {
@@ -17,7 +18,7 @@ interface Payment {
   month: number
   year: number
   paidDate: Date | null
-  student: { firstName: string; lastName: string }
+  student: { firstName: string; lastName: string; group: { teacher: { name: string } | null } | null }
 }
 
 export function RecentPayments({ payments }: { payments: Payment[] }) {
@@ -33,11 +34,12 @@ export function RecentPayments({ payments }: { payments: Payment[] }) {
           <div className="space-y-2">
             {payments.map((p) => {
               const cfg = STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG] ?? { label: p.status, variant: "secondary" as const }
+              const studentName = studentLabelWithTeacherEmoji(`${p.student.firstName} ${p.student.lastName}`, p.student.group?.teacher?.name)
               return (
                 <div key={p.id} className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-gray-50">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {p.student.firstName} {p.student.lastName}
+                      {studentName}
                     </p>
                     <p className="text-xs text-gray-500">
                       {getMonthName(p.month)} {p.year}

@@ -56,7 +56,7 @@ export default async function TeachersPage() {
         duration: true,
         monthlyFee: true,
         status: true,
-        group: { select: { name: true, teacherId: true } },
+        group: { select: { name: true, teacherId: true, teacher: { select: { name: true } } } },
       },
       orderBy: { firstName: "asc" },
     }),

@@ -171,6 +171,7 @@ model Student {
   hourlyRate     Float? // tarif horaire
   lessonsPerWeek Int? // nombre de cours par semaine
   duration       String? // durée d'un cours ("30 min", "1h")
+  googleContactResourceName String?
   status         String    @default("ACTIVE") // ACTIVE | PAUSED | STOPPED
   recontactDate  DateTime?
   notes          String?

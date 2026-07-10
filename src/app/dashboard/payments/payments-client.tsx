@@ -12,6 +12,7 @@ import { PaymentDialog } from "./payment-dialog"
 import { StudentDialog } from "../students/student-dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { PAYMENT_PAID_STATUSES, PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 
 const STATUS_CONFIG = {
   // Statuts canoniques
@@ -183,12 +184,28 @@ export function PaymentsClient({
     return teachers.find((teacher) => teacher.id === teacherId)?.name ?? "—"
   }
 
+  function teacherNameById(teacherId: string | null | undefined) {
+    return teachers.find((teacher) => teacher.id === teacherId)?.name ?? null
+  }
+
+  function paymentStudentLabel(payment: Payment) {
+    return studentLabelWithTeacherEmoji(`${payment.student.firstName} ${payment.student.lastName}`, paymentTeacherName(payment))
+  }
+
+  function matchStudentLabel(match: PaymentMatch) {
+    if (!match.student) return "élève non renseigné"
+    const teacherName = teacherNameById(
+      lessonSessions.find((session) => session.studentId === match.student?.id)?.teacherId ?? null
+    )
+    return studentLabelWithTeacherEmoji(`${match.student.firstName} ${match.student.lastName}`, teacherName)
+  }
+
   function paymentDateValue(payment: Payment) {
     return new Date(payment.confirmedAt || payment.paidDate || payment.createdAt).getTime()
   }
 
   const filtered = payments.filter((p) => {
-    const name = `${p.student.firstName} ${p.student.lastName}`.toLowerCase()
+    const name = paymentStudentLabel(p).toLowerCase()
     const teacherName = paymentTeacherName(p).toLowerCase()
     const matchSearch = name.includes(search.toLowerCase()) || teacherName.includes(search.toLowerCase()) || (p.reference ?? "").includes(search)
     const matchStatus =
@@ -208,7 +225,7 @@ export function PaymentsClient({
   }).sort((a, b) => {
     const direction = sortDirection === "asc" ? 1 : -1
     if (sortKey === "student") {
-      return `${a.student.lastName} ${a.student.firstName}`.localeCompare(`${b.student.lastName} ${b.student.firstName}`, "fr") * direction
+      return paymentStudentLabel(a).localeCompare(paymentStudentLabel(b), "fr") * direction
     }
     if (sortKey === "teacher") return paymentTeacherName(a).localeCompare(paymentTeacherName(b), "fr") * direction
     if (sortKey === "amount") return (a.amount - b.amount) * direction
@@ -302,7 +319,7 @@ export function PaymentsClient({
   }
 
   async function deletePayment(payment: Payment) {
-    const label = `${payment.student.firstName} ${payment.student.lastName} · ${formatCurrency(payment.amount)}${payment.sessionNumber ? ` · session ${payment.sessionNumber}` : ""}`
+    const label = `${paymentStudentLabel(payment)} · ${formatCurrency(payment.amount)}${payment.sessionNumber ? ` · session ${payment.sessionNumber}` : ""}`
     if (!window.confirm(`Supprimer définitivement ce paiement ?\n${label}\nLa session liée repassera « non payée ». Action irréversible.`)) return
     setPaymentDeleteLoading(payment.id)
     try {
@@ -502,7 +519,7 @@ export function PaymentsClient({
                       </div>
                       <p className="mt-1 text-xs text-gray-400">
                         {match.student
-                          ? `Élève pressenti : ${match.student.firstName} ${match.student.lastName}`
+                          ? `Élève pressenti : ${matchStudentLabel(match)}`
                           : "Aucun élève pressenti"}
                         {match.reason ? ` · ${match.reason}` : ""}
                       </p>
@@ -576,7 +593,7 @@ export function PaymentsClient({
                       <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      Validé pour : {match.student ? `${match.student.firstName} ${match.student.lastName}` : "élève non renseigné"}
+                      Validé pour : {matchStudentLabel(match)}
                       {match.reason ? ` · ${match.reason}` : ""}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
@@ -624,7 +641,7 @@ export function PaymentsClient({
                       <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      Validé pour : {match.student ? `${match.student.firstName} ${match.student.lastName}` : "élève non renseigné"}
+                      Validé pour : {matchStudentLabel(match)}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
                   </div>
@@ -739,7 +756,7 @@ export function PaymentsClient({
                   <div key={payment.id} className={`rounded-xl border p-3 ${pendingTone(days)}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold">{payment.student.firstName} {payment.student.lastName}</p>
+                        <p className="font-semibold">{paymentStudentLabel(payment)}</p>
                         {payment.student.paymentGraceAllowed && (
                           <p className="mt-0.5 text-xs font-medium text-amber-700">Cours autorisé par le directeur</p>
                         )}
@@ -846,7 +863,7 @@ export function PaymentsClient({
                   return (
                     <TableRow key={p.id}>
                       <TableCell>
-                        <p className="font-medium text-gray-900">{p.student.firstName} {p.student.lastName}</p>
+                        <p className="font-medium text-gray-900">{paymentStudentLabel(p)}</p>
                         {p.student.group && <p className="text-xs text-gray-500">{p.student.group.name}</p>}
                       </TableCell>
                       <TableCell className="text-sm text-gray-700">{paymentTeacherName(p)}</TableCell>
@@ -1054,7 +1071,7 @@ function PaymentMatchDialog({
           key: `${student.id}:${teacherId}`,
           studentId: student.id,
           teacherId,
-          name: `${student.firstName} ${student.lastName}`,
+          name: studentLabelWithTeacherEmoji(`${student.firstName} ${student.lastName}`, teacherName(teacherId)),
           subjects,
           teacherName: teacherName(teacherId),
         })

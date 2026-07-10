@@ -2,6 +2,7 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { Calendar, Clock, ChevronDown, ChevronRight, MessageCircle, Users } from "lucide-react"
 import { parseScheduleLabel, scheduleSlotOccursOn } from "@/lib/schedule-meta"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 
 const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
@@ -46,6 +47,7 @@ interface TeacherSlot {
   label: string | null
   group: {
     name: string
+    teacher: { name: string } | null
     students: {
       id: string
       firstName: string
@@ -91,7 +93,7 @@ function CourseCard({ slot, index, compact = false }: { slot: TeacherSlot; index
         {students.length > 0 && (
           <div className="space-y-2">
             {students.map((student) => {
-              const studentName = `${student.firstName} ${student.lastName}`.trim()
+              const studentName = studentLabelWithTeacherEmoji(`${student.firstName} ${student.lastName}`.trim(), slot.group?.teacher?.name)
               const href = whatsappHref(student.parentPhone ?? student.phone, studentName, name, slot.startTime)
               return (
                 <div key={student.id} className="flex flex-col gap-2 rounded-lg bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
@@ -143,6 +145,7 @@ export async function TeacherHome({
       group: {
         select: {
           name: true,
+          teacher: { select: { name: true } },
           students: {
             where: { status: "ACTIVE" },
             select: { id: true, firstName: true, lastName: true, phone: true, parentPhone: true },

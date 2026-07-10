@@ -12,6 +12,7 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { PaymentStatusChart } from "@/components/dashboard/payment-status-chart"
 import { RecentPayments } from "@/components/dashboard/recent-payments"
 import { TeacherHome } from "./teacher-home"
+import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 
 async function getStats(tenantId: string) {
   const now = new Date()
@@ -70,7 +71,7 @@ async function getStats(tenantId: string) {
       where: { tenantId, status: { in: [...PAYMENT_PAID_STATUSES] } },
       orderBy: { createdAt: "desc" },
       take: 8,
-      include: { student: { select: { firstName: true, lastName: true } } },
+      include: { student: { select: { firstName: true, lastName: true, group: { select: { teacher: { select: { name: true } } } } } } },
     }),
     prisma.payment.groupBy({
       by: ["status"],
@@ -128,7 +129,15 @@ export default async function DashboardPage() {
       status: "PAUSED",
       recontactDate: { not: null, lte: new Date() },
     },
-    select: { id: true, firstName: true, lastName: true, phone: true, parentPhone: true, recontactDate: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      parentPhone: true,
+      recontactDate: true,
+      group: { select: { teacher: { select: { name: true } } } },
+    },
     orderBy: { recontactDate: "asc" },
   })
 
@@ -247,7 +256,9 @@ export default async function DashboardPage() {
               {recontactStudents.map((s) => (
                 <div key={s.id} className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-amber-50 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">{s.firstName} {s.lastName}</p>
+                    <p className="font-medium text-gray-900">
+                      {studentLabelWithTeacherEmoji(`${s.firstName} ${s.lastName}`, s.group?.teacher?.name)}
+                    </p>
                     <p className="text-xs text-amber-600">
                       Recontact prévu le {new Date(s.recontactDate!).toLocaleDateString("fr-FR")}
                     </p>
