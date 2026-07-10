@@ -11,6 +11,15 @@ const GOOGLE_CONTACTS_SCOPES = [
   "https://www.googleapis.com/auth/contacts",
   "https://www.googleapis.com/auth/userinfo.email",
 ]
+const CONTACT_GROUP_NAME = "Institut As-Sahaba - Élèves"
+const contactGroupByTenant = new Map<string, string | null>()
+
+type ContactSyncMode = "sync" | "preview"
+type ContactSyncOptions = {
+  mode?: ContactSyncMode
+  createMissing?: boolean
+}
+type ContactSyncAction = "create" | "update" | "skip_missing"
 
 function getOAuthClient() {
   const clientId = process.env.GMAIL_CLIENT_ID
@@ -76,6 +85,14 @@ function lower(value: string | null | undefined) {
   return cleanString(value).toLowerCase()
 }
 
+function normalizeContactName(value: string | null | undefined) {
+  return lower(value)
+    .replace(/[\p{Extended_Pictographic}\u2600-\u27BF]/gu, " ")
+    .replace(/[⚫🟠]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function digits(value: string | null | undefined) {
   return cleanString(value).replace(/\D/g, "")
 }
@@ -106,11 +123,11 @@ function sameContactMatch(person: {
 }, values: { fullName: string; emails: string[]; phones: string[] }) {
   const personEmails = new Set((person.emailAddresses ?? []).map((entry) => lower(entry.value)).filter(Boolean))
   const personPhones = new Set((person.phoneNumbers ?? []).map((entry) => digits(entry.value)).filter(Boolean))
-  const personNames = new Set((person.names ?? []).map((entry) => lower(entry.displayName)).filter(Boolean))
+  const personNames = new Set((person.names ?? []).map((entry) => normalizeContactName(entry.displayName)).filter(Boolean))
 
   if (values.emails.some((email) => personEmails.has(lower(email)))) return true
   if (values.phones.some((phone) => personPhones.has(digits(phone)))) return true
-  return personNames.has(lower(values.fullName))
+  return personNames.has(normalizeContactName(values.fullName))
 }
 
 async function findExistingContact(
@@ -141,6 +158,47 @@ async function findExistingContact(
   }
 
   return null
+}
+
+async function ensureStudentContactGroup(tenantId: string) {
+  if (contactGroupByTenant.has(tenantId)) return contactGroupByTenant.get(tenantId) ?? null
+
+  const people = await getPeopleClient(tenantId)
+  const groups = await people.contactGroups.list({
+    groupFields: "metadata,name",
+    pageSize: 200,
+  })
+  const existing = (groups.data.contactGroups ?? []).find((group) => group.name === CONTACT_GROUP_NAME)
+  if (existing?.resourceName) {
+    contactGroupByTenant.set(tenantId, existing.resourceName)
+    return existing.resourceName
+  }
+
+  const created = await people.contactGroups.create({
+    requestBody: {
+      contactGroup: { name: CONTACT_GROUP_NAME },
+    },
+  })
+  const resourceName = created.data.resourceName || null
+  contactGroupByTenant.set(tenantId, resourceName)
+  return resourceName
+}
+
+async function addContactToStudentGroup(tenantId: string, resourceName: string) {
+  const groupResourceName = await ensureStudentContactGroup(tenantId)
+  if (!groupResourceName) return
+
+  const people = await getPeopleClient(tenantId)
+  await people.contactGroups.members.modify({
+    resourceName: groupResourceName,
+    requestBody: {
+      resourceNamesToAdd: [resourceName],
+    },
+  }).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/already|duplicate|member/i.test(message)) return
+    throw error
+  })
 }
 
 async function upsertGoogleContact({
@@ -200,11 +258,15 @@ async function upsertGoogleContact({
           etag: etag || undefined,
         },
       })
-      return updated.data.resourceName || resourceName
+      const updatedResourceName = updated.data.resourceName || resourceName
+      await addContactToStudentGroup(tenantId, updatedResourceName)
+      return updatedResourceName
     }
 
     const created = await people.people.createContact({ requestBody: payload })
-    return created.data.resourceName || null
+    const createdResourceName = created.data.resourceName || null
+    if (createdResourceName) await addContactToStudentGroup(tenantId, createdResourceName)
+    return createdResourceName
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
     if (/insufficient.*scope|insufficientpermissions|forbidden|permission/i.test(message.toLowerCase())) {
@@ -212,7 +274,9 @@ async function upsertGoogleContact({
     }
     if (/not found/i.test(message.toLowerCase()) && resourceName) {
       const created = await people.people.createContact({ requestBody: payload })
-      return created.data.resourceName || null
+      const createdResourceName = created.data.resourceName || null
+      if (createdResourceName) await addContactToStudentGroup(tenantId, createdResourceName)
+      return createdResourceName
     }
     throw error
   }
@@ -279,9 +343,9 @@ async function getSiblingStudents(studentId: string) {
   })
 }
 
-export async function syncStudentGoogleContact(studentId: string) {
+async function buildStudentGoogleContactPlan(studentId: string) {
   const siblings = await getSiblingStudents(studentId)
-  if (siblings.length === 0) return { ok: false, reason: "student_not_found" as const }
+  if (siblings.length === 0) return null
 
   const primary = siblings[0]
   const fullName = `${primary.firstName} ${primary.lastName}`.replace(/\s+/g, " ").trim()
@@ -295,10 +359,13 @@ export async function syncStudentGoogleContact(studentId: string) {
   const subjects = unique(siblings.map((student) => student.subject))
   const existingResource = siblings.find((student) => cleanString(student.googleContactResourceName))?.googleContactResourceName || null
   const fallbackResource = existingResource || await findExistingContact(primary.tenantId, { fullName, emails, phones })
+  const expectedName = contactName(fullName, statuses, teacherEmojis)
 
-  const resourceName = await upsertGoogleContact({
+  return {
     tenantId: primary.tenantId,
+    studentIds: siblings.map((student) => student.id),
     fullName,
+    expectedName,
     statuses,
     teacherEmojis,
     teacherNames,
@@ -306,19 +373,41 @@ export async function syncStudentGoogleContact(studentId: string) {
     emails,
     phones,
     resourceName: fallbackResource,
+    action: fallbackResource ? "update" as const : "create" as const,
+  }
+}
+
+export async function syncStudentGoogleContact(studentId: string, options: ContactSyncOptions = {}) {
+  const plan = await buildStudentGoogleContactPlan(studentId)
+  if (!plan) return { ok: false, reason: "student_not_found" as const }
+
+  if (!plan.resourceName && options.createMissing === false) {
+    return { ok: true, resourceName: null, action: "skip_missing" as const }
+  }
+
+  const resourceName = await upsertGoogleContact({
+    tenantId: plan.tenantId,
+    fullName: plan.fullName,
+    statuses: plan.statuses,
+    teacherEmojis: plan.teacherEmojis,
+    teacherNames: plan.teacherNames,
+    subjects: plan.subjects,
+    emails: plan.emails,
+    phones: plan.phones,
+    resourceName: plan.resourceName,
   })
 
   if (resourceName) {
     await prisma.student.updateMany({
-      where: { id: { in: siblings.map((student) => student.id) } },
+      where: { id: { in: plan.studentIds } },
       data: { googleContactResourceName: resourceName },
     })
   }
 
-  return { ok: true, resourceName }
+  return { ok: true, resourceName, action: plan.action }
 }
 
-export async function syncAllStudentGoogleContacts(tenantId: string) {
+export async function syncAllStudentGoogleContacts(tenantId: string, options: ContactSyncOptions = {}) {
   await ensureStudentContactColumns()
   const students = await prisma.student.findMany({
     where: { tenantId },
@@ -335,7 +424,20 @@ export async function syncAllStudentGoogleContacts(tenantId: string) {
   })
 
   const processed = new Set<string>()
-  let synced = 0
+  const stats = {
+    synced: 0,
+    created: 0,
+    updated: 0,
+    skippedMissing: 0,
+    label: CONTACT_GROUP_NAME,
+    preview: [] as Array<{
+      studentName: string
+      expectedName: string
+      action: ContactSyncAction
+      teacherEmojis: string[]
+      subjects: string[]
+    }>,
+  }
 
   for (const student of students) {
     const key = [
@@ -348,9 +450,33 @@ export async function syncAllStudentGoogleContacts(tenantId: string) {
     ].join("|")
     if (processed.has(key)) continue
     processed.add(key)
-    await syncStudentGoogleContact(student.id)
-    synced += 1
+
+    const plan = await buildStudentGoogleContactPlan(student.id)
+    if (!plan) continue
+    const action: ContactSyncAction = plan.resourceName ? "update" : options.createMissing === false ? "skip_missing" : "create"
+    if (stats.preview.length < 50) {
+      stats.preview.push({
+        studentName: plan.fullName,
+        expectedName: plan.expectedName,
+        action,
+        teacherEmojis: plan.teacherEmojis,
+        subjects: plan.subjects,
+      })
+    }
+
+    if (options.mode === "preview") {
+      if (action === "create") stats.created += 1
+      if (action === "update") stats.updated += 1
+      if (action === "skip_missing") stats.skippedMissing += 1
+      continue
+    }
+
+    const result = await syncStudentGoogleContact(student.id, { createMissing: options.createMissing })
+    if (result.action === "create") stats.created += 1
+    if (result.action === "update") stats.updated += 1
+    if (result.action === "skip_missing") stats.skippedMissing += 1
+    stats.synced += result.action === "skip_missing" ? 0 : 1
   }
 
-  return { synced }
+  return stats
 }

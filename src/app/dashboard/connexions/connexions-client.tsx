@@ -111,16 +111,37 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
     }
   }
 
-  async function syncStudentContacts() {
+  async function syncStudentContacts(mode: "preview" | "update-only" | "sync") {
     setContactsLoading(true)
     try {
-      const res = await fetch("/api/connexions/gmail/sync-contacts", { method: "POST" })
+      const res = await fetch("/api/connexions/gmail/sync-contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: mode === "preview" ? "preview" : "sync",
+          createMissing: mode !== "update-only",
+        }),
+      })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         alert(data.error || "Synchronisation des contacts impossible.")
         return
       }
-      alert(`${data.synced ?? 0} contact(s) élève synchronisé(s) dans Google Contacts.`)
+      const lines = [
+        mode === "preview" ? "Aperçu de synchronisation :" : "Synchronisation terminée :",
+        `${data.updated ?? 0} contact(s) à mettre à jour`,
+        `${data.created ?? 0} contact(s) à créer`,
+        `${data.skippedMissing ?? 0} contact(s) ignoré(s) car introuvables`,
+        data.label ? `Libellé Google : ${data.label}` : "",
+      ].filter(Boolean)
+      if (mode === "preview" && Array.isArray(data.preview) && data.preview.length > 0) {
+        lines.push("")
+        lines.push("Exemples :")
+        for (const item of data.preview.slice(0, 8)) {
+          lines.push(`- ${item.expectedName}`)
+        }
+      }
+      alert(lines.join("\n"))
     } finally {
       setContactsLoading(false)
     }
@@ -215,7 +236,15 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
               <MailCheck className="h-3.5 w-3.5" />
               Connecter l&apos;adresse contacts
             </Button>
-            <Button size="sm" onClick={syncStudentContacts} disabled={!mailStatus.contacts.connected || contactsLoading}>
+            <Button size="sm" variant="outline" onClick={() => syncStudentContacts("preview")} disabled={!mailStatus.contacts.connected || contactsLoading}>
+              <UserCheck className="h-3.5 w-3.5" />
+              Aperçu
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => syncStudentContacts("update-only")} disabled={!mailStatus.contacts.connected || contactsLoading}>
+              <UserCheck className="h-3.5 w-3.5" />
+              Mettre à jour seulement
+            </Button>
+            <Button size="sm" onClick={() => syncStudentContacts("sync")} disabled={!mailStatus.contacts.connected || contactsLoading}>
               <UserCheck className="h-3.5 w-3.5" />
               {contactsLoading ? "Synchronisation..." : "Synchroniser les contacts"}
             </Button>
