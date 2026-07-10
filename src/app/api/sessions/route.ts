@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
+import { syncStudentGoogleContact } from "@/lib/google-contacts"
 
 export const GET = wrap(async (req: Request) => {
   const session = await auth()
@@ -111,6 +112,10 @@ export const POST = wrap(async (req: Request) => {
       teacher: { select: { id: true, name: true } },
       lessons: { orderBy: { number: "asc" } },
     },
+  })
+
+  await syncStudentGoogleContact(studentId).catch((error) => {
+    console.error("[contacts] session create sync failed:", error)
   })
 
   return NextResponse.json(newSession, { status: 201 })

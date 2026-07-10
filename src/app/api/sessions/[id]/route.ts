@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { sendComptaMail, sessionEndEmailHtml } from "@/lib/mail"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
 import { wrap } from "@/lib/api"
+import { syncStudentGoogleContact } from "@/lib/google-contacts"
 
 const PAYPAL_LINK = process.env.PAYPAL_LINK ?? ""
 const PAYPAL_EMAIL = process.env.PAYPAL_EMAIL ?? process.env.PAYMENT_EMAIL ?? process.env.FACTURATION_EMAIL ?? "facturation.institutassahaba@gmail.com"
@@ -207,6 +208,10 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     }
   }
 
+  await syncStudentGoogleContact(existing.studentId).catch((error) => {
+    console.error("[contacts] session update sync failed:", error)
+  })
+
   return NextResponse.json(nextSessionForResponse ? { ...updated, nextSession: nextSessionForResponse } : updated)
 })
 
@@ -219,7 +224,7 @@ export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ 
 
   const existing = await prisma.lessonSession.findFirst({
     where: { id, tenantId: user.tenantId },
-    select: { id: true },
+    select: { id: true, studentId: true },
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -230,5 +235,8 @@ export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ 
     prisma.payment.updateMany({ where: { lessonSessionId: id, tenantId: user.tenantId }, data: { lessonSessionId: null } }),
     prisma.lessonSession.delete({ where: { id } }),
   ])
+  await syncStudentGoogleContact(existing.studentId).catch((error) => {
+    console.error("[contacts] session delete sync failed:", error)
+  })
   return NextResponse.json({ ok: true })
 })

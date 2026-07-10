@@ -3,9 +3,9 @@ function clean(value: string | null | undefined) {
 }
 
 export function extractTeacherEmoji(name: string | null | undefined) {
-  const firstToken = clean(name).split(/\s+/)[0] || ""
-  if (!firstToken) return null
-  return /[\p{Extended_Pictographic}\u2600-\u27BF]/u.test(firstToken) ? firstToken : null
+  const value = clean(name)
+  const match = value.match(/[\p{Extended_Pictographic}\u2600-\u27BF]/u)
+  return match?.[0] ?? null
 }
 
 export function studentLabelWithTeacherEmoji(
