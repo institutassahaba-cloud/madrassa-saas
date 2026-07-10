@@ -573,7 +573,7 @@ function SessionCard({
       <div className="space-y-3 border-t border-gray-100 p-3 sm:p-4">
         {session.lessons.map((lesson) => (
           <LessonRow
-            key={lesson.id}
+            key={`${lesson.id}:${lesson.date ?? ""}:${lesson.content ?? ""}:${lesson.duration ?? ""}:${lesson.makeupOnLessonId ?? ""}`}
             lesson={lesson}
             sessionDuration={session.duration}
             siblingLessons={session.lessons}
@@ -1257,7 +1257,7 @@ function MergedSessionCard({
           const cells = lessonsForNumber(num)
           return (
             <MergedLessonRow
-              key={num}
+              key={`${num}:${cells.map((cell) => `${cell.lesson?.id ?? cell.student.id}:${cell.lesson?.date ?? ""}:${cell.lesson?.content ?? ""}:${cell.lesson?.duration ?? ""}`).join("|")}`}
               lessonNumber={num}
               cells={cells}
               sessionDuration={sessionDuration}
@@ -1519,13 +1519,15 @@ export function CahierClient({
   }
 
   async function handleUpdateLesson(lessonId: string, data: Partial<Lesson>) {
-    await fetch(`/api/lessons/${lessonId}`, {
+    const res = await fetch(`/api/lessons/${lessonId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
+    if (!res.ok) return
+    const updatedLesson = await res.json()
     setSessions((prev) =>
-      applyLessonUpdate(prev, lessonId, data)
+      applyLessonUpdate(prev, lessonId, updatedLesson)
     )
   }
 

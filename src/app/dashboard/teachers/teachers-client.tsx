@@ -779,7 +779,16 @@ function SessionCard({
 
       <div className="border-t border-gray-100 p-4 space-y-3">
         {session.lessons.map((lesson) => (
-          <LessonRow key={lesson.id} lesson={lesson} sessionDuration={session.duration} siblingLessons={session.lessons} canSetLegacyBoundary={canSetLegacyBoundary} studentHasLegacyBoundary={studentHasLegacyBoundary} onUpdate={onUpdateLesson} onDelete={onDeleteLesson} />
+          <LessonRow
+            key={`${lesson.id}:${lesson.date ?? ""}:${lesson.content ?? ""}:${lesson.duration ?? ""}:${lesson.makeupOnLessonId ?? ""}`}
+            lesson={lesson}
+            sessionDuration={session.duration}
+            siblingLessons={session.lessons}
+            canSetLegacyBoundary={canSetLegacyBoundary}
+            studentHasLegacyBoundary={studentHasLegacyBoundary}
+            onUpdate={onUpdateLesson}
+            onDelete={onDeleteLesson}
+          />
         ))}
         {!session.isComplete && (
           <Button variant="outline" size="sm" className="w-full border-dashed text-xs" onClick={() => onAddLesson(session.id)}>
@@ -1263,7 +1272,7 @@ function MergedGroupCahier({
             }))
             return (
               <MergedLessonRow
-                key={num}
+                key={`${num}:${cells.map((cell) => `${cell.lesson?.id ?? cell.student.id}:${cell.lesson?.date ?? ""}:${cell.lesson?.content ?? ""}:${cell.lesson?.duration ?? ""}`).join("|")}`}
                 lessonNumber={num}
                 cells={cells}
                 sessionDuration={sessionDuration}
@@ -2500,8 +2509,10 @@ export function TeachersClient({
   }
 
   async function handleUpdateLesson(lessonId: string, data: Partial<Lesson>) {
-    await fetch(`/api/lessons/${lessonId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-    setSessions((prev) => applyLessonUpdate(prev, lessonId, data))
+    const res = await fetch(`/api/lessons/${lessonId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+    if (!res.ok) return
+    const updatedLesson = await res.json()
+    setSessions((prev) => applyLessonUpdate(prev, lessonId, updatedLesson))
   }
 
   async function handleAddLesson(sessionId: string) {
