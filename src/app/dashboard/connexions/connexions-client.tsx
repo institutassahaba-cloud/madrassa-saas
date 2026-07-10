@@ -15,6 +15,7 @@ interface Member {
 
 interface MailStatus {
   paymentInbox: { email: string; connected: boolean }
+  contacts: { email: string; connected: boolean }
   compta: { email: string; connected: boolean }
 }
 
@@ -135,7 +136,18 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
         <p className="text-sm text-gray-500 mt-0.5">Dernières connexions de l&apos;équipe</p>
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      {!mailStatus.contacts.connected && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Pour créer et mettre à jour les contacts élèves dans Google Contacts, connectez d&apos;abord l&apos;adresse Google utilisée pour les contacts.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
@@ -173,9 +185,39 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
               <CreditCard className="h-3.5 w-3.5" />
               {scanLoading ? "Scan..." : "Scanner les paiements"}
             </Button>
-            <Button size="sm" variant="outline" onClick={syncStudentContacts} disabled={!mailStatus.paymentInbox.connected || contactsLoading}>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Contacts Google</h2>
+                <p className="mt-0.5 text-xs text-gray-500">{mailStatus.contacts.email || "Adresse Google non renseignée"}</p>
+              </div>
+            </div>
+            <ConnectionState connected={mailStatus.contacts.connected} />
+          </div>
+          <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+            <p className="text-[11px] font-medium uppercase text-gray-400">Contacts élèves</p>
+            <p className={`mt-1 text-xs font-semibold ${mailStatus.contacts.connected ? "text-emerald-700" : "text-amber-700"}`}>
+              {mailStatus.contacts.connected ? "Adresse connectée" : "Adresse à connecter"}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Cette connexion permet de créer ou mettre à jour les fiches élèves dans Google Contacts.
+            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => { window.location.href = "/api/connexions/gmail/auth" }}>
+              <MailCheck className="h-3.5 w-3.5" />
+              Connecter l&apos;adresse contacts
+            </Button>
+            <Button size="sm" onClick={syncStudentContacts} disabled={!mailStatus.contacts.connected || contactsLoading}>
               <UserCheck className="h-3.5 w-3.5" />
-              {contactsLoading ? "Synchronisation..." : "Synchroniser les contacts élèves"}
+              {contactsLoading ? "Synchronisation..." : "Synchroniser les contacts"}
             </Button>
           </div>
         </div>

@@ -43,6 +43,10 @@ export default async function ConnexionsPage() {
       email: paymentEmail,
       connected: Boolean((process.env.GMAIL_PAYMENT_REFRESH_TOKEN || settings?.gmailRefreshToken) && paymentEmail),
     },
+    contacts: {
+      email: paymentEmail,
+      connected: Boolean((process.env.GMAIL_PAYMENT_REFRESH_TOKEN || settings?.gmailRefreshToken) && paymentEmail),
+    },
     compta: {
       email: comptaEmail,
       connected: Boolean(comptaEmail && (process.env.COMPTA_EMAIL_PASSWORD || settings?.smtpPassword)),

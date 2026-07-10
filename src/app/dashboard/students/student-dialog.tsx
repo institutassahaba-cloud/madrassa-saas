@@ -73,6 +73,8 @@ type ExtraCourseDraft = typeof EMPTY_EXTRA & {
 }
 
 const SUBJECTS = ["Coran", "Nouraniya", "Arabe", "Langue arabe", "Tajwid", "Fiqh", "Autre"]
+const ALL_TEACHERS_VALUE = "__all_teachers__"
+const NO_SUBJECT_VALUE = "__no_subject__"
 const DAYS = [
   { value: "1", label: "Lundi" }, { value: "2", label: "Mardi" }, { value: "3", label: "Mercredi" },
   { value: "4", label: "Jeudi" }, { value: "5", label: "Vendredi" }, { value: "6", label: "Samedi" },
@@ -692,10 +694,10 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Professeur</Label>
-                <Select value={teacherId} onValueChange={(v) => { setTeacherId(v); setSharedField("groupId", "") }}>
+                <Select value={teacherId || ALL_TEACHERS_VALUE} onValueChange={(v) => { setTeacherId(v === ALL_TEACHERS_VALUE ? "" : v); setSharedField("groupId", "") }}>
                   <SelectTrigger><SelectValue placeholder="Choisir un prof..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous</SelectItem>
+                    <SelectItem value={ALL_TEACHERS_VALUE}>Tous</SelectItem>
                     {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -746,10 +748,10 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
 
               <div className="space-y-1.5">
                 <Label>Matière {lockedByGroup && <span className="text-xs text-blue-500 ml-1">(classe)</span>}</Label>
-                <Select value={shared.subject} onValueChange={(v) => setSharedField("subject", v)} disabled={lockedByGroup}>
+                <Select value={shared.subject || NO_SUBJECT_VALUE} onValueChange={(v) => setSharedField("subject", v === NO_SUBJECT_VALUE ? "" : v)} disabled={lockedByGroup}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucune</SelectItem>
+                    <SelectItem value={NO_SUBJECT_VALUE}>Aucune</SelectItem>
                     {SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
