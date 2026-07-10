@@ -26,7 +26,6 @@ const SUBJECT_COLORS: Record<string, string> = {
   "Coran":        "bg-emerald-100 text-emerald-700",
   "Nouraniya":    "bg-blue-100 text-blue-700",
   "Nouraniyah":   "bg-blue-100 text-blue-700",
-  "Arabe":        "bg-amber-100 text-amber-700",
   "Langue arabe": "bg-amber-100 text-amber-700",
   "Tajwid":       "bg-purple-100 text-purple-700",
   "Fiqh":         "bg-rose-100 text-rose-700",
@@ -120,7 +119,7 @@ function scheduleLabel(slot: Slot): string {
 
 function subjectLabel(subject: string): string {
   if (subject === "Nouraniyah") return "Nouraniya"
-  if (subject === "Langue arabe") return "Arabe"
+  if (subject === "Arabe") return "Langue arabe"
   return subject
 }
 
@@ -216,7 +215,7 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
         return map
       }, new Map<string, number>())
   ).sort(([a], [b]) => {
-    const order = ["Arabe", "Coran", "Nouraniya", "Tajwid"]
+    const order = ["Langue arabe", "Coran", "Nouraniya", "Tajwid"]
     const ai = order.indexOf(a)
     const bi = order.indexOf(b)
     if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)

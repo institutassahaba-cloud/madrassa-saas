@@ -8,6 +8,7 @@ import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
 import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
+import { canonicalSubject, ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
 
 const DEFAULT_SLOT_COLOR = "#10b981"
 
@@ -93,6 +94,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
+  await ensureCanonicalSubjects(user.tenantId)
 
   const { id } = await params
   const body = await req.json()
@@ -102,6 +104,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
 
   const oldGroupId = student.groupId
   const newGroupId = body.groupId || null
+  const subject = canonicalSubject(body.subject)
 
   const updated = await prisma.student.update({
     where: { id },
@@ -116,7 +119,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
       city: body.city || null,
       groupId: newGroupId,
       level: body.level || null,
-      subject: body.subject || null,
+      subject,
       monthlyFee: Number(body.monthlyFee),
       paymentGraceAllowed: user.role === "DIRECTOR" ? body.paymentGraceAllowed === true : undefined,
       hourlyRate: body.hourlyRate === "" || body.hourlyRate == null ? null : Number(body.hourlyRate),
@@ -140,9 +143,9 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
       select: { teacherId: true },
     })
     if (group?.teacherId) {
-      const subject = body.subject || "Coran"
+      const sessionSubject = subject || "Coran"
       await prisma.lessonSession.upsert({
-        where: { studentId_subject_number: { studentId: id, subject, number: 1 } },
+        where: { studentId_subject_number: { studentId: id, subject: sessionSubject, number: 1 } },
         update: {
           teacherId: group.teacherId,
           frequency: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
@@ -152,7 +155,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
           tenantId: user.tenantId,
           studentId: id,
           teacherId: group.teacherId,
-          subject,
+          subject: sessionSubject,
           number: 1,
           frequency: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
           duration: body.duration || null,
@@ -170,7 +173,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
         teacherId: group.teacherId,
         groupId: newGroupId,
         studentName: `${updated.firstName} ${updated.lastName}`,
-        subject,
+        subject: sessionSubject,
         duration: body.duration || null,
         slots: scheduleSlots,
       })
@@ -199,6 +202,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
+  await ensureCanonicalSubjects(user.tenantId)
 
   const { id } = await params
   const body = await req.json()

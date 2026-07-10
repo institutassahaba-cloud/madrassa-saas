@@ -5,6 +5,7 @@ import { getGmailRedirectUri } from "@/lib/payment-email-reader"
 import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
 import { ensureGoogleContactsSettingsColumns } from "@/lib/google-contacts-settings-schema"
 import { extractTeacherEmoji } from "@/lib/student-display"
+import { ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
 
 const CONTACT_SCOPE_ERROR = "Connexion Google Contacts incomplète. Reconnectez l'adresse contacts."
 const GOOGLE_CONTACTS_SCOPES = [
@@ -300,24 +301,11 @@ async function getSiblingStudents(studentId: string) {
   })
   if (!baseStudent) return []
 
-  const identifiers = unique([baseStudent.email, baseStudent.phone, baseStudent.parentEmail, baseStudent.parentPhone])
-  const where = identifiers.length > 0
-    ? {
-        tenantId: baseStudent.tenantId,
-        firstName: baseStudent.firstName,
-        lastName: baseStudent.lastName,
-        OR: identifiers.flatMap((value) => [
-          { email: value },
-          { phone: value },
-          { parentEmail: value },
-          { parentPhone: value },
-        ]),
-      }
-    : {
-        tenantId: baseStudent.tenantId,
-        firstName: baseStudent.firstName,
-        lastName: baseStudent.lastName,
-      }
+  const where = {
+    tenantId: baseStudent.tenantId,
+    firstName: baseStudent.firstName,
+    lastName: baseStudent.lastName,
+  }
 
   return prisma.student.findMany({
     where,
@@ -409,6 +397,7 @@ export async function syncStudentGoogleContact(studentId: string, options: Conta
 
 export async function syncAllStudentGoogleContacts(tenantId: string, options: ContactSyncOptions = {}) {
   await ensureStudentContactColumns()
+  await ensureCanonicalSubjects(tenantId)
   const students = await prisma.student.findMany({
     where: { tenantId },
     select: {
@@ -443,10 +432,6 @@ export async function syncAllStudentGoogleContacts(tenantId: string, options: Co
     const key = [
       lower(student.firstName),
       lower(student.lastName),
-      lower(student.email),
-      digits(student.phone),
-      lower(student.parentEmail),
-      digits(student.parentPhone),
     ].join("|")
     if (processed.has(key)) continue
     processed.add(key)

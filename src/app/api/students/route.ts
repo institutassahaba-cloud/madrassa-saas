@@ -8,6 +8,7 @@ import { replaceStudentPaymentAliases, learnPaymentAliasFromConfirmation } from 
 import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
+import { canonicalSubject, ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
 import { z } from "zod"
 
 const DEFAULT_SLOT_COLOR = "#10b981"
@@ -190,6 +191,7 @@ export const GET = wrap(async () => {
   const tenantId = (session.user).tenantId
   await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
+  await ensureCanonicalSubjects(tenantId)
 
   const students = await prisma.student.findMany({
     where: { tenantId },
@@ -212,6 +214,7 @@ export const POST = wrap(async (req: Request) => {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.message }, { status: 400 })
 
   const data = parsed.data
+  const subject = canonicalSubject(data.subject)
   const student = await prisma.student.create({
     data: {
       tenantId: user.tenantId,
@@ -225,7 +228,7 @@ export const POST = wrap(async (req: Request) => {
       city: data.city || null,
       groupId: data.groupId || null,
       level: data.level || null,
-      subject: data.subject || null,
+      subject,
       monthlyFee: data.monthlyFee,
       paymentGraceAllowed: user.role === "DIRECTOR" ? data.paymentGraceAllowed === true : false,
       hourlyRate: data.hourlyRate ?? null,
@@ -271,7 +274,7 @@ export const POST = wrap(async (req: Request) => {
           tenantId: user.tenantId,
           studentId: student.id,
           teacherId: group.teacherId,
-          subject: data.subject || "Coran",
+          subject: subject || "Coran",
           number: sessionNumber,
           frequency: data.lessonsPerWeek ?? null,
           duration: data.duration || null,
@@ -291,7 +294,7 @@ export const POST = wrap(async (req: Request) => {
         groupId: data.groupId,
         className: group.name,
         studentName: `${student.firstName} ${student.lastName}`,
-        subject: data.subject || "Coran",
+        subject: subject || "Coran",
         duration: data.duration,
         slots: data.scheduleSlots,
       })

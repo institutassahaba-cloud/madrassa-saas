@@ -3,11 +3,13 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
+import { canonicalSubject, ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
 
 export const GET = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
+  await ensureCanonicalSubjects(user.tenantId)
 
   const { searchParams } = new URL(req.url)
   const studentId = searchParams.get("studentId")
@@ -36,8 +38,9 @@ export const POST = wrap(async (req: Request) => {
 
   const body = await req.json()
   const { studentId, teacherId, subject, number, frequency, duration, lessonCount } = body
+  const sessionSubject = canonicalSubject(subject)
 
-  if (!studentId || !subject) {
+  if (!studentId || !sessionSubject) {
     return NextResponse.json({ error: "studentId and subject required" }, { status: 400 })
   }
 
@@ -84,7 +87,7 @@ export const POST = wrap(async (req: Request) => {
   let sessionNumber = number
   if (!sessionNumber) {
     const last = await prisma.lessonSession.findFirst({
-      where: { tenantId: user.tenantId, studentId, subject },
+      where: { tenantId: user.tenantId, studentId, subject: sessionSubject },
       orderBy: { number: "desc" },
     })
     sessionNumber = (last?.number ?? 0) + 1
@@ -95,7 +98,7 @@ export const POST = wrap(async (req: Request) => {
       tenantId: user.tenantId,
       studentId,
       teacherId: resolvedTeacherId,
-      subject,
+      subject: sessionSubject,
       number: sessionNumber,
       frequency: frequency ? Number(frequency) : null,
       duration: duration || null,

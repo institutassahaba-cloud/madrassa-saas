@@ -100,7 +100,7 @@ type ExtraCourseDraft = typeof EMPTY_EXTRA & {
   slots: CourseSlotDraft[]
 }
 
-const SUBJECTS = ["Coran", "Nouraniya", "Arabe", "Langue arabe", "Tajwid", "Fiqh", "Autre"]
+const SUBJECTS = ["Coran", "Nouraniya", "Langue arabe", "Tajwid", "Fiqh", "Autre"]
 const ALL_TEACHERS_VALUE = "__all_teachers__"
 const NO_SUBJECT_VALUE = "__no_subject__"
 const DAYS = [

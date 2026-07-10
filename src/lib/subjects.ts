@@ -3,7 +3,7 @@
 
 export const SUBJECTS = [
   "Coran",
-  "Arabe",
+  "Langue arabe",
   "Tajwid",
   "Nouraniyah",
   "Moutoun",
@@ -32,7 +32,7 @@ export function normalizeSubject(raw: string | null | undefined): Subject | null
   ) return "Nouraniyah"
   if (t.includes("moutoun") || t.includes("moutoune") || t.includes("matn") || t.includes("mutun")) return "Moutoun"
   if (t.includes("anglais") || t.includes("english")) return "Anglais"
-  if (t.includes("arabe")) return "Arabe"
+  if (t.includes("arabe")) return "Langue arabe"
 
   return null
 }
