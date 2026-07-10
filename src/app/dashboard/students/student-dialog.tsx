@@ -44,6 +44,23 @@ const EMPTY_SHARED = {
 
 const EMPTY_EXTRA = {
   subject: "", groupId: "", hourlyRate: "", lessonsPerWeek: "", duration: "", startSession: "",
+  newClassName: "",
+}
+
+// Objet + message d'accueil par défaut de l'e-mail de bienvenue (modifiables avant envoi).
+const DEFAULT_WELCOME_SUBJECT = "Bienvenue à l'Institut As-Sahaba"
+const DEFAULT_WELCOME_INTRO =
+  "Nous sommes très heureux de vous accueillir à l'Institut As-Sahaba. Qu'Allah vous facilite un apprentissage béni et sincère."
+
+// Tarif mensuel = tarif horaire × durée d'un cours (h) × cours par semaine × 4 semaines.
+// Ex : 7 €/h, cours d'1h, 2 cours/sem → 7 × 1 × 2 × 4 = 56 €.
+function computeMonthlyFee(hourlyRate: string, duration: string, lessonsPerWeek: string): number {
+  const rate = Number(hourlyRate)
+  const hours = parseFloat((duration || "").replace(",", "."))
+  const perWeek = Number(lessonsPerWeek)
+  if (!Number.isFinite(rate) || !Number.isFinite(hours) || !Number.isFinite(perWeek)) return 0
+  if (rate <= 0 || hours <= 0 || perWeek <= 0) return 0
+  return Math.round(rate * hours * perWeek * 4 * 100) / 100
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -59,6 +76,15 @@ type PaymentAliasFormRow = {
   id: string
   type: "PAYPAL" | "WISE"
   alias: string
+  // Ligne « principale » synchronisée automatiquement (Prénom Nom de l'élève ou payeur
+  // du paiement associé). Passe à false dès que le directeur la modifie à la main.
+  auto?: boolean
+}
+
+const makeId = () => Math.random().toString(36).slice(2)
+// Ligne d'alias principale d'un élève : suit son nom (ou le paiement associé) par défaut.
+function createAutoAliasRow(): PaymentAliasFormRow {
+  return { id: makeId(), type: "WISE", alias: "", auto: true }
 }
 
 type CourseSlotDraft = {
@@ -70,6 +96,7 @@ type CourseSlotDraft = {
 type ExtraCourseDraft = typeof EMPTY_EXTRA & {
   id: string
   teacherId: string
+  joinExisting: boolean
   slots: CourseSlotDraft[]
 }
 
@@ -90,6 +117,7 @@ function createExtraCourseDraft(): ExtraCourseDraft {
   return {
     id: Math.random().toString(36).slice(2),
     teacherId: "",
+    joinExisting: false,
     slots: [createSlotDraft()],
     ...EMPTY_EXTRA,
   }
@@ -121,10 +149,15 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
   const [teacherId, setTeacherId] = useState("")
   const [joinExisting, setJoinExisting] = useState(false)
   const [newClassName, setNewClassName] = useState("")
-  const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
+  // Noms de paiement PAR élève : chaque élève a sa propre liste, dont une ligne
+  // principale auto (Prénom Nom ou payeur du paiement associé).
+  const [aliasesByStudent, setAliasesByStudent] = useState<PaymentAliasFormRow[][]>([[createAutoAliasRow()]])
   const [initialPayment, setInitialPayment] = useState({ ...EMPTY_INITIAL_PAYMENT })
   // Envoi de l'e-mail de bienvenue à la création (coordonnées WhatsApp + Zoom des profs).
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true)
+  // Objet + message d'accueil de l'e-mail de bienvenue, modifiables avant l'envoi.
+  const [welcomeSubject, setWelcomeSubject] = useState(DEFAULT_WELCOME_SUBJECT)
+  const [welcomeIntro, setWelcomeIntro] = useState(DEFAULT_WELCOME_INTRO)
   // Un paiement détecté à associer par élève (index aligné sur `identities`).
   // L'élève 1 est pré-rempli avec le paiement cliqué ; les suivants sont optionnels.
   const [matchIds, setMatchIds] = useState<string[]>([""])
@@ -162,23 +195,23 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
         status: student.status ?? "ACTIVE",
         recontactDate: student.recontactDate ? student.recontactDate.toString().slice(0, 10) : "",
       })
-      const existingAliases = Array.isArray(student.paymentAliases)
+      const existingAliases: PaymentAliasFormRow[] = Array.isArray(student.paymentAliases)
         ? student.paymentAliases.map((alias: { id?: string; type?: string; alias?: string }) => ({
-          id: alias.id || Math.random().toString(36).slice(2),
+          id: alias.id || makeId(),
           type: alias.type === "PAYPAL" ? "PAYPAL" : "WISE",
           alias: alias.alias || "",
         }))
         : []
       if (existingAliases.length > 0) {
-        setPaymentAliases(existingAliases)
+        setAliasesByStudent([existingAliases])
       } else if (student.payerName) {
-        setPaymentAliases([{
-          id: Math.random().toString(36).slice(2),
+        setAliasesByStudent([[{
+          id: makeId(),
           type: student.paymentType === "PAYPAL" ? "PAYPAL" : "WISE",
           alias: student.payerName,
-        }])
+        }]])
       } else {
-        setPaymentAliases([])
+        setAliasesByStudent([[createAutoAliasRow()]])
       }
       const currentGroup = groups.find(g => g.id === student.group?.id)
       setTeacherId(currentGroup?.teacherId ?? "")
@@ -192,18 +225,39 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       setIdentities([{ ...EMPTY_IDENTITY }])
       setShared({ ...EMPTY_SHARED })
       setTeacherId("")
-      setPaymentAliases([])
+      setAliasesByStudent([[createAutoAliasRow()]])
       setInitialPayment({ ...EMPTY_INITIAL_PAYMENT, paidDate: todayIso() })
       // Élève 1 pré-rempli avec le paiement d'où l'on a cliqué « nouvel élève ».
       setMatchIds([preselectedPaymentMatchId || ""])
       setJoinExisting(false)
       setNewClassName("")
       setPrimarySlots([createSlotDraft()])
+      setWelcomeSubject(DEFAULT_WELCOME_SUBJECT)
+      setWelcomeIntro(DEFAULT_WELCOME_INTRO)
     }
     setExtraCourses([])
     setError("")
   }, [student, open, groups, preselectedPaymentMatchId])
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Réinitialise le formulaire à la demande (bouton « Effacer le formulaire »), sans
+  // le fermer. Ne s'utilise qu'en création : remet tous les champs à vide.
+  function resetCreateForm() {
+    setStudentCount(1)
+    setIdentities([{ ...EMPTY_IDENTITY }])
+    setShared({ ...EMPTY_SHARED })
+    setTeacherId("")
+    setAliasesByStudent([[createAutoAliasRow()]])
+    setInitialPayment({ ...EMPTY_INITIAL_PAYMENT, paidDate: todayIso() })
+    setMatchIds([preselectedPaymentMatchId || ""])
+    setJoinExisting(false)
+    setNewClassName("")
+    setPrimarySlots([createSlotDraft()])
+    setExtraCourses([])
+    setWelcomeSubject(DEFAULT_WELCOME_SUBJECT)
+    setWelcomeIntro(DEFAULT_WELCOME_INTRO)
+    setError("")
+  }
 
   function updateCount(newCount: number) {
     if (newCount < 1) return
@@ -217,6 +271,12 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     setMatchIds((prev) => {
       if (newCount > prev.length) {
         return [...prev, ...Array.from({ length: newCount - prev.length }, () => "")]
+      }
+      return prev.slice(0, newCount)
+    })
+    setAliasesByStudent((prev) => {
+      if (newCount > prev.length) {
+        return [...prev, ...Array.from({ length: newCount - prev.length }, () => [createAutoAliasRow()])]
       }
       return prev.slice(0, newCount)
     })
@@ -249,20 +309,68 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     }
   }
 
-  function addPaymentAlias(type: "PAYPAL" | "WISE") {
-    setPaymentAliases((prev) => [...prev, { id: Math.random().toString(36).slice(2), type, alias: "" }])
+  function addPaymentAlias(studentIdx: number, type: "PAYPAL" | "WISE") {
+    setAliasesByStudent((prev) => prev.map((list, i) =>
+      i === studentIdx ? [...list, { id: makeId(), type, alias: "" }] : list
+    ))
   }
 
-  function updatePaymentAlias(id: string, key: "type" | "alias", value: string) {
-    setPaymentAliases((prev) => prev.map((row) => {
-      if (row.id !== id) return row
-      if (key === "type") return { ...row, type: value === "PAYPAL" ? "PAYPAL" : "WISE" }
-      return { ...row, alias: value }
+  // Édition d'une ligne d'alias : dès qu'on y touche, elle cesse d'être « auto ».
+  function updatePaymentAlias(studentIdx: number, id: string, key: "type" | "alias", value: string) {
+    setAliasesByStudent((prev) => prev.map((list, i) => {
+      if (i !== studentIdx) return list
+      return list.map((row) => {
+        if (row.id !== id) return row
+        if (key === "type") return { ...row, type: value === "PAYPAL" ? "PAYPAL" : "WISE", auto: false }
+        return { ...row, alias: value, auto: false }
+      })
     }))
   }
 
-  function removePaymentAlias(id: string) {
-    setPaymentAliases((prev) => prev.filter((row) => row.id !== id))
+  function removePaymentAlias(studentIdx: number, id: string) {
+    setAliasesByStudent((prev) => prev.map((list, i) =>
+      i === studentIdx ? list.filter((row) => row.id !== id) : list
+    ))
+  }
+
+  // Paiement détecté sélectionné pour l'élève `idx` (pilote la ligne principale).
+  function matchForStudent(idx: number) {
+    const id = matchIds[idx]
+    if (!id) return null
+    return (paymentMatches ?? []).find((m) => m.id === id) ?? null
+  }
+
+  function studentFullName(idx: number) {
+    const it = identities[idx]
+    return `${it?.firstName ?? ""} ${it?.lastName ?? ""}`.trim()
+  }
+
+  // Valeur affichée/envoyée d'une ligne d'alias. La ligne principale (isPrincipal) suit,
+  // dans l'ordre : le paiement associé (verrouillée), sinon le nom de l'élève tant qu'elle
+  // reste « auto », sinon la saisie manuelle.
+  function effectiveAlias(idx: number, row: PaymentAliasFormRow, isPrincipal: boolean) {
+    if (isPrincipal) {
+      const match = matchForStudent(idx)
+      if (match) {
+        return {
+          type: match.source === "PAYPAL" ? "PAYPAL" as const : "WISE" as const,
+          alias: match.detectedPayerName || studentFullName(idx),
+          locked: true,
+        }
+      }
+      if (row.auto) return { type: row.type, alias: studentFullName(idx), locked: false }
+    }
+    return { type: row.type, alias: row.alias, locked: false }
+  }
+
+  // Alias à envoyer pour l'élève `idx` : valeurs effectives, lignes vides ignorées.
+  function aliasesForSubmit(idx: number) {
+    return (aliasesByStudent[idx] ?? [])
+      .map((row, j) => {
+        const eff = effectiveAlias(idx, row, j === 0)
+        return { type: eff.type, alias: eff.alias.trim() }
+      })
+      .filter((a) => a.alias.length > 0)
   }
 
   function setInitialPaymentField(key: keyof typeof EMPTY_INITIAL_PAYMENT, value: string | boolean) {
@@ -295,6 +403,15 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     }))
   }
 
+  // Bascule « Nouvelle classe / Intégrer une classe » pour une matière supplémentaire,
+  // en repartant proprement (on vide le champ inverse) — même logique que le prof principal.
+  function setExtraCourseJoin(id: string, joinExisting: boolean) {
+    setExtraCourses((courses) => courses.map((course) => {
+      if (course.id !== id) return course
+      return { ...course, joinExisting, groupId: "", newClassName: "" }
+    }))
+  }
+
   function updateExtraSlot(courseId: string, slotId: string, key: "dayOfWeek" | "startTime", value: string) {
     setExtraCourses((courses) => courses.map((course) => {
       if (course.id !== courseId) return course
@@ -307,6 +424,8 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
 
   const filteredGroups = teacherId ? groups.filter(g => g.teacherId === teacherId) : groups
   const lockedByGroup = joinExisting && !!shared.groupId && !!groupInfo && groupInfo.count > 0
+  // Tarif mensuel calculé (affiché en lecture seule) : tarif h × durée × cours/sem × 4.
+  const computedMonthlyFee = computeMonthlyFee(shared.hourlyRate, shared.duration, shared.lessonsPerWeek)
 
   // Résout le groupId à utiliser : la classe existante sélectionnée, ou une classe fraîchement
   // créée si le directeur a choisi "Nouvelle classe". Évite qu'un élève se retrouve détaché de
@@ -329,15 +448,33 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     return newGroup.id
   }
 
+  // Résout le groupId d'une matière supplémentaire : classe existante choisie, ou création
+  // d'une nouvelle classe (même schéma que le prof principal). Renvoie null si la matière
+  // n'est pas exploitable (aucune classe / aucun nom), auquel cas elle est ignorée.
+  async function resolveExtraGroupId(course: ExtraCourseDraft): Promise<string | null> {
+    if (course.joinExisting) return course.groupId || null
+    if (!course.newClassName.trim()) return null
+    const res = await fetch("/api/groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: course.newClassName.trim(), teacherId: course.teacherId || undefined }),
+    })
+    if (!res.ok) throw new Error(`Matière supplémentaire « ${course.subject || "?"} » : création de la classe échouée.`)
+    const newGroup = await res.json()
+    return newGroup.id
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError("")
+    // Tarif mensuel calculé automatiquement (tarif h × durée × cours/sem × 4).
+    const primaryMonthlyFee = computeMonthlyFee(shared.hourlyRate, shared.duration, shared.lessonsPerWeek)
     try {
       if (student) {
         // Edit mode: single student
         const groupId = await resolveGroupId()
-        const form = { ...identities[0], ...shared, groupId, paymentAliases, scheduleSlots: toSchedulePayload(primarySlots) }
+        const form = { ...identities[0], ...shared, monthlyFee: primaryMonthlyFee, groupId, paymentAliases: aliasesForSubmit(0), scheduleSlots: toSchedulePayload(primarySlots) }
         const res = await fetch(`/api/students/${student.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -346,15 +483,17 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
         if (!res.ok) throw new Error(await res.text())
 
         for (const course of extraCourses) {
-          if (!course.groupId) continue
+          const courseGroupId = await resolveExtraGroupId(course)
+          if (!courseGroupId) continue
           const resExtra = await fetch("/api/students", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               ...identities[0],
               subject: course.subject,
-              groupId: course.groupId,
-              monthlyFee: shared.monthlyFee,
+              groupId: courseGroupId,
+              joinExisting: course.joinExisting,
+              monthlyFee: computeMonthlyFee(course.hourlyRate, course.duration, course.lessonsPerWeek),
               paymentGraceAllowed: shared.paymentGraceAllowed,
               hourlyRate: course.hourlyRate,
               lessonsPerWeek: course.lessonsPerWeek,
@@ -362,7 +501,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
               startSession: course.startSession || "1",
               notes: shared.notes,
               status: shared.status,
-              paymentAliases,
+              paymentAliases: aliasesForSubmit(0),
               scheduleSlots: toSchedulePayload(course.slots),
               initialPaymentReceived: false,
             }),
@@ -375,6 +514,9 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       } else {
         // Create mode: one or multiple students
         const groupId = await resolveGroupId()
+        // Classes des matières supplémentaires résolues une seule fois (création de
+        // nouvelles classes comprise) pour ne pas les dupliquer à chaque élève du binôme.
+        const extraGroupIds = await Promise.all(extraCourses.map((course) => resolveExtraGroupId(course)))
         for (let i = 0; i < studentCount; i++) {
           // Chaque élève reçoit son propre paiement détecté (élève 1 = paiement cliqué,
           // élèves suivants = choisis dans le menu, optionnels). À défaut de paiement
@@ -383,9 +525,10 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
           const form = {
             ...identities[i],
             ...shared,
+            monthlyFee: primaryMonthlyFee,
             groupId,
             joinExisting: true,
-            paymentAliases,
+            paymentAliases: aliasesForSubmit(i),
             initialPaymentReceived: Boolean(matchId) || initialPayment.received,
             initialPaymentMethod: initialPayment.method,
             initialPaymentPaidDate: initialPayment.paidDate,
@@ -404,15 +547,19 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             throw new Error(`Élève ${i + 1} (${identities[i].firstName || "?"}) : ${data.error || "erreur"}`)
           }
 
-          for (const course of extraCourses) {
-            if (!course.groupId) continue
+          for (let ci = 0; ci < extraCourses.length; ci++) {
+            const course = extraCourses[ci]
+            const courseGroupId = extraGroupIds[ci]
+            if (!courseGroupId) continue
             const res2 = await fetch("/api/students", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 ...form,
                 subject: course.subject,
-                groupId: course.groupId,
+                groupId: courseGroupId,
+                joinExisting: course.joinExisting,
+                monthlyFee: computeMonthlyFee(course.hourlyRate, course.duration, course.lessonsPerWeek),
                 hourlyRate: course.hourlyRate,
                 lessonsPerWeek: course.lessonsPerWeek,
                 duration: course.duration,
@@ -445,6 +592,8 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                   body: JSON.stringify({
                     to: idn.email.trim(),
                     studentName: `${idn.firstName} ${idn.lastName}`.trim() || idn.firstName,
+                    subject: welcomeSubject.trim() || DEFAULT_WELCOME_SUBJECT,
+                    intro: welcomeIntro.trim() || DEFAULT_WELCOME_INTRO,
                     courses: coursesPayload,
                   }),
                 }).catch(() => null)
@@ -478,13 +627,31 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        // Empêche la fermeture accidentelle (clic à l'extérieur / touche Échap) qui
+        // effacerait les informations saisies. Seuls « Annuler » et la croix ferment.
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{student ? "Modifier l'élève" : "Ajouter des élèves"}</DialogTitle>
           <DialogDescription>Remplissez les informations {studentCount > 1 ? `des ${studentCount} élèves` : "de l'élève"}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Effacer le formulaire (création uniquement). La fenêtre ne se ferme plus au
+              clic extérieur : ce bouton est le seul moyen de tout réinitialiser volontairement. */}
+          {!student && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Vos informations sont conservées tant que vous ne fermez pas la fenêtre.</span>
+              <Button type="button" variant="outline" size="sm" onClick={resetCreateForm}>
+                <Trash2 className="h-4 w-4" />
+                Effacer le formulaire
+              </Button>
+            </div>
+          )}
+
           {/* Compteur d'élèves (création uniquement) */}
           {!student && (
             <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
@@ -587,6 +754,61 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                   )}
                 </div>
               )}
+
+              {/* Nom(s) sur le paiement de CET élève. Ligne principale remplie
+                  automatiquement : payeur du paiement associé, sinon Prénom Nom saisis. */}
+              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Nom sur le paiement{studentCount > 1 ? ` (élève ${idx + 1})` : ""}</p>
+                    <p className="text-xs text-gray-500">Rempli automatiquement, modifiable. Ajoutez d&apos;autres noms si besoin.</p>
+                  </div>
+                  <div className="grid gap-2 sm:flex">
+                    <Button type="button" variant="outline" size="sm" onClick={() => addPaymentAlias(idx, "PAYPAL")}>
+                      <Plus className="h-4 w-4" />
+                      PayPal
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => addPaymentAlias(idx, "WISE")}>
+                      <Plus className="h-4 w-4" />
+                      Virement
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {(aliasesByStudent[idx] ?? []).map((row, j) => {
+                    const eff = effectiveAlias(idx, row, j === 0)
+                    return (
+                      <div key={row.id} className="grid gap-2 rounded-lg border border-gray-200 bg-white p-2 sm:grid-cols-[9rem_1fr_2.5rem]">
+                        <Select value={eff.type} onValueChange={(value) => updatePaymentAlias(idx, row.id, "type", value)} disabled={eff.locked}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PAYPAL">PayPal</SelectItem>
+                            <SelectItem value="WISE">Virement</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={eff.alias}
+                          onChange={(e) => updatePaymentAlias(idx, row.id, "alias", e.target.value)}
+                          placeholder="Nom affiché dans le paiement"
+                          disabled={eff.locked}
+                        />
+                        {j === 0 ? (
+                          <span className="flex items-center justify-center text-[10px] font-medium uppercase tracking-wide text-gray-400" title="Ligne principale (non supprimable)">
+                            {eff.locked || row.auto ? "auto" : "•"}
+                          </span>
+                        ) : (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removePaymentAlias(idx, row.id)} title="Supprimer ce nom">
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {matchForStudent(idx) && (
+                  <p className="text-xs text-emerald-700">Nom repris automatiquement du paiement associé (PayPal / Virement).</p>
+                )}
+              </div>
             </div>
           ))}
 
@@ -595,8 +817,16 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             <p className="mb-3 text-sm font-medium text-gray-700">{studentCount > 1 ? "Informations communes" : "Informations complémentaires"}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Tarif mensuel (€) *</Label>
-                <Input type="number" min="0" step="0.01" value={shared.monthlyFee} onChange={(e) => setSharedField("monthlyFee", e.target.value)} required />
+                <Label>Tarif mensuel (€)</Label>
+                <div className="flex h-10 items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {computedMonthlyFee > 0 ? `${computedMonthlyFee.toFixed(2).replace(/\.00$/, "")} €` : "—"}
+                  </span>
+                  <span className="text-xs text-gray-400">calculé auto</span>
+                </div>
+                <p className="text-xs text-gray-400">
+                  Tarif horaire × durée × cours/semaine × 4. Renseignez le forfait du professeur ci-dessous.
+                </p>
               </div>
               <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
                 <input
@@ -610,51 +840,6 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                 </span>
               </label>
             </div>
-            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">Noms associés aux paiements</p>
-                    <p className="text-xs text-gray-500">Ajoutez les noms qui peuvent apparaître sur PayPal ou sur un virement.</p>
-                  </div>
-                  <div className="grid gap-2 sm:flex">
-                    <Button type="button" variant="outline" size="sm" onClick={() => addPaymentAlias("PAYPAL")}>
-                      <Plus className="h-4 w-4" />
-                      PayPal
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => addPaymentAlias("WISE")}>
-                      <Plus className="h-4 w-4" />
-                      Virement
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {paymentAliases.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-2 text-sm text-gray-400">
-                      Aucun nom associé pour l&apos;instant.
-                    </p>
-                  ) : (
-                    paymentAliases.map((row) => (
-                      <div key={row.id} className="grid gap-2 rounded-lg border border-gray-200 bg-white p-2 sm:grid-cols-[9rem_1fr_2.5rem]">
-                        <Select value={row.type} onValueChange={(value) => updatePaymentAlias(row.id, "type", value)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="PAYPAL">PayPal</SelectItem>
-                            <SelectItem value="WISE">Virement</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          value={row.alias}
-                          onChange={(e) => updatePaymentAlias(row.id, "alias", e.target.value)}
-                          placeholder="Nom affiché dans le paiement"
-                        />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removePaymentAlias(row.id)} title="Supprimer ce nom">
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
             {!student && (
               <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
                 <label className="flex items-start gap-2 text-sm text-emerald-950">
@@ -880,6 +1065,23 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
+                      {/* Nouvelle classe vs intégrer classe existante — même schéma que le prof principal */}
+                      <div className="mb-4 grid gap-2 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => setExtraCourseJoin(course.id, false)}
+                          className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${!course.joinExisting ? "border-blue-500 bg-white text-blue-700" : "border-gray-200 bg-white/60 text-gray-500 hover:bg-white"}`}
+                        >
+                          Nouvelle classe
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExtraCourseJoin(course.id, true)}
+                          className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${course.joinExisting ? "border-blue-500 bg-white text-blue-700" : "border-gray-200 bg-white/60 text-gray-500 hover:bg-white"}`}
+                        >
+                          Intégrer à une classe existante
+                        </button>
+                      </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-1.5">
                           <Label>Professeur</Label>
@@ -890,15 +1092,27 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label>Classe</Label>
-                          <Select value={course.groupId} onValueChange={(value) => updateExtraCourse(course.id, "groupId", value)}>
-                            <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                            <SelectContent className="max-h-60 overflow-y-auto">
-                              {courseGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {course.joinExisting ? (
+                          <div className="space-y-1.5">
+                            <Label>Classe</Label>
+                            <Select value={course.groupId} onValueChange={(value) => updateExtraCourse(course.id, "groupId", value)}>
+                              <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                              <SelectContent className="max-h-60 overflow-y-auto">
+                                {courseGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <Label>Nom de la classe</Label>
+                            <Input
+                              value={course.newClassName}
+                              onChange={(e) => updateExtraCourse(course.id, "newClassName", e.target.value)}
+                              className="bg-white"
+                              placeholder={`ex: ${identities[0]?.firstName || "Prénom"} — ${course.subject || "matière"}`}
+                            />
+                          </div>
+                        )}
                         <div className="space-y-1.5">
                           <Label>Matière</Label>
                           <Select value={course.subject} onValueChange={(value) => updateExtraCourse(course.id, "subject", value)}>
@@ -1010,42 +1224,85 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                       ? "Renseignez l'e-mail de l'élève ci-dessus pour activer l'envoi."
                       : welcomeCourses.length === 0
                         ? "Choisissez au moins un professeur pour activer l'envoi."
-                        : `Envoyé à ${welcomeRecipients.join(", ")} à la validation.`}
+                        : welcomeRecipients.length > 1
+                          ? `Un e-mail personnalisé sera envoyé à chacun des ${welcomeRecipients.length} élèves : ${welcomeRecipients.join(", ")}.`
+                          : `Envoyé à ${welcomeRecipients.join(", ")} à la validation.`}
                   </span>
                 </span>
               </label>
 
               {canSendWelcome && (
-                <div className="mt-3 rounded-lg border border-blue-100 bg-white p-4 text-sm">
-                  <p className="font-semibold text-gray-900">Bienvenue à l&apos;Institut As-Sahaba</p>
-                  <p className="mt-1 text-gray-600">
-                    Nous sommes heureux d&apos;accueillir <strong>{identities[0].firstName || "l'élève"}</strong>.
-                    Voici les coordonnées {welcomeCourses.length > 1 ? "de vos professeurs" : "de votre professeur"} :
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {welcomeCourses.map((course, i) => {
-                      const wa = whatsappLink(course.teacher.phone)
-                      return (
-                        <div key={i} className="rounded-md bg-gray-50 px-3 py-2">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                            Professeur de {course.subject || "—"}
-                          </p>
-                          <p className="font-medium text-gray-900">{course.teacher.name}</p>
-                          <p className="text-xs text-gray-600">
-                            📱 WhatsApp : {course.teacher.phone
-                              ? (wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline">{course.teacher.phone}</a> : course.teacher.phone)
-                              : <span className="text-amber-600">non renseigné</span>}
-                          </p>
-                          <p className="truncate text-xs text-gray-600">
-                            🎥 Zoom : {course.teacher.meetingLink
-                              ? <a href={course.teacher.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">{course.teacher.meetingLink}</a>
-                              : <span className="text-amber-600">non renseigné</span>}
-                          </p>
-                        </div>
-                      )
-                    })}
+                <>
+                <div className="mt-3 grid gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-blue-900">Objet de l&apos;e-mail</Label>
+                    <Input value={welcomeSubject} onChange={(e) => setWelcomeSubject(e.target.value)} className="bg-white" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-blue-900">Message d&apos;accueil</Label>
+                    <textarea
+                      value={welcomeIntro}
+                      onChange={(e) => setWelcomeIntro(e.target.value)}
+                      rows={3}
+                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                    <p className="text-xs text-blue-700">Les coordonnées des professeurs sont ajoutées automatiquement sous ce message.</p>
                   </div>
                 </div>
+                {/* Aperçu fidèle à l'e-mail réel : bandeau navy + logo + pied de page,
+                    identique aux autres e-mails (studentWelcomeEmailHtml). */}
+                <p className="mt-3 text-xs uppercase tracking-wide text-gray-400">Aperçu de l&apos;e-mail — Objet : {welcomeSubject || DEFAULT_WELCOME_SUBJECT}</p>
+                <div className="mt-2 overflow-hidden rounded-xl border border-gray-200" style={{ backgroundColor: "#F4EFE3" }}>
+                  <div className="mx-auto max-w-md p-4">
+                    <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+                      {/* Bandeau / logo */}
+                      <div className="px-5 py-6 text-center" style={{ backgroundColor: "#0C243C" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo-assahaba.png" alt="Institut As-Sahaba" width={72} className="mx-auto mb-3 h-auto w-[72px] rounded-lg bg-white" />
+                        <div className="text-sm font-bold uppercase tracking-[0.2em] text-white">Institut As-Sahaba</div>
+                        <div className="mt-1 text-[10px] tracking-[0.12em]" style={{ color: "#9CC0DD" }}>Sur les traces des compagnons</div>
+                      </div>
+                      {/* Corps */}
+                      <div className="px-5 py-5">
+                        <p className="text-center text-lg font-bold" style={{ color: "#17456C" }}>Bienvenue à l&apos;Institut As-Sahaba</p>
+                        <p className="mt-1 text-center text-sm font-semibold" dir="rtl" style={{ color: "#235A86" }}>السلام عليكم ورحمة الله وبركاته</p>
+                        <p className="mt-3 whitespace-pre-line text-sm" style={{ color: "#1A2440" }}>{welcomeIntro || DEFAULT_WELCOME_INTRO}</p>
+                        <p className="mt-3 text-sm" style={{ color: "#1A2440" }}>
+                          Voici les coordonnées {welcomeCourses.length > 1 ? "de vos professeurs" : "de votre professeur"} :
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {welcomeCourses.map((course, i) => {
+                            const wa = whatsappLink(course.teacher.phone)
+                            return (
+                              <div key={i} className="rounded-lg border p-3" style={{ backgroundColor: "#F7F9FC", borderColor: "#E9F1F8" }}>
+                                <p className="text-xs font-bold" style={{ color: "#17456C" }}>
+                                  Professeur de {course.subject || "—"}
+                                </p>
+                                <p className="font-semibold text-gray-900">{course.teacher.name}</p>
+                                <p className="text-xs text-gray-600">
+                                  📱 WhatsApp : {course.teacher.phone
+                                    ? (wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline">{course.teacher.phone}</a> : course.teacher.phone)
+                                    : <span className="text-amber-600">non renseigné</span>}
+                                </p>
+                                <p className="truncate text-xs text-gray-600">
+                                  🎥 Zoom : {course.teacher.meetingLink
+                                    ? <a href={course.teacher.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">{course.teacher.meetingLink}</a>
+                                    : <span className="text-amber-600">non renseigné</span>}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      {/* Pied de page */}
+                      <div className="px-5 py-4 text-center text-[11px] leading-5" style={{ backgroundColor: "#F4EFE3", color: "#5C6577" }}>
+                        <strong style={{ color: "#17456C" }}>Institut As-Sahaba</strong> — Sur les traces des compagnons<br />
+                        <span style={{ color: "#235A86" }}>www.institut-assahaba.com</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                </>
               )}
             </div>
           )}

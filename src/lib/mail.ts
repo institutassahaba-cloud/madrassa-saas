@@ -381,14 +381,20 @@ export type WelcomeCourse = {
 export function studentWelcomeEmailHtml({
   studentName,
   courses,
+  intro,
 }: {
   studentName: string
   courses: WelcomeCourse[]
+  // Message d'accueil personnalisé (saisi par le directeur). À défaut, message par défaut.
+  intro?: string
 }) {
   const escapeHtml = (v: string) =>
     v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
   const waLink = (phone: string | null) =>
     whatsappLink(phone)
+  const introHtml = (intro && intro.trim())
+    ? escapeHtml(intro.trim()).replace(/\r?\n/g, "<br />")
+    : `Nous sommes heureux d&apos;accueillir <strong>${escapeHtml(studentName)}</strong> à l&apos;Institut As-Sahaba.`
 
   const courseBlocks = courses.map((course) => {
     const label = escapeHtml(subjectTeacherLabel(course.subject))
@@ -461,7 +467,7 @@ ${emailHeaderHtml()}
 
         <tr>
           <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
-            Nous sommes heureux d&apos;accueillir <strong>${escapeHtml(studentName)}</strong> à l&apos;Institut As-Sahaba.<br /><br />
+            ${introHtml}<br /><br />
             Voici les coordonnées ${courses.length > 1 ? "de vos professeurs" : "de votre professeur"} pour prendre contact et rejoindre ${courses.length > 1 ? "les cours" : "le cours"} :
           </td>
         </tr>

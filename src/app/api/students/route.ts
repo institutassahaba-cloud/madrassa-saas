@@ -187,6 +187,12 @@ export const POST = wrap(async (req: Request) => {
         if (maxSession) sessionNumber = maxSession.number
       }
 
+      // Nombre de cours de la 1re session = cours/semaine × 4 semaines (1x→4, 2x→8…),
+      // pour équilibrer le tableau du professeur avec le rythme réel. Défaut 2x (=8)
+      // quand la fréquence n'est pas renseignée ; borné à 24 (6x/sem max).
+      const weeklyLessons = data.lessonsPerWeek && data.lessonsPerWeek > 0 ? data.lessonsPerWeek : 2
+      const lessonCount = Math.min(Math.max(Math.round(weeklyLessons * 4), 1), 24)
+
       const lessonSession = await prisma.lessonSession.create({
         data: {
           tenantId: user.tenantId,
@@ -197,7 +203,7 @@ export const POST = wrap(async (req: Request) => {
           frequency: data.lessonsPerWeek ?? null,
           duration: data.duration || null,
           lessons: {
-            create: Array.from({ length: 8 }, (_, i) => ({
+            create: Array.from({ length: lessonCount }, (_, i) => ({
               tenantId: user.tenantId,
               number: i + 1,
               status: "PENDING",

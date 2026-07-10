@@ -8,6 +8,8 @@ import { z } from "zod"
 const bodySchema = z.object({
   to: z.string().email(),
   studentName: z.string().min(1),
+  subject: z.string().trim().min(1).max(200).optional(),
+  intro: z.string().trim().max(2000).optional(),
   courses: z.array(z.object({
     subject: z.string().nullable().optional(),
     teacherId: z.string().min(1),
@@ -27,7 +29,7 @@ export const POST = wrap(async (req: Request) => {
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
-  const { to, studentName, courses } = parsed.data
+  const { to, studentName, subject, intro, courses } = parsed.data
 
   const teacherIds = [...new Set(courses.map((c) => c.teacherId))]
   const teachers = await prisma.user.findMany({
@@ -54,8 +56,8 @@ export const POST = wrap(async (req: Request) => {
 
   const result = await sendEmail({
     to,
-    subject: "Bienvenue à l'Institut As-Sahaba",
-    html: studentWelcomeEmailHtml({ studentName, courses: welcomeCourses }),
+    subject: subject || "Bienvenue à l'Institut As-Sahaba",
+    html: studentWelcomeEmailHtml({ studentName, intro, courses: welcomeCourses }),
   })
 
   if (!result.ok) {
