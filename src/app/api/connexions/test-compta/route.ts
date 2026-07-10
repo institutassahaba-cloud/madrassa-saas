@@ -37,7 +37,7 @@ export const POST = wrap(async (req: Request) => {
           <h2 style="margin:0 0 12px;color:#0f766e;">Test email compta</h2>
           <p>Assalâmu ʿalaykum ${dbUser.name},</p>
           <p>Ce message confirme que l'adresse compta du SaaS peut envoyer des emails.</p>
-          <p style="margin-top:24px;font-size:12px;color:#6b7280;">Institut Assahaba</p>
+          <p style="margin-top:24px;font-size:12px;color:#6b7280;">Institut As-Sahaba — Sur les traces des compagnons</p>
         </div>
       `,
     })

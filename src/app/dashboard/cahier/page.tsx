@@ -68,7 +68,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
             }
           : {}),
       },
-      select: { studentId: true, sessionNumber: true, paidDate: true },
+      select: { studentId: true, lessonSessionId: true, sessionNumber: true, paidDate: true },
     }),
   ])
 
@@ -121,11 +121,11 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
     })
   }
 
-  // map "studentId:sessionNumber" -> date de paiement (la plus récente)
+  // map "session:id" -> date de paiement (fallback legacy "studentId:number")
   const paidBySession: Record<string, string> = {}
   const undatedPaymentBySession: Record<string, boolean> = {}
   for (const p of payments) {
-    const key = `${p.studentId}:${p.sessionNumber}`
+    const key = p.lessonSessionId ? `session:${p.lessonSessionId}` : `${p.studentId}:${p.sessionNumber}`
     if (p.paidDate) {
       const iso = p.paidDate.toISOString()
       if (!paidBySession[key] || iso > paidBySession[key]) paidBySession[key] = iso

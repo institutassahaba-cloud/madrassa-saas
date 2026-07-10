@@ -60,6 +60,18 @@ type PaymentAliasFormRow = {
   alias: string
 }
 
+type CourseSlotDraft = {
+  id: string
+  dayOfWeek: string
+  startTime: string
+}
+
+type ExtraCourseDraft = typeof EMPTY_EXTRA & {
+  id: string
+  teacherId: string
+  slots: CourseSlotDraft[]
+}
+
 const SUBJECTS = ["Coran", "Nouraniya", "Arabe", "Langue arabe", "Tajwid", "Fiqh", "Autre"]
 const DAYS = [
   { value: "1", label: "Lundi" }, { value: "2", label: "Mardi" }, { value: "3", label: "Mercredi" },
@@ -67,14 +79,36 @@ const DAYS = [
   { value: "0", label: "Dimanche" },
 ]
 
-// Ajoute la durée du cours (ex: "1", "1,5", "0,5") à une heure "HH:MM".
-function addDurationToTime(time: string, duration: string): string {
-  const [h, m] = time.split(":").map(Number)
-  const hours = parseFloat((duration || "1").replace(",", "."))
-  if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(hours)) return time
-  const total = h * 60 + m + Math.round(hours * 60)
-  const normalized = ((total % 1440) + 1440) % 1440
-  return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
+function createSlotDraft(): CourseSlotDraft {
+  return { id: Math.random().toString(36).slice(2), dayOfWeek: "", startTime: "" }
+}
+
+function createExtraCourseDraft(): ExtraCourseDraft {
+  return {
+    id: Math.random().toString(36).slice(2),
+    teacherId: "",
+    slots: [createSlotDraft()],
+    ...EMPTY_EXTRA,
+  }
+}
+
+function normalizedLessonCount(value: string) {
+  const count = Number(value)
+  if (!Number.isFinite(count) || count < 1) return 1
+  return Math.min(Math.floor(count), 6)
+}
+
+function syncSlotsToCount(slots: CourseSlotDraft[], countValue: string) {
+  const count = normalizedLessonCount(countValue)
+  if (slots.length === count) return slots
+  if (slots.length > count) return slots.slice(0, count)
+  return [...slots, ...Array.from({ length: count - slots.length }, () => createSlotDraft())]
+}
+
+function toSchedulePayload(slots: CourseSlotDraft[]) {
+  return slots
+    .filter((slot) => slot.dayOfWeek !== "" && slot.startTime)
+    .map((slot) => ({ dayOfWeek: Number(slot.dayOfWeek), startTime: slot.startTime }))
 }
 
 export function StudentDialog({ open, onClose, student, groups, teachers, paymentMatches, preselectedPaymentMatchId }: StudentDialogProps) {
@@ -84,16 +118,13 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
   const [teacherId, setTeacherId] = useState("")
   const [joinExisting, setJoinExisting] = useState(false)
   const [newClassName, setNewClassName] = useState("")
-  const [newClassDay, setNewClassDay] = useState("")
-  const [newClassTime, setNewClassTime] = useState("")
-  const [multiProf, setMultiProf] = useState(false)
   const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
   const [initialPayment, setInitialPayment] = useState({ ...EMPTY_INITIAL_PAYMENT })
   // Un paiement détecté à associer par élève (index aligné sur `identities`).
   // L'élève 1 est pré-rempli avec le paiement cliqué ; les suivants sont optionnels.
   const [matchIds, setMatchIds] = useState<string[]>([""])
-  const [extraTeacherId, setExtraTeacherId] = useState("")
-  const [extra, setExtra] = useState({ ...EMPTY_EXTRA })
+  const [primarySlots, setPrimarySlots] = useState<CourseSlotDraft[]>([createSlotDraft()])
+  const [extraCourses, setExtraCourses] = useState<ExtraCourseDraft[]>([])
   const [groupInfo, setGroupInfo] = useState<{ count: number; subject?: string; lessonsPerWeek?: number; duration?: string; newRate?: number } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -148,8 +179,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       setTeacherId(currentGroup?.teacherId ?? "")
       setJoinExisting(Boolean(student.group?.id))
       setNewClassName("")
-      setNewClassDay("")
-      setNewClassTime("")
+      setPrimarySlots([createSlotDraft()])
       setInitialPayment({ ...EMPTY_INITIAL_PAYMENT, paidDate: todayIso() })
       setMatchIds([""])
     } else {
@@ -163,12 +193,9 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       setMatchIds([preselectedPaymentMatchId || ""])
       setJoinExisting(false)
       setNewClassName("")
-      setNewClassDay("")
-      setNewClassTime("")
+      setPrimarySlots([createSlotDraft()])
     }
-    setMultiProf(false)
-    setExtra({ ...EMPTY_EXTRA })
-    setExtraTeacherId("")
+    setExtraCourses([])
     setError("")
   }, [student, open, groups, preselectedPaymentMatchId])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -212,10 +239,9 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
 
   function setSharedField(key: string, value: string | boolean) {
     setShared((f) => ({ ...f, [key]: value }))
-  }
-
-  function setEx(key: string, value: string) {
-    setExtra((f) => ({ ...f, [key]: value }))
+    if (key === "lessonsPerWeek" && typeof value === "string") {
+      setPrimarySlots((slots) => syncSlotsToCount(slots, value))
+    }
   }
 
   function addPaymentAlias(type: "PAYPAL" | "WISE") {
@@ -238,9 +264,44 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     setInitialPayment((current) => ({ ...current, [key]: value }))
   }
 
+  function updatePrimarySlot(id: string, key: "dayOfWeek" | "startTime", value: string) {
+    setPrimarySlots((slots) => slots.map((slot) => slot.id === id ? { ...slot, [key]: value } : slot))
+  }
+
+  function addExtraCourse() {
+    setExtraCourses((courses) => [...courses, createExtraCourseDraft()])
+  }
+
+  function removeExtraCourse(id: string) {
+    setExtraCourses((courses) => courses.filter((course) => course.id !== id))
+  }
+
+  function updateExtraCourse(id: string, key: keyof ExtraCourseDraft, value: string) {
+    setExtraCourses((courses) => courses.map((course) => {
+      if (course.id !== id) return course
+      const updated = { ...course, [key]: value }
+      if (key === "lessonsPerWeek") {
+        updated.slots = syncSlotsToCount(course.slots, value)
+      }
+      if (key === "teacherId") {
+        updated.groupId = ""
+      }
+      return updated
+    }))
+  }
+
+  function updateExtraSlot(courseId: string, slotId: string, key: "dayOfWeek" | "startTime", value: string) {
+    setExtraCourses((courses) => courses.map((course) => {
+      if (course.id !== courseId) return course
+      return {
+        ...course,
+        slots: course.slots.map((slot) => slot.id === slotId ? { ...slot, [key]: value } : slot),
+      }
+    }))
+  }
+
   const filteredGroups = teacherId ? groups.filter(g => g.teacherId === teacherId) : groups
   const lockedByGroup = joinExisting && !!shared.groupId && !!groupInfo && groupInfo.count > 0
-  const extraFilteredGroups = extraTeacherId ? groups.filter(g => g.teacherId === extraTeacherId) : groups
 
   // Résout le groupId à utiliser : la classe existante sélectionnée, ou une classe fraîchement
   // créée si le directeur a choisi "Nouvelle classe". Évite qu'un élève se retrouve détaché de
@@ -260,21 +321,6 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     })
     if (!res.ok) throw new Error("La création de la nouvelle classe a échoué.")
     const newGroup = await res.json()
-    // Crée le créneau (jour + heure) de la classe si renseigné. Non bloquant :
-    // une erreur ici n'empêche pas la création de l'élève et de sa classe.
-    if (newClassDay !== "" && newClassTime && teacherId) {
-      await fetch("/api/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dayOfWeek: Number(newClassDay),
-          startTime: newClassTime,
-          endTime: addDurationToTime(newClassTime, shared.duration),
-          groupId: newGroup.id,
-          teacherId,
-        }),
-      }).catch(() => {})
-    }
     return newGroup.id
   }
 
@@ -286,13 +332,41 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       if (student) {
         // Edit mode: single student
         const groupId = await resolveGroupId()
-        const form = { ...identities[0], ...shared, groupId, paymentAliases }
+        const form = { ...identities[0], ...shared, groupId, paymentAliases, scheduleSlots: toSchedulePayload(primarySlots) }
         const res = await fetch(`/api/students/${student.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         })
         if (!res.ok) throw new Error(await res.text())
+
+        for (const course of extraCourses) {
+          if (!course.groupId) continue
+          const resExtra = await fetch("/api/students", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...identities[0],
+              subject: course.subject,
+              groupId: course.groupId,
+              monthlyFee: shared.monthlyFee,
+              paymentGraceAllowed: shared.paymentGraceAllowed,
+              hourlyRate: course.hourlyRate,
+              lessonsPerWeek: course.lessonsPerWeek,
+              duration: course.duration,
+              startSession: course.startSession || "1",
+              notes: shared.notes,
+              status: shared.status,
+              paymentAliases,
+              scheduleSlots: toSchedulePayload(course.slots),
+              initialPaymentReceived: false,
+            }),
+          })
+          if (!resExtra.ok) {
+            const data = await resExtra.json().catch(() => null)
+            throw new Error(`Matière supplémentaire : ${data?.error || "erreur"}`)
+          }
+        }
       } else {
         // Create mode: one or multiple students
         const groupId = await resolveGroupId()
@@ -312,6 +386,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             initialPaymentPaidDate: initialPayment.paidDate,
             initialPaymentReference: matchId ? "" : initialPayment.reference,
             initialPaymentMatchId: matchId,
+            scheduleSlots: toSchedulePayload(primarySlots),
           }
           if (!form.startSession) form.startSession = "1"
           const res = await fetch("/api/students", {
@@ -324,25 +399,27 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             throw new Error(`Élève ${i + 1} (${identities[i].firstName || "?"}) : ${data.error || "erreur"}`)
           }
 
-          // Multi-prof for each student
-          if (multiProf && extra.groupId) {
+          for (const course of extraCourses) {
+            if (!course.groupId) continue
             const res2 = await fetch("/api/students", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 ...form,
-                subject: extra.subject,
-                groupId: extra.groupId,
-                hourlyRate: extra.hourlyRate,
-                lessonsPerWeek: extra.lessonsPerWeek,
-                duration: extra.duration,
-                startSession: extra.startSession,
+                subject: course.subject,
+                groupId: course.groupId,
+                hourlyRate: course.hourlyRate,
+                lessonsPerWeek: course.lessonsPerWeek,
+                duration: course.duration,
+                startSession: course.startSession || "1",
                 initialPaymentReceived: false,
+                initialPaymentMatchId: undefined,
+                scheduleSlots: toSchedulePayload(course.slots),
               }),
             })
             if (!res2.ok) {
               const data = await res2.json()
-              setError(`Élève ${i + 1} - 2e inscription : ${data.error || "erreur"}`)
+              setError(`Élève ${i + 1} - inscription supplémentaire : ${data.error || "erreur"}`)
               setLoading(false)
               return
             }
@@ -667,24 +744,6 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                 </div>
               )}
 
-              {!joinExisting && teacherId && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label>Jour du cours</Label>
-                    <Select value={newClassDay} onValueChange={setNewClassDay}>
-                      <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                      <SelectContent>
-                        {DAYS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Heure du cours</Label>
-                    <Input type="time" value={newClassTime} onChange={(e) => setNewClassTime(e.target.value)} />
-                  </div>
-                </>
-              )}
-
               <div className="space-y-1.5">
                 <Label>Matière {lockedByGroup && <span className="text-xs text-blue-500 ml-1">(classe)</span>}</Label>
                 <Select value={shared.subject} onValueChange={(v) => setSharedField("subject", v)} disabled={lockedByGroup}>
@@ -699,6 +758,34 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                 <Label>Cours par semaine {lockedByGroup && <span className="text-xs text-blue-500 ml-1">(classe)</span>}</Label>
                 <Input type="number" min="0" step="1" value={shared.lessonsPerWeek} onChange={(e) => setSharedField("lessonsPerWeek", e.target.value)} placeholder="ex: 1, 2..." disabled={lockedByGroup} />
               </div>
+              {teacherId && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Créneaux français</Label>
+                  <div className="space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+                    {primarySlots.map((slot, index) => (
+                      <div key={slot.id} className="grid gap-2 sm:grid-cols-[9rem_1fr_1fr] sm:items-end">
+                        <p className="text-sm font-medium text-emerald-900">Créneau français {index + 1}</p>
+                        <div className="space-y-1">
+                          <span className="text-xs text-gray-500">Jour</span>
+                          <Select value={slot.dayOfWeek} onValueChange={(value) => updatePrimarySlot(slot.id, "dayOfWeek", value)}>
+                            <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir le jour" /></SelectTrigger>
+                            <SelectContent>
+                              {DAYS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-xs text-gray-500">Horaire</span>
+                          <Input type="time" value={slot.startTime} onChange={(e) => updatePrimarySlot(slot.id, "startTime", e.target.value)} className="bg-white" />
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-xs text-emerald-700">
+                      Chaque créneau est ajouté au planning de la professeure dès la prochaine date correspondante, puis chaque semaine.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Durée d&apos;un cours {lockedByGroup && <span className="text-xs text-blue-500 ml-1">(classe)</span>}</Label>
                 <Select value={shared.duration} onValueChange={(v) => setSharedField("duration", v)} disabled={lockedByGroup}>
@@ -728,78 +815,115 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             </div>
           </div>
 
-          {/* Multi-prof (création uniquement) */}
-          {!student && (
-            <div className="border-t pt-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={multiProf} onChange={(e) => setMultiProf(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-                <span className="text-sm font-medium text-gray-700">Plusieurs professeurs</span>
-                <span className="text-xs text-gray-400">(2e matière / créneau / forfait)</span>
-              </label>
-
-              {multiProf && (
-                <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
-                  <p className="text-sm font-medium text-blue-700">2e inscription</p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label>Professeur</Label>
-                      <Select value={extraTeacherId} onValueChange={(v) => { setExtraTeacherId(v); setEx("groupId", "") }}>
-                        <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir un prof..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Tous</SelectItem>
-                          {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Classe</Label>
-                      <Select value={extra.groupId} onValueChange={(v) => setEx("groupId", v)}>
-                        <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                        <SelectContent className="max-h-60 overflow-y-auto">
-                          <SelectItem value="">Aucune classe</SelectItem>
-                          {extraFilteredGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Matière</Label>
-                      <Select value={extra.subject} onValueChange={(v) => setEx("subject", v)}>
-                        <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Aucune</SelectItem>
-                          {SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Cours par semaine</Label>
-                      <Input type="number" min="0" step="1" value={extra.lessonsPerWeek} onChange={(e) => setEx("lessonsPerWeek", e.target.value)} className="bg-white" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Durée</Label>
-                      <Select value={extra.duration} onValueChange={(v) => setEx("duration", v)}>
-                        <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0,5">30 min</SelectItem>
-                          <SelectItem value="1">1h</SelectItem>
-                          <SelectItem value="1,5">1h30</SelectItem>
-                          <SelectItem value="2">2h</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Tarif horaire (€)</Label>
-                      <Input type="number" min="0" step="0.01" value={extra.hourlyRate} onChange={(e) => setEx("hourlyRate", e.target.value)} className="bg-white" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>N° de session de départ</Label>
-                      <Input type="number" min="1" step="1" value={extra.startSession} onChange={(e) => setEx("startSession", e.target.value)} className="bg-white" placeholder="ex: 1" />
-                    </div>
-                  </div>
-                </div>
-              )}
+          {/* Matières supplémentaires */}
+          <div className="border-t pt-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Autres matières</p>
+                <p className="text-xs text-gray-400">Ajoutez une inscription séparée si l&apos;élève suit aussi français, arabe, tajwid, etc.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addExtraCourse}>
+                <Plus className="h-4 w-4" />
+                Ajouter une matière
+              </Button>
             </div>
-          )}
+
+            {extraCourses.length > 0 && (
+              <div className="mt-3 space-y-3">
+                {extraCourses.map((course, courseIndex) => {
+                  const courseGroups = course.teacherId ? groups.filter((g) => g.teacherId === course.teacherId) : groups
+                  return (
+                    <div key={course.id} className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <p className="text-sm font-medium text-blue-800">Matière supplémentaire {courseIndex + 1}</p>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => removeExtraCourse(course.id)} title="Retirer cette matière">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label>Professeur</Label>
+                          <Select value={course.teacherId} onValueChange={(value) => updateExtraCourse(course.id, "teacherId", value)}>
+                            <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir un prof..." /></SelectTrigger>
+                            <SelectContent>
+                              {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Classe</Label>
+                          <Select value={course.groupId} onValueChange={(value) => updateExtraCourse(course.id, "groupId", value)}>
+                            <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                            <SelectContent className="max-h-60 overflow-y-auto">
+                              {courseGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Matière</Label>
+                          <Select value={course.subject} onValueChange={(value) => updateExtraCourse(course.id, "subject", value)}>
+                            <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                            <SelectContent>
+                              {SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Cours par semaine</Label>
+                          <Input type="number" min="1" step="1" value={course.lessonsPerWeek} onChange={(e) => updateExtraCourse(course.id, "lessonsPerWeek", e.target.value)} className="bg-white" placeholder="ex: 1, 2..." />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Durée</Label>
+                          <Select value={course.duration} onValueChange={(value) => updateExtraCourse(course.id, "duration", value)}>
+                            <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0,5">30 min</SelectItem>
+                              <SelectItem value="1">1h</SelectItem>
+                              <SelectItem value="1,5">1h30</SelectItem>
+                              <SelectItem value="2">2h</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Tarif horaire (€)</Label>
+                          <Input type="number" min="0" step="0.01" value={course.hourlyRate} onChange={(e) => updateExtraCourse(course.id, "hourlyRate", e.target.value)} className="bg-white" />
+                        </div>
+                        {!student && (
+                          <div className="space-y-1.5">
+                            <Label>N° de session de départ</Label>
+                            <Input type="number" min="1" step="1" value={course.startSession} onChange={(e) => updateExtraCourse(course.id, "startSession", e.target.value)} className="bg-white" placeholder="ex: 1" />
+                          </div>
+                        )}
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Créneaux français</Label>
+                          <div className="space-y-2 rounded-xl border border-blue-100 bg-white/70 p-3">
+                            {course.slots.map((slot, slotIndex) => (
+                              <div key={slot.id} className="grid gap-2 sm:grid-cols-[9rem_1fr_1fr] sm:items-end">
+                                <p className="text-sm font-medium text-blue-900">Créneau français {slotIndex + 1}</p>
+                                <div className="space-y-1">
+                                  <span className="text-xs text-gray-500">Jour</span>
+                                  <Select value={slot.dayOfWeek} onValueChange={(value) => updateExtraSlot(course.id, slot.id, "dayOfWeek", value)}>
+                                    <SelectTrigger className="bg-white"><SelectValue placeholder="Choisir le jour" /></SelectTrigger>
+                                    <SelectContent>
+                                      {DAYS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-xs text-gray-500">Horaire</span>
+                                  <Input type="time" value={slot.startTime} onChange={(e) => updateExtraSlot(course.id, slot.id, "startTime", e.target.value)} className="bg-white" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Statut (édition uniquement) */}
           {student && (

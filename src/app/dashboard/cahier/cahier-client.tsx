@@ -407,6 +407,9 @@ function SessionCard({
   const [editingNotes, setEditingNotes] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
   const [resettingPayment, setResettingPayment] = useState(false)
+  const [editingPaidDate, setEditingPaidDate] = useState(false)
+  const [paidDateDraft, setPaidDateDraft] = useState(paidAt ? new Date(paidAt).toISOString().slice(0, 10) : "")
+  const [savingPaidDate, setSavingPaidDate] = useState(false)
 
   async function handleDeleteSessionClick() {
     const hasTaughtLessons = session.lessons.some((l) => l.status !== "PENDING")
@@ -434,6 +437,27 @@ function SessionCard({
     } catch (error) {
       alert(error instanceof Error ? error.message : "Réinitialisation impossible.")
       setResettingPayment(false)
+    }
+  }
+
+  async function handleSavePaidDate() {
+    if (!paidDateDraft) {
+      alert("Choisissez une date de paiement.")
+      return
+    }
+    setSavingPaidDate(true)
+    try {
+      const res = await fetch(`/api/sessions/${session.id}/payment-date`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paidDate: paidDateDraft }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Modification impossible.")
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Modification impossible.")
+      setSavingPaidDate(false)
     }
   }
 
@@ -487,6 +511,18 @@ function SessionCard({
                 {resettingPayment ? "Réinitialisation…" : "Réinitialiser le paiement"}
               </button>
             )}
+            {canSetLegacyBoundary && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPaidDateDraft(paidAt ? new Date(paidAt).toISOString().slice(0, 10) : "")
+                  setEditingPaidDate((current) => !current)
+                }}
+                className="text-xs font-medium text-blue-600 underline-offset-2 hover:text-blue-800 hover:underline"
+              >
+                {paidAt ? "Modifier la date" : "Renseigner la date"}
+              </button>
+            )}
             {!paidAt && (
               <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                 <AlertTriangle className="h-3 w-3" /> Paiement non renseigné
@@ -501,6 +537,27 @@ function SessionCard({
               <span className="text-amber-600 font-medium">{formatMins(totalMakeup)} à rattraper</span>
             )}
           </div>
+          {editingPaidDate && (
+            <div className="mt-3 flex flex-col gap-2 rounded-lg border border-blue-100 bg-blue-50 p-2 sm:flex-row sm:items-end">
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-blue-900">Date de paiement</span>
+                <input
+                  type="date"
+                  value={paidDateDraft}
+                  onChange={(event) => setPaidDateDraft(event.target.value)}
+                  className="h-9 rounded-md border border-blue-200 bg-white px-3 text-sm text-gray-900"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" className="h-9" onClick={handleSavePaidDate} disabled={savingPaidDate}>
+                  {savingPaidDate ? "Enregistrement…" : "Enregistrer"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="h-9" onClick={() => setEditingPaidDate(false)} disabled={savingPaidDate}>
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
         {/* Progress bar */}
         <div className="hidden w-24 sm:block">
@@ -775,7 +832,7 @@ function StudentCahier({
             <SessionCard
               key={selected.id}
               session={selected}
-              paidAt={paidBySession[`${student.id}:${selected.number}`]}
+              paidAt={paidBySession[`session:${selected.id}`] ?? paidBySession[`${student.id}:${selected.number}`]}
               nextPaidAt={paidBySession[`${student.id}:${selected.number + 1}`]}
               nextHasPaymentRequest={undatedPaymentBySession[`${student.id}:${selected.number + 1}`]}
               canSetLegacyBoundary={canSetLegacyBoundary}
@@ -1229,8 +1286,8 @@ function MergedSessionCard({
         <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
           <p className="text-xs font-semibold text-gray-500">Paiement par élève</p>
           {students.map((student) => {
-            const paidAt = paidBySession[`${student.id}:${sessionNumber}`]
             const session = sessionByStudent.get(student.id)
+            const paidAt = session ? (paidBySession[`session:${session.id}`] ?? paidBySession[`${student.id}:${sessionNumber}`]) : paidBySession[`${student.id}:${sessionNumber}`]
             return (
               <div key={student.id} className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="font-medium text-gray-700">{shortName(student)}</span>

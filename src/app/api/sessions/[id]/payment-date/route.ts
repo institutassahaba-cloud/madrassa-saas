@@ -36,9 +36,6 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     },
   })
   if (!lessonSession) return NextResponse.json({ error: "Session introuvable." }, { status: 404 })
-  if (lessonSession.student.monthlyFee <= 0) {
-    return NextResponse.json({ error: "Cet élève est rattaché à un paiement familial : aucun paiement séparé n'est à dater." }, { status: 400 })
-  }
 
   const paymentMonth = paidDate.getMonth() + 1
   const paymentYear = paidDate.getFullYear()
@@ -49,11 +46,19 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     where: {
       tenantId: user.tenantId,
       studentId: lessonSession.studentId,
-      sessionNumber: lessonSession.number,
       status: { not: "REJECTED" },
+      OR: [
+        { lessonSessionId: lessonSession.id },
+        { lessonSessionId: null, sessionNumber: lessonSession.number },
+      ],
     },
     orderBy: { createdAt: "desc" },
   })
+  const expectedAmount = existingPayment?.expectedAmount ?? existingPayment?.amount ?? lessonSession.student.monthlyFee
+  const receivedAmount = existingPayment?.receivedAmount ?? existingPayment?.amount ?? expectedAmount
+  if (!existingPayment && expectedAmount <= 0) {
+    return NextResponse.json({ error: "Aucun montant de paiement n'est disponible pour cette session." }, { status: 400 })
+  }
 
   const baseData = {
     paidDate,
@@ -65,8 +70,8 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     source: existingPayment?.source ?? "MANUAL",
     lessonSessionId: lessonSession.id,
     sessionNumber: lessonSession.number,
-    expectedAmount: lessonSession.student.monthlyFee,
-    receivedAmount: existingPayment?.receivedAmount ?? existingPayment?.amount ?? lessonSession.student.monthlyFee,
+    expectedAmount,
+    receivedAmount,
     expectedPayerName: lessonSession.student.payerName,
     confirmedAt: now,
     notes: existingPayment?.notes ?? "Date de paiement renseignée manuellement depuis la fiche professeur.",
@@ -77,14 +82,14 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
         where: { id: existingPayment.id },
         data: {
           ...baseData,
-          amount: existingPayment.amount || lessonSession.student.monthlyFee,
+          amount: existingPayment.amount || expectedAmount,
         },
       })
     : await prisma.payment.create({
         data: {
           tenantId: user.tenantId,
           studentId: lessonSession.studentId,
-          amount: lessonSession.student.monthlyFee,
+          amount: expectedAmount,
           invoiceNumber: invoiceNumber(now),
           ...baseData,
         },

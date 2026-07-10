@@ -4,7 +4,73 @@ import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { replaceStudentPaymentAliases } from "@/lib/student-payment-aliases"
+import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
+
+const DEFAULT_SLOT_COLOR = "#10b981"
+
+function addDurationToTime(time: string, duration: string | null | undefined): string {
+  const [h, m] = time.split(":").map(Number)
+  const hours = parseFloat((duration || "1").replace(",", "."))
+  if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(hours)) return time
+  const total = h * 60 + m + Math.round(hours * 60)
+  const normalized = ((total % 1440) + 1440) % 1440
+  return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
+}
+
+function nextDateForDay(dayOfWeek: number) {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  const diff = (dayOfWeek - date.getDay() + 7) % 7
+  date.setDate(date.getDate() + diff)
+  return date.toISOString().slice(0, 10)
+}
+
+function normalizeScheduleSlots(value: unknown): { dayOfWeek: number; startTime: string }[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((slot) => {
+    if (!slot || typeof slot !== "object") return []
+    const raw = slot as { dayOfWeek?: unknown; startTime?: unknown }
+    const dayOfWeek = Number(raw.dayOfWeek)
+    const startTime = typeof raw.startTime === "string" ? raw.startTime : ""
+    if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 || !/^\d{2}:\d{2}$/.test(startTime)) return []
+    return [{ dayOfWeek, startTime }]
+  })
+}
+
+async function createStudentScheduleSlots({
+  tenantId,
+  teacherId,
+  groupId,
+  studentName,
+  subject,
+  duration,
+  slots,
+}: {
+  tenantId: string
+  teacherId: string
+  groupId: string
+  studentName: string
+  subject: string
+  duration?: string | null
+  slots: { dayOfWeek: number; startTime: string }[]
+}) {
+  if (slots.length === 0) return
+
+  const label = `Créneau ${subject || "cours"} - ${studentName}`.trim()
+  await prisma.timeSlot.createMany({
+    data: slots.map((slot) => ({
+      tenantId,
+      teacherId,
+      groupId,
+      dayOfWeek: slot.dayOfWeek,
+      startTime: slot.startTime,
+      endTime: addDurationToTime(slot.startTime, duration),
+      label: encodeScheduleLabel(label, "WEEKLY", nextDateForDay(slot.dayOfWeek)),
+      color: DEFAULT_SLOT_COLOR,
+    })),
+  })
+}
 
 async function recalcGroupRate(groupId: string, tenantId: string) {
   const count = await prisma.student.count({
@@ -63,6 +129,50 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
   })
 
   await replaceStudentPaymentAliases(user.tenantId, id, body.paymentAliases)
+
+  const scheduleSlots = normalizeScheduleSlots(body.scheduleSlots)
+  if (newGroupId && scheduleSlots.length > 0) {
+    const group = await prisma.group.findFirst({
+      where: { id: newGroupId, tenantId: user.tenantId },
+      select: { teacherId: true },
+    })
+    if (group?.teacherId) {
+      const subject = body.subject || "Coran"
+      await prisma.lessonSession.upsert({
+        where: { studentId_subject_number: { studentId: id, subject, number: 1 } },
+        update: {
+          teacherId: group.teacherId,
+          frequency: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
+          duration: body.duration || null,
+        },
+        create: {
+          tenantId: user.tenantId,
+          studentId: id,
+          teacherId: group.teacherId,
+          subject,
+          number: 1,
+          frequency: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
+          duration: body.duration || null,
+          lessons: {
+            create: Array.from({ length: 8 }, (_, i) => ({
+              tenantId: user.tenantId,
+              number: i + 1,
+              status: "PENDING",
+            })),
+          },
+        },
+      })
+      await createStudentScheduleSlots({
+        tenantId: user.tenantId,
+        teacherId: group.teacherId,
+        groupId: newGroupId,
+        studentName: `${updated.firstName} ${updated.lastName}`,
+        subject,
+        duration: body.duration || null,
+        slots: scheduleSlots,
+      })
+    }
+  }
 
   if (oldGroupId !== newGroupId) {
     if (oldGroupId) await recalcGroupRate(oldGroupId, user.tenantId)

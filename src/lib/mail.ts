@@ -1,14 +1,29 @@
+import { existsSync } from "node:fs"
+import path from "node:path"
 import nodemailer from "nodemailer"
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY ?? ""
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "contact@institut-assahaba.com"
 const FROM_NAME = process.env.FROM_NAME ?? "Institut As-Sahaba"
 const DEFAULT_COMPTA_EMAIL = "comptabilite.institutassahaba@gmail.com"
-const PUBLIC_BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ??
-  process.env.APP_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.institut-assahaba.com")
-const EMAIL_LOGO_URL = `${PUBLIC_BASE_URL.replace(/\/$/, "")}/logo-assahaba.png`
+const EMAIL_LOGO_CID = "logo-assahaba@institut-assahaba"
+const EMAIL_LOGO_PATH = path.join(process.cwd(), "public", "logo-assahaba.png")
+const EMAIL_TAGLINE = "Sur les traces des compagnons"
+
+function emailHeaderHtml() {
+  return `
+          <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
+            <img src="cid:${EMAIL_LOGO_CID}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
+            <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
+            <div style="font-size:11px;letter-spacing:1.6px;color:#9CC0DD;margin-top:5px;">${EMAIL_TAGLINE}</div>
+          </td>`
+}
+
+function emailFooterHtml() {
+  return `
+            <strong style="color:#17456C;">Institut As-Sahaba</strong> — ${EMAIL_TAGLINE}<br />
+            <a href="https://www.institut-assahaba.com" target="_blank" style="color:#235A86;text-decoration:none;">www.institut-assahaba.com</a>`
+}
 
 export async function sendEmail({
   to,
@@ -74,6 +89,13 @@ export async function sendComptaMail({ to, subject, html }: { to: string; subjec
     cc: user,
     subject,
     html,
+    attachments: html.includes(`cid:${EMAIL_LOGO_CID}`) && existsSync(EMAIL_LOGO_PATH)
+      ? [{
+          filename: "logo-assahaba.png",
+          path: EMAIL_LOGO_PATH,
+          cid: EMAIL_LOGO_CID,
+        }]
+      : undefined,
   })
   return { ok: true }
 }
@@ -130,11 +152,7 @@ export function sessionEndEmailHtml({
 
         <!-- Bandeau / Logo -->
         <tr>
-          <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
-            <img src="${EMAIL_LOGO_URL}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
-            <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
-            <div style="font-size:11px;letter-spacing:2px;color:#9CC0DD;margin-top:5px;text-transform:uppercase;">Comprendre · Apprendre · Progresser</div>
-          </td>
+${emailHeaderHtml()}
         </tr>
 
         <!-- Titre -->
@@ -222,8 +240,7 @@ export function sessionEndEmailHtml({
         <!-- Pied -->
         <tr>
           <td align="center" bgcolor="#F4EFE3" style="background:#F4EFE3;padding:20px 32px;font-size:12px;line-height:20px;color:#5C6577;">
-            <strong style="color:#17456C;">Institut As-Sahaba</strong> — Sur la voie des Compagnons<br />
-            <a href="https://www.institut-assahaba.com" target="_blank" style="color:#235A86;text-decoration:none;">www.institut-assahaba.com</a>
+${emailFooterHtml()}
           </td>
         </tr>
 
@@ -279,11 +296,7 @@ export function paymentThanksEmailHtml({
         <tbody>
 
         <tr>
-          <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
-            <img src="${EMAIL_LOGO_URL}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
-            <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
-            <div style="font-size:11px;letter-spacing:2px;color:#9CC0DD;margin-top:5px;text-transform:uppercase;">Comprendre · Apprendre · Progresser</div>
-          </td>
+${emailHeaderHtml()}
         </tr>
 
         <tr>
@@ -332,8 +345,7 @@ export function paymentThanksEmailHtml({
 
         <tr>
           <td align="center" bgcolor="#F4EFE3" style="background:#F4EFE3;padding:20px 32px;font-size:12px;line-height:20px;color:#5C6577;">
-            <strong style="color:#17456C;">Institut As-Sahaba</strong> — Sur la voie des Compagnons<br />
-            <a href="https://www.institut-assahaba.com" target="_blank" style="color:#235A86;text-decoration:none;">www.institut-assahaba.com</a>
+${emailFooterHtml()}
           </td>
         </tr>
 
@@ -360,7 +372,7 @@ export function generatePassword(length = 10): string {
 export function welcomeEmailHtml(name: string, email: string, password: string, loginUrl: string) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-      <h2 style="color: #059669;">Bienvenue sur Institut Assahaba</h2>
+      <h2 style="color: #059669;">Bienvenue sur Institut As-Sahaba</h2>
       <p>Assalâmu ʿalaykum ${name},</p>
       <p>Votre compte a été créé. Voici vos identifiants :</p>
       <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
@@ -369,7 +381,7 @@ export function welcomeEmailHtml(name: string, email: string, password: string, 
       </div>
       <p>Vous devrez changer votre mot de passe lors de votre première connexion.</p>
       <a href="${loginUrl}" style="display: inline-block; background: #059669; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; margin-top: 8px;">Se connecter</a>
-      <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">Institut Assahaba</p>
+      <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">Institut As-Sahaba — ${EMAIL_TAGLINE}</p>
     </div>
   `
 }

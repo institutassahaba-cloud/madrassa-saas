@@ -4,8 +4,16 @@ import { prisma } from "@/lib/prisma"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { replaceStudentPaymentAliases, learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
+import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
 import { z } from "zod"
+
+const DEFAULT_SLOT_COLOR = "#10b981"
+
+const scheduleSlotSchema = z.object({
+  dayOfWeek: z.string().or(z.number()).transform(Number),
+  startTime: z.string().min(1),
+})
 
 const studentSchema = z.object({
   firstName: z.string().min(1),
@@ -33,6 +41,7 @@ const studentSchema = z.object({
     type: z.enum(["PAYPAL", "WISE", "ANY"]).optional(),
     alias: z.string().optional(),
   })).optional(),
+  scheduleSlots: z.array(scheduleSlotSchema).optional(),
   initialPaymentReceived: z.boolean().optional(),
   initialPaymentMethod: z.enum(["Virement", "PayPal"]).optional(),
   initialPaymentPaidDate: z.string().optional(),
@@ -42,6 +51,63 @@ const studentSchema = z.object({
   initialPaymentMatchId: z.string().optional(),
   notes: z.string().optional(),
 })
+
+function addDurationToTime(time: string, duration: string | null | undefined): string {
+  const [h, m] = time.split(":").map(Number)
+  const hours = parseFloat((duration || "1").replace(",", "."))
+  if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(hours)) return time
+  const total = h * 60 + m + Math.round(hours * 60)
+  const normalized = ((total % 1440) + 1440) % 1440
+  return `${Math.floor(normalized / 60).toString().padStart(2, "0")}:${(normalized % 60).toString().padStart(2, "0")}`
+}
+
+function nextDateForDay(dayOfWeek: number) {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  const diff = (dayOfWeek - date.getDay() + 7) % 7
+  date.setDate(date.getDate() + diff)
+  return date.toISOString().slice(0, 10)
+}
+
+async function createStudentScheduleSlots({
+  tenantId,
+  teacherId,
+  groupId,
+  studentName,
+  subject,
+  duration,
+  slots,
+}: {
+  tenantId: string
+  teacherId: string
+  groupId: string
+  studentName: string
+  subject: string
+  duration?: string | null
+  slots?: { dayOfWeek: number; startTime: string }[]
+}) {
+  const validSlots = (slots ?? []).filter((slot) =>
+    Number.isInteger(slot.dayOfWeek) &&
+    slot.dayOfWeek >= 0 &&
+    slot.dayOfWeek <= 6 &&
+    /^\d{2}:\d{2}$/.test(slot.startTime)
+  )
+  if (validSlots.length === 0) return
+
+  const label = `Créneau ${subject || "cours"} - ${studentName}`.trim()
+  await prisma.timeSlot.createMany({
+    data: validSlots.map((slot) => ({
+      tenantId,
+      teacherId,
+      groupId,
+      dayOfWeek: slot.dayOfWeek,
+      startTime: slot.startTime,
+      endTime: addDurationToTime(slot.startTime, duration),
+      label: encodeScheduleLabel(label, "WEEKLY", nextDateForDay(slot.dayOfWeek)),
+      color: DEFAULT_SLOT_COLOR,
+    })),
+  })
+}
 
 export const GET = wrap(async () => {
   const session = await auth()
@@ -134,6 +200,16 @@ export const POST = wrap(async (req: Request) => {
             })),
           },
         },
+      })
+
+      await createStudentScheduleSlots({
+        tenantId: user.tenantId,
+        teacherId: group.teacherId,
+        groupId: data.groupId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        subject: data.subject || "Coran",
+        duration: data.duration,
+        slots: data.scheduleSlots,
       })
 
       if (data.initialPaymentReceived) {

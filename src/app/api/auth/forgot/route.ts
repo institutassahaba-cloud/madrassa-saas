@@ -86,6 +86,7 @@ export const POST = wrap(async (req: Request) => {
         <p style="color:#6b7280; font-size:13px;">Ce lien est valable <strong>1 heure</strong>. Tant que vous ne l'utilisez pas, votre mot de passe actuel reste inchangé.</p>
         <p style="color:#6b7280; font-size:13px;">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email et prévenez la direction.</p>
         <p>Bârak Allâhu fîkum.</p>
+        <p style="margin-top:24px;font-size:12px;color:#6b7280;">Institut As-Sahaba — Sur les traces des compagnons</p>
       </div>`,
   })
 

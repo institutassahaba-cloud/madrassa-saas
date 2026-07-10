@@ -34,7 +34,7 @@ function messageEmailHtml(title: string, body: string) {
         <p style="margin:0;font-size:15px;line-height:25px;color:#1A2440;">${safeBody}</p>
         <p style="margin:24px 0 0;font-size:15px;line-height:25px;color:#1A2440;">Qu'Allah vous préserve.</p>
       </div>
-      <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#5C6577;">Institut As-Sahaba — Sur la voie des Compagnons</p>
+      <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#5C6577;">Institut As-Sahaba — Sur les traces des compagnons</p>
     </div>
   `
 }
