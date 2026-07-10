@@ -113,6 +113,29 @@ function createSlotDraft(): CourseSlotDraft {
   return { id: Math.random().toString(36).slice(2), dayOfWeek: "", startTime: "" }
 }
 
+// Libellé du prochain cours à venir d'après les créneaux (jour + heure), calé sur le
+// calendrier : ex. « dimanche 12 juillet à 10h00 ». Prend la prochaine occurrence future
+// (si c'est aujourd'hui mais que l'heure est passée, on prend la semaine suivante).
+function nextLessonLabel(slots: CourseSlotDraft[]): string | null {
+  const now = new Date()
+  let best: Date | null = null
+  for (const slot of slots) {
+    if (slot.dayOfWeek === "" || !slot.startTime) continue
+    const day = Number(slot.dayOfWeek)
+    const [h, m] = slot.startTime.split(":").map(Number)
+    if (!Number.isInteger(day) || day < 0 || day > 6 || !Number.isFinite(h) || !Number.isFinite(m)) continue
+    const d = new Date(now)
+    d.setHours(h, m, 0, 0)
+    let diff = (day - d.getDay() + 7) % 7
+    if (diff === 0 && d.getTime() <= now.getTime()) diff = 7
+    d.setDate(d.getDate() + diff)
+    if (!best || d < best) best = d
+  }
+  if (!best) return null
+  const datePart = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(best)
+  return `${datePart} à ${String(best.getHours()).padStart(2, "0")}h${String(best.getMinutes()).padStart(2, "0")}`
+}
+
 function createExtraCourseDraft(): ExtraCourseDraft {
   return {
     id: Math.random().toString(36).slice(2),
@@ -581,7 +604,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
         // E-mail de bienvenue (best-effort : les élèves sont déjà créés, un échec d'envoi
         // ne doit pas bloquer). Un e-mail par élève renseigné, avec les mêmes professeurs.
         if (sendWelcomeEmail && canSendWelcome) {
-          const coursesPayload = welcomeCourses.map((c) => ({ subject: c.subject, teacherId: c.teacher.id }))
+          const coursesPayload = welcomeCourses.map((c) => ({ subject: c.subject, teacherId: c.teacher.id, nextLesson: c.nextLesson ?? undefined }))
           await Promise.all(
             identities
               .filter((idn) => idn.email.trim())
@@ -600,6 +623,35 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
               )
           )
         }
+
+        // Notification (une groupée par professeur concerné) : nouvel(aux) élève(s),
+        // classe, matière et date du 1er cours. Best-effort — les élèves sont déjà créés.
+        const studentNames = identities
+          .map((i) => `${i.firstName} ${i.lastName}`.trim())
+          .filter((n) => n.length > 0)
+        const notifyCourses = [
+          {
+            teacherId,
+            subject: shared.subject,
+            className: joinExisting ? (groups.find((g) => g.id === shared.groupId)?.name ?? "") : newClassName,
+            nextLesson: nextLessonLabel(primarySlots) ?? undefined,
+          },
+          ...extraCourses.map((c) => ({
+            teacherId: c.teacherId,
+            subject: c.subject,
+            className: c.joinExisting ? (groups.find((g) => g.id === c.groupId)?.name ?? "") : c.newClassName,
+            nextLesson: nextLessonLabel(c.slots) ?? undefined,
+          })),
+        ]
+          .filter((c) => c.teacherId)
+          .map((c) => ({ ...c, studentNames }))
+        if (notifyCourses.length > 0 && studentNames.length > 0) {
+          await fetch("/api/students/notify-teachers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ courses: notifyCourses }),
+          }).catch(() => null)
+        }
       }
       onClose()
       window.location.reload()
@@ -614,12 +666,12 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
   // ── Aperçu de l'e-mail de bienvenue (création uniquement) ──
   // Cours = matière principale + matières supplémentaires, en gardant ceux dont le prof est choisi.
   const welcomeCourses = [
-    { subject: shared.subject, teacherId },
-    ...extraCourses.map((c) => ({ subject: c.subject, teacherId: c.teacherId })),
+    { subject: shared.subject, teacherId, slots: primarySlots },
+    ...extraCourses.map((c) => ({ subject: c.subject, teacherId: c.teacherId, slots: c.slots })),
   ]
     .filter((c) => c.teacherId)
-    .map((c) => ({ subject: c.subject, teacher: teachers.find((t) => t.id === c.teacherId) }))
-    .filter((c): c is { subject: string; teacher: NonNullable<typeof c.teacher> } => Boolean(c.teacher))
+    .map((c) => ({ subject: c.subject, nextLesson: nextLessonLabel(c.slots), teacher: teachers.find((t) => t.id === c.teacherId) }))
+    .filter((c): c is { subject: string; nextLesson: string | null; teacher: NonNullable<typeof c.teacher> } => Boolean(c.teacher))
   const welcomeRecipients = identities
     .map((i) => i.email.trim())
     .filter((email) => email.length > 0)
@@ -1279,6 +1331,9 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                                   Professeur de {course.subject || "—"}
                                 </p>
                                 <p className="font-semibold text-gray-900">{course.teacher.name}</p>
+                                {course.nextLesson && (
+                                  <p className="text-xs text-gray-600">📅 Prochain cours : <strong>{course.nextLesson}</strong></p>
+                                )}
                                 <p className="text-xs text-gray-600">
                                   📱 WhatsApp : {course.teacher.phone
                                     ? (wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline">{course.teacher.phone}</a> : course.teacher.phone)

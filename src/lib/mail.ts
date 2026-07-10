@@ -377,6 +377,8 @@ export type WelcomeCourse = {
   teacherName: string
   teacherPhone: string | null
   meetingLink: string | null
+  // Libellé du prochain cours, ex. « dimanche 12 juillet à 10h00 » (optionnel).
+  nextLesson?: string | null
 }
 
 // E-mail de bienvenue envoyé à l'inscription : accueil + coordonnées (WhatsApp + Zoom)
@@ -406,6 +408,11 @@ export function studentWelcomeEmailHtml({
       `<tr><td style="padding:16px 20px 4px;font-size:14px;font-weight:700;color:#17456C;">${label}</td></tr>`,
       `<tr><td style="padding:2px 20px;font-size:15px;line-height:24px;color:#1A2440;"><strong>${escapeHtml(course.teacherName)}</strong></td></tr>`,
     ]
+    if (course.nextLesson) {
+      rows.push(
+        `<tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">📅 Prochain cours : <strong>${escapeHtml(course.nextLesson)}</strong></td></tr>`,
+      )
+    }
     if (wa) {
       rows.push(
         `<tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">📱 WhatsApp : <a href="${wa}" style="color:#128C7E;text-decoration:none;font-weight:600;">${escapeHtml(course.teacherPhone ?? "")}</a></td></tr>`,
@@ -495,6 +502,103 @@ ${emailFooterHtml()}
         </tbody>
       </table>
 
+    </td>
+  </tr>
+  </tbody>
+</table>
+</body>
+</html>`
+}
+
+export type TeacherNewStudentCourse = {
+  className: string | null
+  subject: string | null
+  studentNames: string[]
+  nextLesson?: string | null
+}
+
+// E-mail envoyé au professeur pour le prévenir d'une nouvelle inscription : classe,
+// matière, élève(s) et date du premier cours. Même charte que les autres e-mails.
+export function teacherNewStudentEmailHtml({
+  teacherName,
+  courses,
+}: {
+  teacherName: string
+  courses: TeacherNewStudentCourse[]
+}) {
+  const escapeHtml = (v: string) =>
+    v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+
+  const courseBlocks = courses.map((course) => {
+    const heading = escapeHtml([course.className, course.subject].filter(Boolean).join(" — ") || "Nouveau cours")
+    const studentsLine = escapeHtml(course.studentNames.join(", "))
+    const rows: string[] = [
+      `<tr><td style="padding:16px 20px 4px;font-size:14px;font-weight:700;color:#17456C;">${heading}</td></tr>`,
+      `<tr><td style="padding:2px 20px;font-size:15px;line-height:24px;color:#1A2440;">👤 Élève${course.studentNames.length > 1 ? "s" : ""} : <strong>${studentsLine}</strong></td></tr>`,
+    ]
+    if (course.nextLesson) {
+      rows.push(
+        `<tr><td style="padding:6px 20px 16px;font-size:14px;line-height:24px;color:#1A2440;">📅 Premier cours : <strong>${escapeHtml(course.nextLesson)}</strong></td></tr>`,
+      )
+    } else {
+      rows.push(`<tr><td style="padding:0 20px 16px;"></td></tr>`)
+    }
+    return `
+          <td style="padding:10px 36px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F9FC;border-radius:10px;border:1px solid #E9F1F8;">
+              <tbody>${rows.join("")}</tbody>
+            </table>
+          </td>`
+  }).map((td) => `<tr>${td}</tr>`).join("\n        ")
+
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nouvel élève — Institut As-Sahaba</title>
+</head>
+<body bgcolor="#F4EFE3" style="margin:0;padding:0;background:#F4EFE3;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4EFE3" style="background:#F4EFE3;">
+  <tbody>
+  <tr>
+    <td align="center" style="padding:28px 12px;">
+      <table class="full" width="620" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:620px;max-width:620px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(12,36,60,.08);">
+        <tbody>
+        <tr>
+${emailHeaderHtml()}
+        </tr>
+        <tr>
+          <td align="center" style="padding:36px 32px 8px;font-size:22px;line-height:30px;color:#17456C;font-weight:700;">
+            Nouvel élève inscrit
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:6px 32px 0;font-size:17px;line-height:28px;color:#235A86;font-weight:600;" dir="rtl">
+            السلام عليكم ورحمة الله وبركاته
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
+            Assalâmu ʿalaykum <strong>${escapeHtml(teacherName)}</strong>,<br /><br />
+            Une nouvelle inscription rejoint votre tableau. Voici les informations :
+          </td>
+        </tr>
+        ${courseBlocks}
+        <tr>
+          <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
+            Merci de contacter ${courses.length > 1 || courses.some((c) => c.studentNames.length > 1) ? "les élèves" : "l'élève"} pour convenir des modalités du cours.<br /><br />
+            Qu&apos;Allah facilite ce nouvel apprentissage.
+          </td>
+        </tr>
+        <tr><td height="14"></td></tr>
+        <tr>
+          <td align="center" bgcolor="#F4EFE3" style="background:#F4EFE3;padding:20px 32px;font-size:12px;line-height:20px;color:#5C6577;">
+${emailFooterHtml()}
+          </td>
+        </tr>
+        </tbody>
+      </table>
     </td>
   </tr>
   </tbody>

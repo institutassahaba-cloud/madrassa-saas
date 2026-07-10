@@ -13,6 +13,8 @@ const bodySchema = z.object({
   courses: z.array(z.object({
     subject: z.string().nullable().optional(),
     teacherId: z.string().min(1),
+    // Libellé préformaté du prochain cours, ex. « dimanche 12 juillet à 10h00 ».
+    nextLesson: z.string().trim().max(120).optional(),
   })).min(1),
 })
 
@@ -47,6 +49,7 @@ export const POST = wrap(async (req: Request) => {
       teacherName: teacher.name,
       teacherPhone: teacher.phone,
       meetingLink: teacher.meetingLink,
+      nextLesson: course.nextLesson ?? null,
     }]
   })
 

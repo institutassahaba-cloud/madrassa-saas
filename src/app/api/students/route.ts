@@ -11,6 +11,62 @@ import { syncStudentGoogleContact } from "@/lib/google-contacts"
 import { z } from "zod"
 
 const DEFAULT_SLOT_COLOR = "#10b981"
+// Créneaux « disponibles » du professeur (plages libres) — mêmes constantes que
+// /api/schedule/availability. Quand un élève réserve à l'intérieur d'une plage, on la
+// découpe (avant / après le cours de l'élève).
+const AVAILABILITY_LABEL = "Créneau disponible"
+const AVAILABILITY_COLOR = "#7c3aed"
+const WEEKLY_AVAILABILITY_START_DATE = "1970-01-05"
+
+// Retranche l'intervalle [bookStart, bookEnd] de chaque plage disponible qui le chevauche
+// (même prof, même jour) : la plage se scinde en la partie avant et la partie après.
+// Ex. plage 09:00–14:00, cours 11:00–12:00 → 09:00–11:00 + 12:00–14:00.
+async function splitAvailabilityForBooking({
+  tenantId, teacherId, dayOfWeek, bookStart, bookEnd,
+}: {
+  tenantId: string
+  teacherId: string
+  dayOfWeek: number
+  bookStart: string
+  bookEnd: string
+}) {
+  if (bookStart >= bookEnd) return
+  const availabilities = await prisma.timeSlot.findMany({
+    where: {
+      tenantId,
+      teacherId,
+      dayOfWeek,
+      groupId: null,
+      label: { contains: AVAILABILITY_LABEL },
+    },
+    select: { id: true, startTime: true, endTime: true },
+  })
+
+  for (const av of availabilities) {
+    // Pas de chevauchement → on ne touche pas à cette plage.
+    if (bookEnd <= av.startTime || bookStart >= av.endTime) continue
+
+    const pieces: { startTime: string; endTime: string }[] = []
+    if (av.startTime < bookStart) pieces.push({ startTime: av.startTime, endTime: bookStart })
+    if (bookEnd < av.endTime) pieces.push({ startTime: bookEnd, endTime: av.endTime })
+
+    await prisma.timeSlot.delete({ where: { id: av.id } })
+    if (pieces.length > 0) {
+      await prisma.timeSlot.createMany({
+        data: pieces.map((piece) => ({
+          tenantId,
+          teacherId,
+          dayOfWeek,
+          startTime: piece.startTime,
+          endTime: piece.endTime,
+          label: encodeScheduleLabel(AVAILABILITY_LABEL, "WEEKLY", WEEKLY_AVAILABILITY_START_DATE),
+          color: AVAILABILITY_COLOR,
+          groupId: null,
+        })),
+      })
+    }
+  }
+}
 
 const scheduleSlotSchema = z.object({
   dayOfWeek: z.string().or(z.number()).transform(Number),
@@ -75,6 +131,7 @@ async function createStudentScheduleSlots({
   tenantId,
   teacherId,
   groupId,
+  className,
   studentName,
   subject,
   duration,
@@ -83,6 +140,9 @@ async function createStudentScheduleSlots({
   tenantId: string
   teacherId: string
   groupId: string
+  // Nom de la classe (ex. « Binôme de Mohamed et Ilyès ») : sert de titre au créneau
+  // dans le tableau du professeur. À défaut, on retombe sur « Créneau matière - élève ».
+  className?: string | null
   studentName: string
   subject: string
   duration?: string | null
@@ -96,7 +156,9 @@ async function createStudentScheduleSlots({
   )
   if (validSlots.length === 0) return
 
-  const label = `Créneau ${subject || "cours"} - ${studentName}`.trim()
+  const label = (className && className.trim())
+    ? className.trim()
+    : `Créneau ${subject || "cours"} - ${studentName}`.trim()
   await prisma.timeSlot.createMany({
     data: validSlots.map((slot) => ({
       tenantId,
@@ -109,6 +171,17 @@ async function createStudentScheduleSlots({
       color: DEFAULT_SLOT_COLOR,
     })),
   })
+
+  // Découpe les plages « disponibles » du prof qui contiennent le cours de l'élève.
+  for (const slot of validSlots) {
+    await splitAvailabilityForBooking({
+      tenantId,
+      teacherId,
+      dayOfWeek: slot.dayOfWeek,
+      bookStart: slot.startTime,
+      bookEnd: addDurationToTime(slot.startTime, duration),
+    })
+  }
 }
 
 export const GET = wrap(async () => {
@@ -170,7 +243,7 @@ export const POST = wrap(async (req: Request) => {
   if (data.groupId) {
     const group = await prisma.group.findFirst({
       where: { id: data.groupId, tenantId: user.tenantId },
-      select: { teacherId: true },
+      select: { teacherId: true, name: true },
     })
     if (group?.teacherId) {
       let sessionNumber = data.startSession && data.startSession > 0 ? data.startSession : 1
@@ -216,6 +289,7 @@ export const POST = wrap(async (req: Request) => {
         tenantId: user.tenantId,
         teacherId: group.teacherId,
         groupId: data.groupId,
+        className: group.name,
         studentName: `${student.firstName} ${student.lastName}`,
         subject: data.subject || "Coran",
         duration: data.duration,
