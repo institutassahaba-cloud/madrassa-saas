@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { saveGmailRefreshToken } from "@/lib/payment-email-reader"
+import { saveGoogleContactsRefreshToken } from "@/lib/google-contacts"
 import { wrap } from "@/lib/api"
 
 function baseUrl(req: Request) {
@@ -17,8 +18,14 @@ export const GET = wrap(async (req: Request) => {
 
   const code = url.searchParams.get("code")
   if (!code) return NextResponse.redirect(new URL("/dashboard/connexions?gmail=missing-code", baseUrl(req)))
+  const target = url.searchParams.get("state")
 
   try {
+    if (target === "contacts") {
+      await saveGoogleContactsRefreshToken(session.user.tenantId, code)
+      return NextResponse.redirect(new URL("/dashboard/connexions?contacts=connected", baseUrl(req)))
+    }
+
     await saveGmailRefreshToken(session.user.tenantId, code)
     return NextResponse.redirect(new URL("/dashboard/connexions?gmail=connected", baseUrl(req)))
   } catch (error) {

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
 import { ConnexionsClient } from "./connexions-client"
+import { ensureGoogleContactsSettingsColumns } from "@/lib/google-contacts-settings-schema"
 
 const DEFAULT_COMPTA_EMAIL = "comptabilite.institutassahaba@gmail.com"
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
@@ -10,6 +11,8 @@ export default async function ConnexionsPage() {
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
+
+  await ensureGoogleContactsSettingsColumns()
 
   const members = await prisma.user.findMany({
     where: { tenantId: user.tenantId, role: { in: ["TEACHER", "SECRETARY"] } },
@@ -20,6 +23,8 @@ export default async function ConnexionsPage() {
     where: { tenantId: user.tenantId },
     select: {
       gmailRefreshToken: true,
+      googleContactsRefreshToken: true,
+      googleContactsEmail: true,
       smtpUser: true,
       smtpPassword: true,
       smtpFrom: true,
@@ -37,6 +42,7 @@ export default async function ConnexionsPage() {
   }))
 
   const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.FACTURATION_EMAIL ?? DEFAULT_FACTURATION_EMAIL
+  const contactsEmail = settings?.googleContactsEmail ?? process.env.GOOGLE_CONTACTS_EMAIL ?? ""
   const comptaEmail = process.env.COMPTA_EMAIL ?? process.env.GMAIL_COMPTA_USER ?? settings?.smtpUser ?? settings?.smtpFrom ?? DEFAULT_COMPTA_EMAIL
   const mailStatus = {
     paymentInbox: {
@@ -44,8 +50,8 @@ export default async function ConnexionsPage() {
       connected: Boolean((process.env.GMAIL_PAYMENT_REFRESH_TOKEN || settings?.gmailRefreshToken) && paymentEmail),
     },
     contacts: {
-      email: paymentEmail,
-      connected: Boolean((process.env.GMAIL_PAYMENT_REFRESH_TOKEN || settings?.gmailRefreshToken) && paymentEmail),
+      email: contactsEmail,
+      connected: Boolean((process.env.GOOGLE_CONTACTS_REFRESH_TOKEN || settings?.googleContactsRefreshToken) && contactsEmail),
     },
     compta: {
       email: comptaEmail,

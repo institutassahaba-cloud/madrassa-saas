@@ -58,6 +58,8 @@ model TenantSettings {
   paymentScanStartedAt DateTime?
   paymentScanLastRunAt DateTime? // dernier passage du scan (cron)
   paymentScanLastError String?   // dernière erreur (ex: Gmail invalid_grant), null si OK
+  googleContactsRefreshToken String?
+  googleContactsEmail String?
   whatsappApiKey      String?
   whatsappPhoneNumber String?
   smtpHost            String?

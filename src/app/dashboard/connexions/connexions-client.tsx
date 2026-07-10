@@ -44,7 +44,7 @@ function statusColor(dateStr: string | null, isActive: boolean) {
 
 function ConnectionState({ connected }: { connected: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${connected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+    <span className={`inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none ${connected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
       {connected ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
       {connected ? "Connecté" : "À configurer"}
     </span>
@@ -211,7 +211,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
             </p>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => { window.location.href = "/api/connexions/gmail/auth" }}>
+            <Button size="sm" variant="outline" onClick={() => { window.location.href = "/api/connexions/google-contacts/auth" }}>
               <MailCheck className="h-3.5 w-3.5" />
               Connecter l&apos;adresse contacts
             </Button>

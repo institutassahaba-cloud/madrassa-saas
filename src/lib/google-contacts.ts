@@ -1,11 +1,16 @@
 import { google } from "googleapis"
 import { prisma } from "@/lib/prisma"
-import { decryptSecret } from "@/lib/secrets"
+import { decryptSecret, encryptSecret } from "@/lib/secrets"
 import { getGmailRedirectUri } from "@/lib/payment-email-reader"
 import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
+import { ensureGoogleContactsSettingsColumns } from "@/lib/google-contacts-settings-schema"
 import { extractTeacherEmoji } from "@/lib/student-display"
 
-const CONTACT_SCOPE_ERROR = "Connexion Google incomplète. Reconnectez Gmail pour autoriser aussi les Contacts."
+const CONTACT_SCOPE_ERROR = "Connexion Google Contacts incomplète. Reconnectez l'adresse contacts."
+const GOOGLE_CONTACTS_SCOPES = [
+  "https://www.googleapis.com/auth/contacts",
+  "https://www.googleapis.com/auth/userinfo.email",
+]
 
 function getOAuthClient() {
   const clientId = process.env.GMAIL_CLIENT_ID
@@ -14,16 +19,50 @@ function getOAuthClient() {
   return new google.auth.OAuth2(clientId, clientSecret, getGmailRedirectUri())
 }
 
+export function getGoogleContactsAuthUrl() {
+  const client = getOAuthClient()
+  if (!client) return null
+  return client.generateAuthUrl({
+    access_type: "offline",
+    prompt: "consent",
+    scope: GOOGLE_CONTACTS_SCOPES,
+    state: "contacts",
+  })
+}
+
+export async function saveGoogleContactsRefreshToken(tenantId: string, code: string) {
+  await ensureGoogleContactsSettingsColumns()
+
+  const client = getOAuthClient()
+  if (!client) throw new Error("Google Contacts OAuth non configuré.")
+
+  const { tokens } = await client.getToken(code)
+  if (!tokens.refresh_token) throw new Error("Google n'a pas renvoyé de refresh token.")
+
+  client.setCredentials(tokens)
+  const oauth2 = google.oauth2({ version: "v2", auth: client })
+  const profile = await oauth2.userinfo.get().catch(() => null)
+  const email = profile?.data.email || process.env.GOOGLE_CONTACTS_EMAIL || null
+  const encrypted = encryptSecret(tokens.refresh_token) as string
+
+  await prisma.tenantSettings.upsert({
+    where: { tenantId },
+    create: { tenantId, googleContactsRefreshToken: encrypted, googleContactsEmail: email },
+    update: { googleContactsRefreshToken: encrypted, googleContactsEmail: email },
+  })
+}
+
 async function getPeopleClient(tenantId: string) {
   const client = getOAuthClient()
   if (!client) throw new Error("Google OAuth non configuré.")
 
+  await ensureGoogleContactsSettingsColumns()
   const settings = await prisma.tenantSettings.findUnique({
     where: { tenantId },
-    select: { gmailRefreshToken: true },
+    select: { googleContactsRefreshToken: true },
   })
-  const refreshToken = decryptSecret(settings?.gmailRefreshToken) || process.env.GMAIL_PAYMENT_REFRESH_TOKEN
-  if (!refreshToken) throw new Error("Boîte Google non connectée.")
+  const refreshToken = decryptSecret(settings?.googleContactsRefreshToken) || process.env.GOOGLE_CONTACTS_REFRESH_TOKEN
+  if (!refreshToken) throw new Error("Adresse Google Contacts non connectée.")
 
   client.setCredentials({ refresh_token: refreshToken })
   return google.people({ version: "v1", auth: client })
