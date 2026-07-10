@@ -145,6 +145,8 @@ interface Group {
 interface Teacher {
   id: string
   name: string
+  phone: string | null
+  meetingLink: string | null
 }
 
 interface ImportRow {

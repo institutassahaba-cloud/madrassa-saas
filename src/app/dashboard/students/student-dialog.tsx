@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { whatsappLink } from "@/lib/phone"
 
 interface StudentDialogProps {
   open: boolean
@@ -15,7 +16,7 @@ interface StudentDialogProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   student: any | null
   groups: { id: string; name: string; teacherId: string | null }[]
-  teachers: { id: string; name: string }[]
+  teachers: { id: string; name: string; phone?: string | null; meetingLink?: string | null }[]
   // Paiements détectés non traités : permet de lier le paiement de chaque nouvel
   // élève à un virement/PayPal reçu (validé + retiré des non traités d'un coup).
   paymentMatches?: {
@@ -122,6 +123,8 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
   const [newClassName, setNewClassName] = useState("")
   const [paymentAliases, setPaymentAliases] = useState<PaymentAliasFormRow[]>([])
   const [initialPayment, setInitialPayment] = useState({ ...EMPTY_INITIAL_PAYMENT })
+  // Envoi de l'e-mail de bienvenue à la création (coordonnées WhatsApp + Zoom des profs).
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true)
   // Un paiement détecté à associer par élève (index aligné sur `identities`).
   // L'élève 1 est pré-rempli avec le paiement cliqué ; les suivants sont optionnels.
   const [matchIds, setMatchIds] = useState<string[]>([""])
@@ -427,6 +430,27 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             }
           }
         }
+
+        // E-mail de bienvenue (best-effort : les élèves sont déjà créés, un échec d'envoi
+        // ne doit pas bloquer). Un e-mail par élève renseigné, avec les mêmes professeurs.
+        if (sendWelcomeEmail && canSendWelcome) {
+          const coursesPayload = welcomeCourses.map((c) => ({ subject: c.subject, teacherId: c.teacher.id }))
+          await Promise.all(
+            identities
+              .filter((idn) => idn.email.trim())
+              .map((idn) =>
+                fetch("/api/students/welcome-email", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    to: idn.email.trim(),
+                    studentName: `${idn.firstName} ${idn.lastName}`.trim() || idn.firstName,
+                    courses: coursesPayload,
+                  }),
+                }).catch(() => null)
+              )
+          )
+        }
       }
       onClose()
       window.location.reload()
@@ -437,6 +461,20 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       setLoading(false)
     }
   }
+
+  // ── Aperçu de l'e-mail de bienvenue (création uniquement) ──
+  // Cours = matière principale + matières supplémentaires, en gardant ceux dont le prof est choisi.
+  const welcomeCourses = [
+    { subject: shared.subject, teacherId },
+    ...extraCourses.map((c) => ({ subject: c.subject, teacherId: c.teacherId })),
+  ]
+    .filter((c) => c.teacherId)
+    .map((c) => ({ subject: c.subject, teacher: teachers.find((t) => t.id === c.teacherId) }))
+    .filter((c): c is { subject: string; teacher: NonNullable<typeof c.teacher> } => Boolean(c.teacher))
+  const welcomeRecipients = identities
+    .map((i) => i.email.trim())
+    .filter((email) => email.length > 0)
+  const canSendWelcome = welcomeRecipients.length > 0 && welcomeCourses.length > 0
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -951,6 +989,64 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Aperçu de l'e-mail de bienvenue (création uniquement) */}
+          {!student && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+              <label className="flex items-start gap-2 text-sm text-blue-950">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-blue-300"
+                  checked={sendWelcomeEmail && canSendWelcome}
+                  disabled={!canSendWelcome}
+                  onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+                />
+                <span>
+                  Envoyer l&apos;e-mail de bienvenue
+                  <span className="block text-xs text-blue-700">
+                    {welcomeRecipients.length === 0
+                      ? "Renseignez l'e-mail de l'élève ci-dessus pour activer l'envoi."
+                      : welcomeCourses.length === 0
+                        ? "Choisissez au moins un professeur pour activer l'envoi."
+                        : `Envoyé à ${welcomeRecipients.join(", ")} à la validation.`}
+                  </span>
+                </span>
+              </label>
+
+              {canSendWelcome && (
+                <div className="mt-3 rounded-lg border border-blue-100 bg-white p-4 text-sm">
+                  <p className="font-semibold text-gray-900">Bienvenue à l&apos;Institut As-Sahaba</p>
+                  <p className="mt-1 text-gray-600">
+                    Nous sommes heureux d&apos;accueillir <strong>{identities[0].firstName || "l'élève"}</strong>.
+                    Voici les coordonnées {welcomeCourses.length > 1 ? "de vos professeurs" : "de votre professeur"} :
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {welcomeCourses.map((course, i) => {
+                      const wa = whatsappLink(course.teacher.phone)
+                      return (
+                        <div key={i} className="rounded-md bg-gray-50 px-3 py-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                            Professeur de {course.subject || "—"}
+                          </p>
+                          <p className="font-medium text-gray-900">{course.teacher.name}</p>
+                          <p className="text-xs text-gray-600">
+                            📱 WhatsApp : {course.teacher.phone
+                              ? (wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline">{course.teacher.phone}</a> : course.teacher.phone)
+                              : <span className="text-amber-600">non renseigné</span>}
+                          </p>
+                          <p className="truncate text-xs text-gray-600">
+                            🎥 Zoom : {course.teacher.meetingLink
+                              ? <a href={course.teacher.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">{course.teacher.meetingLink}</a>
+                              : <span className="text-amber-600">non renseigné</span>}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

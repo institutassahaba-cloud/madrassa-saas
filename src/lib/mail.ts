@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import nodemailer from "nodemailer"
+import { whatsappLink } from "@/lib/phone"
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY ?? ""
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "contact@institut-assahaba.com"
@@ -338,6 +339,139 @@ ${emailHeaderHtml()}
           <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
             Nous restons disponibles pour toute question.<br /><br />
             Qu&apos;Allah vous préserve.
+          </td>
+        </tr>
+
+        <tr><td height="14"></td></tr>
+
+        <tr>
+          <td align="center" bgcolor="#F4EFE3" style="background:#F4EFE3;padding:20px 32px;font-size:12px;line-height:20px;color:#5C6577;">
+${emailFooterHtml()}
+          </td>
+        </tr>
+
+        </tbody>
+      </table>
+
+    </td>
+  </tr>
+  </tbody>
+</table>
+</body>
+</html>`
+}
+
+// « Professeur de Coran », « Professeur de langue arabe »… Le libellé sert d'intitulé
+// pour chaque enseignant listé dans l'e-mail de bienvenue.
+export function subjectTeacherLabel(subject: string | null | undefined): string {
+  const s = (subject ?? "").trim()
+  if (!s) return "Professeur"
+  return `Professeur de ${s}`
+}
+
+export type WelcomeCourse = {
+  subject: string | null
+  teacherName: string
+  teacherPhone: string | null
+  meetingLink: string | null
+}
+
+// E-mail de bienvenue envoyé à l'inscription : accueil + coordonnées (WhatsApp + Zoom)
+// de chaque professeur assigné, un bloc par matière.
+export function studentWelcomeEmailHtml({
+  studentName,
+  courses,
+}: {
+  studentName: string
+  courses: WelcomeCourse[]
+}) {
+  const escapeHtml = (v: string) =>
+    v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+  const waLink = (phone: string | null) =>
+    whatsappLink(phone)
+
+  const courseBlocks = courses.map((course) => {
+    const label = escapeHtml(subjectTeacherLabel(course.subject))
+    const wa = waLink(course.teacherPhone)
+    const rows: string[] = [
+      `<tr><td style="padding:16px 20px 4px;font-size:14px;font-weight:700;color:#17456C;">${label}</td></tr>`,
+      `<tr><td style="padding:2px 20px;font-size:15px;line-height:24px;color:#1A2440;"><strong>${escapeHtml(course.teacherName)}</strong></td></tr>`,
+    ]
+    if (wa) {
+      rows.push(
+        `<tr><td style="padding:6px 20px;font-size:14px;line-height:24px;color:#1A2440;">📱 WhatsApp : <a href="${wa}" style="color:#128C7E;text-decoration:none;font-weight:600;">${escapeHtml(course.teacherPhone ?? "")}</a></td></tr>`,
+      )
+    }
+    if (course.meetingLink) {
+      const link = escapeHtml(course.meetingLink)
+      rows.push(
+        `<tr><td style="padding:6px 20px 16px;font-size:14px;line-height:24px;color:#1A2440;">🎥 Lien du cours (Zoom) : <a href="${link}" style="color:#235A86;text-decoration:none;font-weight:600;">${link}</a></td></tr>`,
+      )
+    } else {
+      rows.push(`<tr><td style="padding:0 20px 16px;"></td></tr>`)
+    }
+    return `
+          <td style="padding:10px 36px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F9FC;border-radius:10px;border:1px solid #E9F1F8;">
+              <tbody>${rows.join("")}</tbody>
+            </table>
+          </td>`
+  }).map((td) => `<tr>${td}</tr>`).join("\n        ")
+
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Bienvenue à l'Institut As-Sahaba</title>
+  <style type="text/css">
+    *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+    body{margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;}
+    table{border-collapse:collapse;margin:0 auto;}
+    div,a,li,td{-webkit-text-size-adjust:none;}
+    @media only screen and (max-width:600px){table[class=full]{width:100%!important;}}
+  </style>
+</head>
+<body bgcolor="#F4EFE3" style="margin:0;padding:0;background:#F4EFE3;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4EFE3" style="background:#F4EFE3;">
+  <tbody>
+  <tr>
+    <td align="center" style="padding:28px 12px;">
+
+      <table class="full" width="620" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:620px;max-width:620px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(12,36,60,.08);">
+        <tbody>
+
+        <tr>
+${emailHeaderHtml()}
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:36px 32px 8px;font-size:22px;line-height:30px;color:#17456C;font-weight:700;">
+            Bienvenue à l&apos;Institut As-Sahaba
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:6px 32px 0;font-size:17px;line-height:28px;color:#235A86;font-weight:600;" dir="rtl">
+            السلام عليكم ورحمة الله وبركاته
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
+            Nous sommes heureux d&apos;accueillir <strong>${escapeHtml(studentName)}</strong> à l&apos;Institut As-Sahaba.<br /><br />
+            Voici les coordonnées ${courses.length > 1 ? "de vos professeurs" : "de votre professeur"} pour prendre contact et rejoindre ${courses.length > 1 ? "les cours" : "le cours"} :
+          </td>
+        </tr>
+
+        ${courseBlocks}
+
+        <tr>
+          <td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
+            N&apos;hésitez pas à contacter directement ${courses.length > 1 ? "vos professeurs" : "votre professeur"} sur WhatsApp pour convenir des créneaux.<br /><br />
+            Qu&apos;Allah facilite à ${escapeHtml(studentName)} un apprentissage bénéfique et sincère.
           </td>
         </tr>
 

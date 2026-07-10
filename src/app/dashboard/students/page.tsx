@@ -4,6 +4,7 @@ import { getEffectiveUser } from "@/lib/view-as"
 import { ensurePaymentAliasSchema } from "@/lib/payment-alias-schema"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
+import { ensureUserMeetingLinkColumn } from "@/lib/user-schema"
 import { StudentsClient } from "./students-client"
 
 export default async function StudentsPage() {
@@ -13,6 +14,7 @@ export default async function StudentsPage() {
   await ensurePaymentAliasSchema()
   await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
+  await ensureUserMeetingLinkColumn()
 
   const [students, groups, teachers, slots, paymentMatches] = await Promise.all([
     prisma.student.findMany({
@@ -39,7 +41,7 @@ export default async function StudentsPage() {
     }),
     prisma.user.findMany({
       where: { tenantId: user.tenantId, role: "TEACHER", isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, phone: true, meetingLink: true },
       orderBy: { name: "asc" },
     }),
     prisma.timeSlot.findMany({
