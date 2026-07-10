@@ -9,12 +9,15 @@ const FROM_NAME = process.env.FROM_NAME ?? "Institut As-Sahaba"
 const DEFAULT_COMPTA_EMAIL = "comptabilite.institutassahaba@gmail.com"
 const EMAIL_LOGO_CID = "logo-assahaba@institut-assahaba"
 const EMAIL_LOGO_PATH = path.join(process.cwd(), "public", "logo-assahaba.png")
+// URL publique du logo pour les e-mails envoyés via l'API Brevo (qui n'attache pas les
+// images cid:). Le fichier public/logo-assahaba.png est servi à cette adresse.
+const EMAIL_LOGO_URL = process.env.EMAIL_LOGO_URL ?? "https://madrassa-saas-umber.vercel.app/logo-assahaba.png"
 const EMAIL_TAGLINE = "Sur les traces des compagnons"
 
 function emailHeaderHtml() {
   return `
           <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
-            <img src="cid:${EMAIL_LOGO_CID}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
+            <img src="${EMAIL_LOGO_URL}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
             <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
             <div style="font-size:11px;letter-spacing:1.6px;color:#9CC0DD;margin-top:5px;">${EMAIL_TAGLINE}</div>
           </td>`
