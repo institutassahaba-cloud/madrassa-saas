@@ -4,10 +4,13 @@ import { prisma } from "@/lib/prisma"
 import { getEffectiveUser } from "@/lib/view-as"
 import { notificationVisibilityWhere } from "@/lib/notifications"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
+import { touchUserActivity } from "@/lib/user-activity"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session?.user) redirect("/login")
+
+  await touchUserActivity(session.user.id)
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },

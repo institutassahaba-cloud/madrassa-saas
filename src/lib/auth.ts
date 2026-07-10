@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { authConfig } from "./auth.config"
 import { isRateLimited, registerAttempt, getClientIp } from "@/lib/rate-limit"
+import { touchUserActivity } from "@/lib/user-activity"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -49,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null
         }
 
-        prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {})
+        await touchUserActivity(user.id).catch(() => null)
 
         return {
           id: user.id,
