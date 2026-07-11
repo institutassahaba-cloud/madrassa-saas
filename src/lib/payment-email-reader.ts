@@ -2,6 +2,7 @@ import { google } from "googleapis"
 import { prisma } from "@/lib/prisma"
 import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
+import { ensurePaymentMatchReferenceColumn } from "@/lib/payment-match-schema"
 import { ensurePaymentAliasSchema, normalizePaymentAlias } from "@/lib/payment-alias-schema"
 import { ensureDirectorPayerAliasSchema, isKnownDirectorPayer } from "@/lib/director-payer-alias"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
@@ -95,9 +96,14 @@ function cleanText(value: string | null | undefined) {
     .trim()
 }
 
-function detectSource(text: string) {
-  if (/paypal/i.test(text)) return "PAYPAL"
-  if (/wise|transferwise/i.test(text)) return "WISE"
+function detectSource(text: string, fromHeader = "") {
+  // On inclut l'en-tête « From » : certains mails Wise ne contiennent le mot
+  // « Wise » que dans l'adresse expéditrice (noreply@wise.com), jamais dans le
+  // corps visible. Sans ça ils étaient classés BANK puis IGNORÉS à l'import
+  // manuel → paiements manquants.
+  const haystack = `${text}\n${fromHeader}`
+  if (/wise|transferwise/i.test(haystack)) return "WISE"
+  if (/paypal/i.test(haystack)) return "PAYPAL"
   return "BANK"
 }
 
@@ -108,8 +114,11 @@ function extractAmount(text: string) {
 }
 
 function extractReference(source: string, text: string, fallback: string) {
-  const paypal = text.match(/(?:transaction|transaction id|n[°o]\s*de transaction|référence)[^\w]{0,12}([A-Z0-9]{10,24})/i)
-  const wise = text.match(/(?:transfer|virement|référence|reference|membership)[^\w]{0,12}([A-Z0-9-]{8,36})/i)
+  // PayPal : « Numéro de transaction 2MC04570LK807561J » ou « la transaction 2MC0… ».
+  const paypal = text.match(/(?:num[ée]ro\s+de\s+transaction|transaction\s*id|transaction|référence|reference)\s*[:#]?\s*([A-Z0-9]{10,24})/i)
+  // Wise : « Numéro de transfert : #2242560083 ». Le numéro est toujours préfixé « # ».
+  const wise = text.match(/#\s*([0-9]{6,20})/)
+    || text.match(/(?:num[ée]ro\s+de\s+transfert|transfert|transfer|virement|référence|reference)\s*[:#]?\s*#?\s*([A-Z0-9-]{6,36})/i)
   const match = source === "PAYPAL" ? paypal : wise
   return match?.[1] || fallback
 }
@@ -123,6 +132,11 @@ function cleanPayerName(raw: string) {
     .replace(/\b(?:sent|paid|has sent)\b.*$/i, " ")
     .replace(/\b(?:vous|you)\b.*$/i, " ")
     .replace(/\s+/g, " ")
+    .trim()
+    // Préfixes marque/salutation collés au nom, ex. « PayPal drame khadi »,
+    // « Bonjour Lionel » → on ne garde que le nom réel. Boucle pour « Bonjour PayPal … ».
+    .replace(/^(?:paypal|wise|transferwise|bonjour|bonsoir|hello|hi|hey|de|from)[\s,:]+/i, "")
+    .replace(/^(?:paypal|wise|transferwise|bonjour|bonsoir|hello|hi|hey|de|from)[\s,:]+/i, "")
     .replace(/[.,;:!?-]+$/g, "")
     .trim()
 }
@@ -133,6 +147,9 @@ function isUsablePayerName(value: string | null | undefined) {
   if (/@/.test(normalized)) return false
   if (/(?:€|eur|\d+[,.]\d{1,2})/i.test(normalized)) return false
   if (/^(paypal|wise|transferwise|service|notification|recu|reçu|argent|paiement|payment)$/i.test(normalized)) return false
+  // « Vous avez reçu de l'argent » (sujet PayPal générique) donnait le faux nom
+  // « l argent ». On rejette tout ce qui n'est composé que de mots vides / « argent ».
+  if (normalized.split(" ").every((word) => /^(l|d|de|du|la|le|les|argent|money|somme|paiement|payment)$/i.test(word))) return false
   return /[A-Za-zÀ-ÿ]{2,}/.test(normalized)
 }
 
@@ -148,10 +165,16 @@ function firstPayerNameMatch(values: string[], patterns: RegExp[]) {
 }
 
 function extractPayerName(source: string, text: string, subject = "", fromHeader = "") {
-  const values = [subject, text]
+  // PayPal : le corps (« … vous a envoyé ») est fiable ; on le lit AVANT le sujet,
+  // dont la formule générique « Vous avez reçu de l'argent » piégeait l'extraction.
+  const values = source === "PAYPAL" ? [text, subject] : [subject, text]
   if (source === "PAYPAL") {
     const paypalPatterns = [
-      /(.{3,80}?)\s+(?:vous\s+a\s+envoy[ée]|vous\s+a\s+pay[ée]|sent\s+you|paid\s+you)\b/i,
+      // On ne capture QUE des caractères de nom (lettres, espaces, apostrophes,
+      // tirets, points) juste avant « vous a envoyé ». La virgule après la
+      // salutation (« Bonjour Michael Silva Araujo, ») borne la capture ; un
+      // éventuel « PayPal » de tête est retiré par cleanPayerName.
+      /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{1,60}?)\s+(?:vous\s+a\s+envoy[ée]|vous\s+a\s+pay[ée]|sent\s+you|paid\s+you)\b/i,
       /(?:vous\s+avez\s+re[çc]u|you\s+received)(?:[^.\n\r]{0,120}?)(?:\s+de|\s+from)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
       /(?:exp[ée]diteur|sender|client|customer|payeur|payer)\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
       /(?:nom|name)\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
@@ -372,6 +395,15 @@ type ScanPaymentEmailsOptions = {
   startedAt?: Date | null
   endedAt?: Date | null
   manualImport?: boolean
+  // Recherche ciblée : nom du payeur cherché dans Gmail, sans borne de date,
+  // pour retrouver les paiements PayPal/Wise d'une personne précise.
+  payerQuery?: string | null
+}
+
+function sanitizeGmailPhrase(value: string) {
+  // On garde lettres/chiffres/espaces/apostrophes/tirets, on retire les
+  // caractères d'opérateur Gmail (:, (), «, », ", -) qui casseraient la requête.
+  return value.replace(/["():<>{}]/g, " ").replace(/\s+/g, " ").trim()
 }
 
 function afterDateQuery(date: Date) {
@@ -394,15 +426,20 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   await ensurePaymentScanSettingsColumns()
   await ensurePaymentAliasSchema()
   await ensureDirectorPayerAliasSchema()
+  await ensurePaymentMatchReferenceColumn()
   const requireEnabled = options.requireEnabled ?? true
   const autoConfirmEnabled = process.env.PAYMENT_SCAN_AUTO_CONFIRM === "true"
   const scanSettings = await prisma.tenantSettings.findUnique({
     where: { tenantId },
     select: { paymentScanEnabled: true, paymentScanStartedAt: true },
   })
-  const startedAt = options.startedAt ?? scanSettings?.paymentScanStartedAt ?? null
-  const endedAt = options.endedAt ?? null
-  const manualImport = options.manualImport ?? false
+  const payerQuery = sanitizeGmailPhrase(options.payerQuery ?? "")
+  // Une recherche par nom balaie toute la boîte (pas de borne de date) et ne
+  // garde que PayPal/Wise, comme l'import manuel.
+  const broadImport = (options.manualImport ?? false) || Boolean(payerQuery)
+  const startedAt = payerQuery ? null : (options.startedAt ?? scanSettings?.paymentScanStartedAt ?? null)
+  const endedAt = payerQuery ? null : (options.endedAt ?? null)
+  const manualImport = broadImport
   if (requireEnabled && !scanSettings?.paymentScanEnabled) {
     return { ok: true, disabled: true, created: 0, updated: 0, skipped: 0, scanned: 0 }
   }
@@ -413,9 +450,11 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   const gmail = await getGmailClient(tenantId)
   const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.FACTURATION_EMAIL ?? DEFAULT_FACTURATION_EMAIL
   const query = [
-    startedAt ? afterDateQuery(startedAt) : "newer_than:45d",
+    payerQuery ? `"${payerQuery}"` : "",
+    startedAt ? afterDateQuery(startedAt) : (payerQuery ? "" : "newer_than:45d"),
     endedAt ? beforeDateQuery(endedAt) : "",
-    manualImport ? "" : "(paypal OR wise OR transferwise OR virement OR paiement OR payment)",
+    // Recherche par nom : on cible quand même PayPal/Wise pour éviter le bruit.
+    payerQuery ? "(paypal OR wise OR transferwise)" : (manualImport ? "" : "(paypal OR wise OR transferwise OR virement OR paiement OR payment)"),
     !manualImport && paymentEmail ? `to:${paymentEmail}` : "",
     paymentEmail ? `-from:${paymentEmail}` : "",
     "-in:sent",
@@ -472,7 +511,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     }
     const bodyText = cleanText(readPayloadText(full.data.payload))
     const combined = `${subject}\n${full.data.snippet ?? ""}\n${bodyText}`
-    const source = detectSource(combined)
+    const source = detectSource(combined, fromHeader)
     if (manualImport && !["PAYPAL", "WISE"].includes(source)) {
       ignored += 1
       continue
@@ -482,34 +521,49 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       ignored += 1
       continue
     }
-    const reference = extractReference(source, combined, `gmail:${message.id}`)
+    // Verrou anti-doublon = l'ID Gmail RÉEL du message (unique par nature).
+    // La « référence » lisible (n° de transfert Wise / transaction PayPal) devient
+    // un simple champ affiché/cherchable, plus jamais la clé — fini les paiements
+    // avalés à cause de deux mails partageant la même référence extraite.
+    const gmailId = message.id
+    const extractedReference = extractReference(source, combined, "")
+    const paymentReference = extractedReference || null
+    const reference = extractedReference || `gmail:${gmailId}` // conservé pour lier le Payment
     const detectedPayerName = extractPayerName(source, combined, subject, fromHeader)
     const paymentLabel = extractLabel(subject, combined)
-    const existing = await prisma.paymentMatch.findUnique({
-      where: { tenantId_gmailMessageId: { tenantId, gmailMessageId: reference } },
-      select: { id: true, status: true, detectedPayerName: true, paymentLabel: true, studentId: true },
+    // On retrouve la ligne existante par le nouvel ID Gmail, mais aussi par les
+    // anciennes clés (référence extraite, ou repli « gmail:<id> ») pour migrer les
+    // lignes déjà en base sans jamais créer de doublon.
+    const legacyKeys = [gmailId, `gmail:${gmailId}`, extractedReference].filter(Boolean) as string[]
+    const existing = await prisma.paymentMatch.findFirst({
+      where: { tenantId, gmailMessageId: { in: legacyKeys } },
+      select: { id: true, status: true, gmailMessageId: true, detectedPayerName: true, paymentReference: true, paymentLabel: true, studentId: true },
     })
     if (existing) {
-      // Rattrapage : un paiement encore « à vérifier » mais sans nom détecté
-      // (créé pendant une coupure du scan ou par l'ancien bug d'extraction Wise)
-      // est complété a posteriori. On ne touche JAMAIS aux paiements déjà validés,
-      // classés directeur ou supprimés — et on ne recrée jamais de doublon.
-      if (existing.status === "TO_VERIFY" && !existing.detectedPayerName && detectedPayerName) {
+      // Migration en place : on bascule la clé vers l'ID Gmail réel et on
+      // complète la référence lisible / le nom manquants. On ne touche JAMAIS
+      // au statut d'un paiement déjà validé, classé directeur ou supprimé.
+      const needsKeyMigration = existing.gmailMessageId !== gmailId
+      const needsReference = !existing.paymentReference && Boolean(paymentReference)
+      const canBackfillName = existing.status === "TO_VERIFY" && !existing.detectedPayerName && Boolean(detectedPayerName)
+      if (needsKeyMigration || needsReference || canBackfillName) {
         const backfillLabel = existing.paymentLabel ?? paymentLabel
-        const suggestion = existing.studentId
-          ? null
-          : await suggestStudentForPayment(tenantId, source, detectedPayerName, backfillLabel)
+        const suggestion = canBackfillName && !existing.studentId
+          ? await suggestStudentForPayment(tenantId, source, detectedPayerName, backfillLabel)
+          : null
         await prisma.paymentMatch.update({
           where: { id: existing.id },
           data: {
-            detectedPayerName,
-            paymentLabel: backfillLabel,
+            ...(needsKeyMigration ? { gmailMessageId: gmailId } : {}),
+            ...(needsReference ? { paymentReference } : {}),
+            ...(canBackfillName ? { detectedPayerName, paymentLabel: backfillLabel } : {}),
             ...(suggestion
               ? { studentId: suggestion.studentId, score: suggestion.score, reason: suggestion.reason }
               : {}),
           },
         })
-        updated += 1
+        if (canBackfillName) updated += 1
+        else skipped += 1
         continue
       }
       skipped += 1
@@ -534,7 +588,8 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
         data: {
           tenantId,
           source,
-          gmailMessageId: reference,
+          gmailMessageId: gmailId,
+          paymentReference,
           receivedAmount: amount,
           detectedPayerName,
           paymentLabel,
@@ -569,7 +624,8 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       data: {
         tenantId,
         source,
-        gmailMessageId: reference,
+        gmailMessageId: gmailId,
+        paymentReference,
         receivedAmount: amount,
         detectedPayerName,
         paymentLabel,

@@ -86,6 +86,7 @@ interface PaymentMatch {
   id: string
   source: string
   gmailMessageId: string
+  paymentReference: string | null
   receivedAmount: number
   detectedPayerName: string | null
   paymentLabel: string | null
@@ -113,6 +114,16 @@ function allocatedTotal(match: PaymentMatch) {
 
 function paymentReceivedAmount(payment: Pick<Payment, "amount" | "receivedAmount">) {
   return Number(payment.receivedAmount ?? payment.amount ?? 0)
+}
+
+// Référence lisible à afficher : la vraie référence (n° transfert Wise / transaction
+// PayPal) en priorité. Sinon, pour les anciennes lignes, on tolère l'ancienne clé —
+// mais on masque l'ID Gmail brut (hex), inutile à l'utilisateur.
+function displayReference(match: Pick<PaymentMatch, "paymentReference" | "gmailMessageId">) {
+  if (match.paymentReference) return match.paymentReference
+  const legacy = match.gmailMessageId || ""
+  if (!legacy || /^[0-9a-f]{12,}$/i.test(legacy) || legacy.startsWith("gmail:")) return "—"
+  return legacy
 }
 
 export function PaymentsClient({
@@ -158,6 +169,8 @@ export function PaymentsClient({
   const [teacherFilter, setTeacherFilter] = useState("ALL")
   const [unprocessedDateFrom, setUnprocessedDateFrom] = useState("")
   const [unprocessedDateTo, setUnprocessedDateTo] = useState("")
+  const [matchSearch, setMatchSearch] = useState("")
+  const [payerSearchLoading, setPayerSearchLoading] = useState(false)
   const [sortKey, setSortKey] = useState<PaymentSortKey>("paidDate")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -229,7 +242,15 @@ export function PaymentsClient({
     const date = matchDateValue(match)
     const afterStart = !unprocessedDateFrom || date >= dayStart(unprocessedDateFrom)
     const beforeEnd = !unprocessedDateTo || date <= dayEnd(unprocessedDateTo)
-    return afterStart && beforeEnd
+    const needle = matchSearch.trim().toLowerCase()
+    const matchText = !needle || [
+      match.detectedPayerName,
+      match.paymentReference,
+      match.paymentLabel,
+      match.rawSubject,
+      match.student ? `${match.student.firstName} ${match.student.lastName}` : "",
+    ].some((field) => (field ?? "").toLowerCase().includes(needle))
+    return afterStart && beforeEnd && matchText
   })
 
   const filtered = payments.filter((p) => {
@@ -358,6 +379,30 @@ export function PaymentsClient({
       alert(error instanceof Error ? error.message : "Import des paiements impossible.")
     } finally {
       setImportLoading(false)
+    }
+  }
+
+  async function searchPayerInGmail() {
+    const name = matchSearch.trim()
+    if (name.length < 3) {
+      alert("Entrez au moins 3 lettres du nom du payeur à rechercher.")
+      return
+    }
+    setPayerSearchLoading(true)
+    try {
+      const res = await fetch("/api/connexions/gmail/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payerName: name }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Recherche Gmail impossible.")
+      alert(`Recherche « ${name} » :\n${data.created ?? 0} nouveau(x) paiement(s) importé(s).\n${data.updated ?? 0} complété(s).\n${data.skipped ?? 0} déjà connu(s).\n${data.scanned ?? 0} email(s) scanné(s).`)
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Recherche Gmail impossible.")
+    } finally {
+      setPayerSearchLoading(false)
     }
   }
 
@@ -597,6 +642,39 @@ export function PaymentsClient({
                   Importer Wise/PayPal
                 </Button>
               </div>
+              <div className="grid gap-3 rounded-lg border border-amber-100 bg-white/70 px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+                <div className="space-y-1.5">
+                  <Label>Rechercher un payeur (nom ou référence)</Label>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      value={matchSearch}
+                      onChange={(event) => setMatchSearch(event.target.value)}
+                      placeholder="Ex. Lionel Zilevu ou 2242560083"
+                      className="bg-white pl-8"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMatchSearch("")}
+                  disabled={!matchSearch}
+                  className="border-amber-300 text-amber-900 hover:bg-amber-100"
+                >
+                  Effacer
+                </Button>
+                <Button
+                  type="button"
+                  onClick={searchPayerInGmail}
+                  disabled={matchSearch.trim().length < 3 || payerSearchLoading}
+                  className="gap-2 whitespace-nowrap"
+                  title="Chercher dans toute la boîte Gmail les paiements PayPal/Wise de ce payeur"
+                >
+                  {payerSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  Chercher dans Gmail
+                </Button>
+              </div>
               <div className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className="flex items-center gap-2 text-sm font-medium text-amber-900">
                   <input
@@ -652,7 +730,7 @@ export function PaymentsClient({
                       <p className="mt-0.5 text-xs text-gray-500">
                         Reçu le : {formatDate(match.paymentDate || match.createdAt)}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
+                      <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {displayReference(match)}</p>
                     </div>
                   </div>
                   <div className="grid gap-2 sm:flex sm:items-center">
@@ -719,7 +797,7 @@ export function PaymentsClient({
                       Validé pour : {matchStudentLabel(match)}
                       {match.reason ? ` · ${match.reason}` : ""}
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => setSelectedMatch(match)}>
                     Corriger
@@ -795,7 +873,7 @@ export function PaymentsClient({
                       <p className="mt-1 text-xs text-gray-500">
                         Validé pour : {matchStudentLabel(match)}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                      <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                     </div>
                   </div>
                   <Button
@@ -841,7 +919,7 @@ export function PaymentsClient({
                       <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
                       <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
@@ -882,7 +960,7 @@ export function PaymentsClient({
                       <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
                       <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
+                    <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
@@ -1329,7 +1407,7 @@ function PaymentMatchDialog({
             {(match.paymentLabel || match.rawSubject) && (
               <p className="mt-0.5 text-xs text-gray-500">Libellé : {match.paymentLabel || match.rawSubject}</p>
             )}
-            <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
+            <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {displayReference(match)}</p>
             <button
               type="button"
               onClick={() => { onNewStudent(match.id); onClose() }}

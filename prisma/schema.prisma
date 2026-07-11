@@ -456,7 +456,8 @@ model PaymentMatch {
   tenantId          String
   tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   source            String // PAYPAL | WISE
-  gmailMessageId    String // verrou unique : transaction PayPal / transfert Wise / référence bancaire
+  gmailMessageId    String // verrou anti-doublon : ID Gmail réel du message (unique)
+  paymentReference  String? // référence lisible : n° transaction PayPal / n° transfert Wise (affichée + cherchable)
   receivedAmount    Float
   detectedPayerName String?
   paymentLabel      String? // libellé / note du paiement, utile pour fratrie ou multi-profs

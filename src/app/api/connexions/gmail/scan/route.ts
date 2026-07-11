@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { scanPaymentEmails } from "@/lib/payment-email-reader"
-import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
+import { ensurePaymentMatchLabelColumn, ensurePaymentMatchReferenceColumn } from "@/lib/payment-match-schema"
 import { wrap } from "@/lib/api"
 
 function parseDate(value: unknown) {
@@ -24,14 +24,26 @@ export const POST = wrap(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}))
+    const payerName = typeof body.payerName === "string" ? body.payerName.trim() : ""
     const dateFrom = parseDate(body.dateFrom)
     const dateTo = parseDate(body.dateTo)
-    if (dateFrom && dateTo && dateTo < dateFrom) {
+    if (!payerName && dateFrom && dateTo && dateTo < dateFrom) {
       return NextResponse.json({ error: "La date de fin doit être après la date de début." }, { status: 400 })
+    }
+    if (payerName && payerName.length < 3) {
+      return NextResponse.json({ error: "Entrez au moins 3 lettres du nom recherché." }, { status: 400 })
     }
 
     await ensurePaymentMatchLabelColumn()
-    const result = dateFrom || dateTo
+    await ensurePaymentMatchReferenceColumn()
+    // Recherche par nom : balaye toute la boîte pour ce payeur, sans borne de date.
+    const result = payerName
+      ? await scanPaymentEmails(session.user.tenantId, {
+        requireEnabled: false,
+        manualImport: true,
+        payerQuery: payerName,
+      })
+      : dateFrom || dateTo
       ? await scanPaymentEmails(session.user.tenantId, {
         requireEnabled: false,
         startedAt: dateFrom,

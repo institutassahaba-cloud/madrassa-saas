@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
-import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
+import { ensurePaymentMatchLabelColumn, ensurePaymentMatchReferenceColumn } from "@/lib/payment-match-schema"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { getEffectiveUser } from "@/lib/view-as"
@@ -12,6 +12,7 @@ export default async function PaymentsPage() {
   if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
   await ensurePaymentMatchLabelColumn()
+  await ensurePaymentMatchReferenceColumn()
   await ensurePaymentScanSettingsColumns()
   await ensureStudentPaymentColumns()
 
