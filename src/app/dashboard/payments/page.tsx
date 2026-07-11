@@ -68,8 +68,8 @@ export default async function PaymentsPage() {
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
+      take: 1000,
     }),
     prisma.paymentMatch.findMany({
       where: { tenantId: user.tenantId, status: "AUTO_CONFIRMED" },

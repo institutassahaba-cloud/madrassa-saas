@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -155,6 +156,8 @@ export function PaymentsClient({
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [periodFilter, setPeriodFilter] = useState("CURRENT")
   const [teacherFilter, setTeacherFilter] = useState("ALL")
+  const [unprocessedDateFrom, setUnprocessedDateFrom] = useState("")
+  const [unprocessedDateTo, setUnprocessedDateTo] = useState("")
   const [sortKey, setSortKey] = useState<PaymentSortKey>("paidDate")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -205,6 +208,29 @@ export function PaymentsClient({
     return new Date(payment.confirmedAt || payment.paidDate || payment.createdAt).getTime()
   }
 
+  function matchDateValue(match: PaymentMatch) {
+    return new Date(match.paymentDate || match.createdAt).getTime()
+  }
+
+  function dayStart(value: string) {
+    const date = new Date(value)
+    date.setHours(0, 0, 0, 0)
+    return date.getTime()
+  }
+
+  function dayEnd(value: string) {
+    const date = new Date(value)
+    date.setHours(23, 59, 59, 999)
+    return date.getTime()
+  }
+
+  const filteredPaymentMatches = paymentMatches.filter((match) => {
+    const date = matchDateValue(match)
+    const afterStart = !unprocessedDateFrom || date >= dayStart(unprocessedDateFrom)
+    const beforeEnd = !unprocessedDateTo || date <= dayEnd(unprocessedDateTo)
+    return afterStart && beforeEnd
+  })
+
   const filtered = payments.filter((p) => {
     const name = paymentStudentLabel(p).toLowerCase()
     const teacherName = paymentTeacherName(p).toLowerCase()
@@ -237,7 +263,7 @@ export function PaymentsClient({
   const summary = {
     paid: filtered.filter((p) => (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)).reduce((sum, p) => sum + paymentReceivedAmount(p), 0),
     sentRequests: pendingPayments.length,
-    toVerify: paymentMatches.length,
+    toVerify: filteredPaymentMatches.length,
   }
 
   function pendingAgeDays(payment: Payment) {
@@ -270,7 +296,7 @@ export function PaymentsClient({
   }
 
   function toggleAllMatches(checked: boolean) {
-    setSelectedMatchIds(checked ? new Set(paymentMatches.map((match) => match.id)) : new Set())
+    setSelectedMatchIds(checked ? new Set(filteredPaymentMatches.map((match) => match.id)) : new Set())
   }
 
   function toggleConfirmedMatchSelection(matchId: string, checked: boolean) {
@@ -365,12 +391,13 @@ export function PaymentsClient({
   }
 
   async function trashSelectedMatches() {
-    if (selectedMatchIds.size === 0) return
-    const confirmed = window.confirm(`Mettre ${selectedMatchIds.size} paiement(s) non traité(s) dans la corbeille ? Vous pourrez les restaurer ensuite.`)
+    const visibleIds = filteredPaymentMatches.map((match) => match.id).filter((id) => selectedMatchIds.has(id))
+    if (visibleIds.length === 0) return
+    const confirmed = window.confirm(`Mettre ${visibleIds.length} paiement(s) non traité(s) dans la corbeille ? Vous pourrez les restaurer ensuite.`)
     if (!confirmed) return
     setMatchActionLoading("bulk-trash")
     try {
-      for (const matchId of selectedMatchIds) {
+      for (const matchId of visibleIds) {
         const res = await fetch(`/api/payment-matches/${matchId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -510,18 +537,37 @@ export function PaymentsClient({
                 </p>
               </div>
               <span className="flex items-center gap-2">
-                <Badge variant="warning">{paymentMatches.length} à traiter</Badge>
+                <Badge variant="warning">{filteredPaymentMatches.length} affiché(s) / {paymentMatches.length}</Badge>
                 {unprocessedOpen ? <ChevronUp className="h-4 w-4 text-amber-700" /> : <ChevronDown className="h-4 w-4 text-amber-700" />}
               </span>
             </button>
 
             {unprocessedOpen && <div className="space-y-2">
+              <div className="grid gap-3 rounded-lg border border-amber-100 bg-white/70 px-3 py-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                <div className="space-y-1.5">
+                  <Label>Reçu du</Label>
+                  <Input type="date" value={unprocessedDateFrom} onChange={(event) => setUnprocessedDateFrom(event.target.value)} className="bg-white" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>au</Label>
+                  <Input type="date" value={unprocessedDateTo} onChange={(event) => setUnprocessedDateTo(event.target.value)} className="bg-white" />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { setUnprocessedDateFrom(""); setUnprocessedDateTo("") }}
+                  disabled={!unprocessedDateFrom && !unprocessedDateTo}
+                  className="border-amber-300 text-amber-900 hover:bg-amber-100"
+                >
+                  Effacer
+                </Button>
+              </div>
               <div className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className="flex items-center gap-2 text-sm font-medium text-amber-900">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-amber-300"
-                    checked={paymentMatches.length > 0 && selectedMatchIds.size === paymentMatches.length}
+                    checked={filteredPaymentMatches.length > 0 && filteredPaymentMatches.every((match) => selectedMatchIds.has(match.id))}
                     onChange={(event) => toggleAllMatches(event.target.checked)}
                   />
                   Tout sélectionner
@@ -530,14 +576,18 @@ export function PaymentsClient({
                   size="sm"
                   variant="outline"
                   onClick={trashSelectedMatches}
-                  disabled={selectedMatchIds.size === 0 || matchActionLoading === "bulk-trash"}
+                  disabled={!filteredPaymentMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-trash"}
                   className="border-amber-300 text-amber-900 hover:bg-amber-100"
                 >
                   {matchActionLoading === "bulk-trash" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   Mettre la sélection à la corbeille
                 </Button>
               </div>
-              {paymentMatches.map((match) => (
+              {filteredPaymentMatches.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-amber-200 bg-white/70 p-6 text-center text-sm text-amber-800">
+                  Aucun paiement non traité dans cette période.
+                </div>
+              ) : filteredPaymentMatches.map((match) => (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 gap-3">
                     <input
@@ -564,6 +614,9 @@ export function PaymentsClient({
                           Libellé : {match.paymentLabel || match.rawSubject}
                         </p>
                       )}
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Reçu le : {formatDate(match.paymentDate || match.createdAt)}
+                      </p>
                       <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {match.gmailMessageId}</p>
                     </div>
                   </div>
