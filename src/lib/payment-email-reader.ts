@@ -639,36 +639,77 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       },
     })
     if (existing) {
-      // Migration en place : on bascule la clé vers l'ID Gmail réel et on
-      // complète la référence lisible / le nom manquants. On ne touche JAMAIS
-      // au statut d'un paiement déjà validé, classé directeur ou supprimé.
+      // La migration de clé (ancienne réf → ID Gmail réel) s'applique à tous les
+      // statuts sans jamais toucher aux autres champs.
       const needsKeyMigration = existing.gmailMessageId !== gmailId
+
+      const isOpenMatch = existing.status === "TO_VERIFY"
+      const isTrashed = existing.status === "TRASHED"
+      if (isOpenMatch || isTrashed) {
+        // Paiement NON validé (« à associer ») OU en corbeille : le rescan le
+        // RÉ-EXTRAIT entièrement avec le parser courant et ÉCRASE les anciennes
+        // valeurs (nom, montant, source, libellé). C'est ce qui permet aux
+        // corrections de parsing de rattraper les vieilles lignes (« bicubic »,
+        // montant du sujet au lieu du corps, « MR OU MME » collé au nom…).
+        // Une ligne en corbeille RESTE en corbeille : on ne re-suggère pas
+        // d'élève et on ne touche pas à son motif « supprimé ». Les paiements
+        // validés / auto-validés / directeur ne passent JAMAIS ici.
+        const nameChanged = (existing.detectedPayerName ?? null) !== (detectedPayerName ?? null)
+        const labelChanged = (existing.paymentLabel ?? null) !== (paymentLabel ?? null)
+        const sourceChanged = existing.source !== source
+        const amountChanged = Math.abs(Number(existing.receivedAmount) - amount) > 0.01
+        const referenceChanged = Boolean(paymentReference) && existing.paymentReference !== paymentReference
+
+        if (needsKeyMigration || nameChanged || labelChanged || sourceChanged || amountChanged || referenceChanged) {
+          // La suggestion d'élève n'est recalculée que pour un « à associer »
+          // (jamais pour la corbeille) quand le nom / libellé change — et remise
+          // à zéro si plus aucune correspondance, pour ne pas garder une
+          // association fantôme issue de l'ancien nom erroné.
+          const suggestion = isOpenMatch && (nameChanged || labelChanged)
+            ? await suggestStudentForPayment(tenantId, source, detectedPayerName, paymentLabel)
+            : null
+          await prisma.paymentMatch.update({
+            where: { id: existing.id },
+            data: {
+              ...(needsKeyMigration ? { gmailMessageId: gmailId } : {}),
+              source,
+              receivedAmount: amount,
+              detectedPayerName,
+              paymentLabel,
+              ...(referenceChanged ? { paymentReference } : {}),
+              ...(isOpenMatch && (nameChanged || labelChanged)
+                ? {
+                    studentId: suggestion?.studentId ?? null,
+                    score: suggestion?.score ?? null,
+                    reason: suggestion?.reason ?? "Paiement détecté par email, à associer.",
+                  }
+                : {}),
+            },
+          })
+          if (nameChanged || labelChanged || sourceChanged || amountChanged || referenceChanged) updated += 1
+          else skipped += 1
+          continue
+        }
+        skipped += 1
+        continue
+      }
+
+      // Statuts protégés (validé / auto-validé / directeur) : on
+      // COMPLÈTE uniquement les champs vides, jamais d'écrasement.
       const needsReference = !existing.paymentReference && Boolean(paymentReference)
       const canBackfillName = !existing.detectedPayerName && Boolean(detectedPayerName)
       const needsLabel = !existing.paymentLabel && Boolean(paymentLabel)
-      const canCorrectOpenMatch = existing.status === "TO_VERIFY"
-      const needsSourceCorrection = canCorrectOpenMatch && existing.source !== source
-      const needsAmountCorrection = canCorrectOpenMatch && Math.abs(Number(existing.receivedAmount) - amount) > 0.01
-      if (needsKeyMigration || needsReference || canBackfillName || needsLabel || needsSourceCorrection || needsAmountCorrection) {
-        const backfillLabel = existing.paymentLabel ?? paymentLabel
-        const suggestion = existing.status === "TO_VERIFY" && canBackfillName && !existing.studentId
-          ? await suggestStudentForPayment(tenantId, source, detectedPayerName, backfillLabel)
-          : null
+      if (needsKeyMigration || needsReference || canBackfillName || needsLabel) {
         await prisma.paymentMatch.update({
           where: { id: existing.id },
           data: {
             ...(needsKeyMigration ? { gmailMessageId: gmailId } : {}),
-            ...(needsSourceCorrection ? { source } : {}),
-            ...(needsAmountCorrection ? { receivedAmount: amount } : {}),
             ...(needsReference ? { paymentReference } : {}),
             ...(canBackfillName ? { detectedPayerName } : {}),
-            ...(needsLabel ? { paymentLabel: backfillLabel } : {}),
-            ...(suggestion
-              ? { studentId: suggestion.studentId, score: suggestion.score, reason: suggestion.reason }
-              : {}),
+            ...(needsLabel ? { paymentLabel } : {}),
           },
         })
-        if (canBackfillName || needsReference || needsLabel || needsSourceCorrection || needsAmountCorrection) updated += 1
+        if (canBackfillName || needsReference || needsLabel) updated += 1
         else skipped += 1
         continue
       }
