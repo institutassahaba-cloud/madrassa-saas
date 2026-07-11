@@ -1,6 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, PlayCircle, PauseCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -103,7 +103,16 @@ interface PaymentMatch {
     payerName: string | null
     paymentType: string | null
   } | null
-  allocations?: { amount: number }[]
+  allocations?: {
+    amount: number
+    payment?: {
+      id: string
+      status: string
+      sessionNumber: number | null
+      student: { firstName: string; lastName: string }
+      lessonSession: { number: number; subject: string; teacher: { name: string | null } } | null
+    }
+  }[]
 }
 
 // Total réellement validé (alloué) d'un match ; null si aucune allocation connue.
@@ -114,6 +123,15 @@ function allocatedTotal(match: PaymentMatch) {
 
 function paymentReceivedAmount(payment: Pick<Payment, "amount" | "receivedAmount">) {
   return Number(payment.receivedAmount ?? payment.amount ?? 0)
+}
+
+function matchStatusConfig(status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" } {
+  if (status === "TO_VERIFY") return { label: "À associer", variant: "warning" }
+  if (status === "CONFIRMED") return { label: "Validé", variant: "info" }
+  if (status === "AUTO_CONFIRMED") return { label: "Auto-validé", variant: "success" }
+  if (status === "DIRECTOR") return { label: "Directeur", variant: "secondary" }
+  if (status === "TRASHED") return { label: "Corbeille", variant: "secondary" }
+  return { label: status, variant: "outline" }
 }
 
 // Référence lisible à afficher : la vraie référence (n° transfert Wise / transaction
@@ -179,8 +197,6 @@ export function PaymentsClient({
   const [newStudentOpen, setNewStudentOpen] = useState(false)
   // Paiement d'où l'on a cliqué « nouvel élève » : pré-rempli pour l'élève 1 du formulaire.
   const [newStudentPaymentId, setNewStudentPaymentId] = useState("")
-  const [scanState, setScanState] = useState(scanControl)
-  const [scanLoading, setScanLoading] = useState(false)
   const [importLoading, setImportLoading] = useState(false)
   const [unprocessedOpen, setUnprocessedOpen] = useState(true)
   const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
@@ -243,15 +259,27 @@ export function PaymentsClient({
     const afterStart = !unprocessedDateFrom || date >= dayStart(unprocessedDateFrom)
     const beforeEnd = !unprocessedDateTo || date <= dayEnd(unprocessedDateTo)
     const needle = matchSearch.trim().toLowerCase()
+    const allocationText = match.allocations?.map((allocation) => {
+      const payment = allocation.payment
+      if (!payment) return ""
+      const student = `${payment.student.firstName} ${payment.student.lastName}`
+      const session = payment.lessonSession
+        ? `${payment.lessonSession.subject} session ${payment.lessonSession.number} ${payment.lessonSession.teacher.name ?? ""}`
+        : payment.sessionNumber ? `session ${payment.sessionNumber}` : ""
+      return `${student} ${session} ${payment.status}`
+    }).join(" ")
     const matchText = !needle || [
       match.detectedPayerName,
       match.paymentReference,
       match.paymentLabel,
       match.rawSubject,
       match.student ? `${match.student.firstName} ${match.student.lastName}` : "",
+      match.status,
+      allocationText,
     ].some((field) => (field ?? "").toLowerCase().includes(needle))
     return afterStart && beforeEnd && matchText
   })
+  const toVerifyMatches = filteredPaymentMatches.filter((match) => match.status === "TO_VERIFY")
 
   const filtered = payments.filter((p) => {
     const name = paymentStudentLabel(p).toLowerCase()
@@ -285,7 +313,7 @@ export function PaymentsClient({
   const summary = {
     paid: filtered.filter((p) => (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)).reduce((sum, p) => sum + paymentReceivedAmount(p), 0),
     sentRequests: pendingPayments.length,
-    toVerify: filteredPaymentMatches.length,
+    toVerify: paymentMatches.filter((match) => match.status === "TO_VERIFY").length,
   }
 
   function pendingAgeDays(payment: Payment) {
@@ -318,7 +346,7 @@ export function PaymentsClient({
   }
 
   function toggleAllMatches(checked: boolean) {
-    setSelectedMatchIds(checked ? new Set(filteredPaymentMatches.map((match) => match.id)) : new Set())
+    setSelectedMatchIds(checked ? new Set(toVerifyMatches.map((match) => match.id)) : new Set())
   }
 
   function toggleConfirmedMatchSelection(matchId: string, checked: boolean) {
@@ -332,28 +360,6 @@ export function PaymentsClient({
 
   function toggleAllConfirmedMatches(checked: boolean) {
     setSelectedConfirmedMatchIds(checked ? new Set(confirmedPaymentMatches.map((match) => match.id)) : new Set())
-  }
-
-  async function updateScanControl(action: "activate" | "pause") {
-    const confirmed = action === "activate"
-      ? window.confirm("Activer le scan automatique à partir de maintenant ? Les anciens mails seront ignorés.")
-      : window.confirm("Mettre le scan automatique en pause ? Apps Script continuera d'appeler le site, mais aucun mail ne sera lu.")
-    if (!confirmed) return
-    setScanLoading(true)
-    try {
-      const res = await fetch("/api/payments/scan-control", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Impossible de modifier le scan.")
-      setScanState({ enabled: data.enabled, startedAt: data.startedAt })
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Impossible de modifier le scan.")
-    } finally {
-      setScanLoading(false)
-    }
   }
 
   async function importUnprocessedPayments() {
@@ -463,7 +469,7 @@ export function PaymentsClient({
   }
 
   async function trashSelectedMatches() {
-    const visibleIds = filteredPaymentMatches.map((match) => match.id).filter((id) => selectedMatchIds.has(id))
+    const visibleIds = toVerifyMatches.map((match) => match.id).filter((id) => selectedMatchIds.has(id))
     if (visibleIds.length === 0) return
     const confirmed = window.confirm(`Mettre ${visibleIds.length} paiement(s) non traité(s) dans la corbeille ? Vous pourrez les restaurer ensuite.`)
     if (!confirmed) return
@@ -555,14 +561,14 @@ export function PaymentsClient({
       {isDirector && <SecretaryPayBlock />}
 
       {isDirector && (
-        <Card className={scanControl.lastError ? "border-red-300 bg-red-50" : scanState.enabled ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"}>
-          <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
+        <Card className={scanControl.lastError ? "border-red-300 bg-red-50" : scanControl.enabled ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"}>
+          <CardContent className="p-4">
             <div>
               <h3 className="font-semibold text-gray-900">Scan automatique des paiements</h3>
               <p className="text-sm text-gray-600">
-                {scanState.enabled
-                  ? `Actif uniquement pour les mails reçus depuis ${scanState.startedAt ? formatDate(scanState.startedAt) : "l'activation"}.`
-                  : "En pause : les mails reçus ne sont pas consommés automatiquement."}
+                {scanControl.enabled
+                  ? `Actif pour les mails reçus depuis ${scanControl.startedAt ? formatDate(scanControl.startedAt) : "l'activation"}.`
+                  : "Non activé : utilisez l'import/recherche Gmail ci-dessous pour analyser les paiements."}
               </p>
               {scanControl.lastError && (
                 <div className="mt-2 rounded-lg border border-red-200 bg-white px-3 py-2">
@@ -579,17 +585,6 @@ export function PaymentsClient({
                 </div>
               )}
             </div>
-            <div className="grid gap-2 sm:flex">
-              <Button
-                variant={scanState.enabled ? "outline" : "default"}
-                onClick={() => updateScanControl(scanState.enabled ? "pause" : "activate")}
-                disabled={scanLoading}
-                className="w-full sm:w-auto"
-              >
-                {scanLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : scanState.enabled ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
-                {scanState.enabled ? "Mettre en pause" : "Activer à partir de maintenant"}
-              </Button>
-            </div>
           </CardContent>
         </Card>
       )}
@@ -602,13 +597,14 @@ export function PaymentsClient({
               className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <h3 className="font-semibold text-amber-900">Paiements non traités</h3>
+                <h3 className="font-semibold text-amber-900">Paiements détectés / recherche Gmail</h3>
                 <p className="text-sm text-amber-700">
-                  Paiements reçus sans concordance automatique, à associer à un ou plusieurs élèves, professeurs ou sessions.
+                  Recherchez par date, nom ou référence. Les paiements déjà validés restent affichés avec leur association actuelle.
                 </p>
               </div>
               <span className="flex items-center gap-2">
-                <Badge variant="warning">{filteredPaymentMatches.length} affiché(s) / {paymentMatches.length}</Badge>
+                <Badge variant="warning">{toVerifyMatches.length} à associer</Badge>
+                <Badge variant="secondary">{filteredPaymentMatches.length} affiché(s) / {paymentMatches.length}</Badge>
                 {unprocessedOpen ? <ChevronUp className="h-4 w-4 text-amber-700" /> : <ChevronDown className="h-4 w-4 text-amber-700" />}
               </span>
             </button>
@@ -680,7 +676,7 @@ export function PaymentsClient({
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-amber-300"
-                    checked={filteredPaymentMatches.length > 0 && filteredPaymentMatches.every((match) => selectedMatchIds.has(match.id))}
+                    checked={toVerifyMatches.length > 0 && toVerifyMatches.every((match) => selectedMatchIds.has(match.id))}
                     onChange={(event) => toggleAllMatches(event.target.checked)}
                   />
                   Tout sélectionner
@@ -689,30 +685,42 @@ export function PaymentsClient({
                   size="sm"
                   variant="outline"
                   onClick={trashSelectedMatches}
-                  disabled={!filteredPaymentMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-trash"}
+                  disabled={!toVerifyMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-trash"}
                   className="border-amber-300 text-amber-900 hover:bg-amber-100"
                 >
                   {matchActionLoading === "bulk-trash" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  Mettre la sélection à la corbeille
+                  Mettre les non traités sélectionnés à la corbeille
                 </Button>
               </div>
               {filteredPaymentMatches.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-amber-200 bg-white/70 p-6 text-center text-sm text-amber-800">
-                  Aucun paiement non traité dans cette période.
+                  Aucun paiement détecté dans cette période ou pour cette recherche.
                 </div>
-              ) : filteredPaymentMatches.map((match) => (
+              ) : filteredPaymentMatches.map((match) => {
+                const status = matchStatusConfig(match.status)
+                const canAssociate = match.status === "TO_VERIFY" || match.status === "AUTO_CONFIRMED"
+                const canTrash = match.status === "TO_VERIFY"
+                const canDirector = match.status === "TO_VERIFY"
+                const canRestore = match.status === "TRASHED" || match.status === "DIRECTOR"
+                const canCancel = match.status === "CONFIRMED" || match.status === "AUTO_CONFIRMED"
+                return (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-amber-300"
-                      checked={selectedMatchIds.has(match.id)}
-                      onChange={(event) => toggleMatchSelection(match.id, event.target.checked)}
-                      aria-label="Sélectionner ce paiement non traité"
-                    />
+                    {canTrash ? (
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 shrink-0 rounded border-amber-300"
+                        checked={selectedMatchIds.has(match.id)}
+                        onChange={(event) => toggleMatchSelection(match.id, event.target.checked)}
+                        aria-label="Sélectionner ce paiement non traité"
+                      />
+                    ) : (
+                      <span className="mt-1 h-4 w-4 shrink-0" />
+                    )}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                        <Badge variant={status.variant}>{status.label}</Badge>
                         <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
                         <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
                       </div>
@@ -731,36 +739,77 @@ export function PaymentsClient({
                         Reçu le : {formatDate(match.paymentDate || match.createdAt)}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {displayReference(match)}</p>
+                      {match.allocations && match.allocations.length > 0 && (
+                        <div className="mt-2 space-y-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1.5 text-xs text-blue-900">
+                          {match.allocations.map((allocation, index) => {
+                            const payment = allocation.payment
+                            if (!payment) return null
+                            const session = payment.lessonSession
+                              ? `${payment.lessonSession.subject} · Session ${payment.lessonSession.number}${payment.lessonSession.teacher.name ? ` · ${payment.lessonSession.teacher.name}` : ""}`
+                              : payment.sessionNumber ? `Session ${payment.sessionNumber}` : "Session non renseignée"
+                            return (
+                              <p key={`${payment.id}-${index}`}>
+                                Associé à <strong>{payment.student.firstName} {payment.student.lastName}</strong> · {session} · {formatCurrency(allocation.amount)}
+                              </p>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="grid gap-2 sm:flex sm:items-center">
-                    <Button size="sm" onClick={() => setSelectedMatch(match)}>
-                      <SplitSquareHorizontal className="h-4 w-4" />
-                      Associer un élève
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updatePaymentMatch(match.id, "director")}
-                      disabled={matchActionLoading === match.id}
-                      className="border-violet-200 text-violet-700 hover:bg-violet-50"
-                      title="Ce paiement est pour le directeur, pas pour un élève"
-                    >
-                      {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
-                      Pour le directeur
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => updatePaymentMatch(match.id, "trash")}
-                      disabled={matchActionLoading === match.id}
-                      title="Mettre à la corbeille"
-                    >
-                      {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
-                    </Button>
+                    {canAssociate && (
+                      <Button size="sm" onClick={() => setSelectedMatch(match)}>
+                        <SplitSquareHorizontal className="h-4 w-4" />
+                        {match.status === "AUTO_CONFIRMED" ? "Corriger" : "Associer"}
+                      </Button>
+                    )}
+                    {canCancel && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => cancelMatch(match.id)}
+                        disabled={matchActionLoading === match.id}
+                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                        Annuler / Ré-attribuer
+                      </Button>
+                    )}
+                    {canDirector && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updatePaymentMatch(match.id, "director")}
+                        disabled={matchActionLoading === match.id}
+                        className="border-violet-200 text-violet-700 hover:bg-violet-50"
+                        title="Ce paiement est pour le directeur, pas pour un élève"
+                      >
+                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
+                        Pour le directeur
+                      </Button>
+                    )}
+                    {canRestore && (
+                      <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
+                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                        Remettre à associer
+                      </Button>
+                    )}
+                    {canTrash && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => updatePaymentMatch(match.id, "trash")}
+                        disabled={matchActionLoading === match.id}
+                        title="Mettre à la corbeille"
+                      >
+                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
+                      </Button>
+                    )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>}
           </CardContent>
       </Card>

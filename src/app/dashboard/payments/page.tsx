@@ -65,9 +65,23 @@ export default async function PaymentsPage() {
       select: { studentId: true, sessionNumber: true, paidDate: true },
     }),
     prisma.paymentMatch.findMany({
-      where: { tenantId: user.tenantId, status: "TO_VERIFY" },
+      where: { tenantId: user.tenantId, status: { in: ["TO_VERIFY", "CONFIRMED", "AUTO_CONFIRMED", "DIRECTOR", "TRASHED"] } },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
+        allocations: {
+          select: {
+            amount: true,
+            payment: {
+              select: {
+                id: true,
+                status: true,
+                sessionNumber: true,
+                student: { select: { firstName: true, lastName: true } },
+                lessonSession: { select: { number: true, subject: true, teacher: { select: { name: true } } } },
+              },
+            },
+          },
+        },
       },
       orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
       take: 1000,
