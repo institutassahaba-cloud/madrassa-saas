@@ -117,11 +117,53 @@ function extractReference(source: string, text: string, fallback: string) {
 function cleanPayerName(raw: string) {
   return raw
     .replace(/["'«»]/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\b[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, " ")
+    .replace(/\b(?:a|à)\s+envoy[ée]\b.*$/i, " ")
+    .replace(/\b(?:sent|paid|has sent)\b.*$/i, " ")
+    .replace(/\b(?:vous|you)\b.*$/i, " ")
     .replace(/\s+/g, " ")
+    .replace(/[.,;:!?-]+$/g, "")
     .trim()
 }
 
-function extractPayerName(source: string, text: string, subject = "") {
+function isUsablePayerName(value: string | null | undefined) {
+  const normalized = cleanPayerName(value || "")
+  if (normalized.length < 3 || normalized.length > 80) return false
+  if (/@/.test(normalized)) return false
+  if (/(?:€|eur|\d+[,.]\d{1,2})/i.test(normalized)) return false
+  if (/^(paypal|wise|transferwise|service|notification|recu|reçu|argent|paiement|payment)$/i.test(normalized)) return false
+  return /[A-Za-zÀ-ÿ]{2,}/.test(normalized)
+}
+
+function firstPayerNameMatch(values: string[], patterns: RegExp[]) {
+  for (const value of values) {
+    for (const pattern of patterns) {
+      const match = value.match(pattern)
+      const name = match?.[1] ? cleanPayerName(match[1]) : ""
+      if (isUsablePayerName(name)) return name
+    }
+  }
+  return null
+}
+
+function extractPayerName(source: string, text: string, subject = "", fromHeader = "") {
+  const values = [subject, text]
+  if (source === "PAYPAL") {
+    const paypalPatterns = [
+      /(.{3,80}?)\s+(?:vous\s+a\s+envoy[ée]|vous\s+a\s+pay[ée]|sent\s+you|paid\s+you)\b/i,
+      /(?:vous\s+avez\s+re[çc]u|you\s+received)(?:[^.\n\r]{0,120}?)(?:\s+de|\s+from)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
+      /(?:exp[ée]diteur|sender|client|customer|payeur|payer)\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
+      /(?:nom|name)\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
+    ]
+    const name = firstPayerNameMatch(values, paypalPatterns)
+    if (name) return name
+
+    const fromName = fromHeader.match(/^"?([^"<@]{3,80})"?\s*</)?.[1]
+    const cleanedFromName = fromName ? cleanPayerName(fromName) : ""
+    if (isUsablePayerName(cleanedFromName) && !/paypal/i.test(cleanedFromName)) return cleanedFromName
+  }
+
   if (source === "WISE") {
     // Sujet Wise (sans guillemets), ex. « Argent reçu de Nom Prénom ».
     // Le sujet est sur une seule ligne : on capture jusqu'à la fin de ligne.
@@ -134,7 +176,7 @@ function extractPayerName(source: string, text: string, subject = "") {
     for (const pattern of subjectPatterns) {
       const match = subject.match(pattern)
       const name = match?.[1] ? cleanPayerName(match[1]) : ""
-      if (name.length >= 2) return name
+      if (isUsablePayerName(name)) return name
     }
   }
   // Wise ancien format : "Vous avez reçu .. EUR de "Nom Prénom"" — le nom est entre guillemets.
@@ -150,7 +192,8 @@ function extractPayerName(source: string, text: string, subject = "") {
   const patterns = source === "WISE" ? [...wisePatterns, ...commonPatterns] : commonPatterns
   for (const pattern of patterns) {
     const match = text.match(pattern)
-    if (match?.[1]) return cleanPayerName(match[1])
+    const name = match?.[1] ? cleanPayerName(match[1]) : ""
+    if (isUsablePayerName(name)) return name
   }
   return null
 }
@@ -440,7 +483,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       continue
     }
     const reference = extractReference(source, combined, `gmail:${message.id}`)
-    const detectedPayerName = extractPayerName(source, combined, subject)
+    const detectedPayerName = extractPayerName(source, combined, subject, fromHeader)
     const paymentLabel = extractLabel(subject, combined)
     const existing = await prisma.paymentMatch.findUnique({
       where: { tenantId_gmailMessageId: { tenantId, gmailMessageId: reference } },
