@@ -328,6 +328,7 @@ type ScanPaymentEmailsOptions = {
   requireEnabled?: boolean
   startedAt?: Date | null
   endedAt?: Date | null
+  manualImport?: boolean
 }
 
 function afterDateQuery(date: Date) {
@@ -358,6 +359,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   })
   const startedAt = options.startedAt ?? scanSettings?.paymentScanStartedAt ?? null
   const endedAt = options.endedAt ?? null
+  const manualImport = options.manualImport ?? false
   if (requireEnabled && !scanSettings?.paymentScanEnabled) {
     return { ok: true, disabled: true, created: 0, updated: 0, skipped: 0, scanned: 0 }
   }
@@ -370,24 +372,32 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   const query = [
     startedAt ? afterDateQuery(startedAt) : "newer_than:45d",
     endedAt ? beforeDateQuery(endedAt) : "",
-    "(paypal OR wise OR transferwise OR virement OR paiement OR payment)",
-    paymentEmail ? `to:${paymentEmail}` : "",
+    manualImport ? "" : "(paypal OR wise OR transferwise OR virement OR paiement OR payment)",
+    !manualImport && paymentEmail ? `to:${paymentEmail}` : "",
     paymentEmail ? `-from:${paymentEmail}` : "",
     "-in:sent",
   ].filter(Boolean).join(" ")
 
-  // 100 (et non 25) : après une panne de plusieurs jours (jeton Gmail expiré,
-  // déclencheur arrêté...), un seul passage doit pouvoir rattraper tout le retard.
+  // Après une panne de plusieurs jours (jeton Gmail expiré, déclencheur arrêté...),
+  // ou un import manuel daté, un passage doit pouvoir rattraper tout le retard.
   // La dé-duplication par référence garantit qu'aucun paiement déjà classé ne revient.
-  const list = await gmail.users.messages.list({
-    userId: "me",
-    maxResults: 500,
-    q: query,
-  })
-  const messages = list.data.messages ?? []
+  const messages: Array<{ id?: string | null }> = []
+  let pageToken: string | undefined
+  do {
+    const list = await gmail.users.messages.list({
+      userId: "me",
+      maxResults: 500,
+      pageToken,
+      q: query,
+    })
+    messages.push(...(list.data.messages ?? []))
+    pageToken = list.data.nextPageToken || undefined
+  } while (pageToken && messages.length < 2000)
+
   let created = 0
   let updated = 0
   let skipped = 0
+  let ignored = 0
 
   for (const message of messages) {
     if (!message.id) continue
@@ -420,9 +430,13 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     const bodyText = cleanText(readPayloadText(full.data.payload))
     const combined = `${subject}\n${full.data.snippet ?? ""}\n${bodyText}`
     const source = detectSource(combined)
+    if (manualImport && !["PAYPAL", "WISE"].includes(source)) {
+      ignored += 1
+      continue
+    }
     const amount = extractAmount(combined)
     if (!amount) {
-      skipped += 1
+      ignored += 1
       continue
     }
     const reference = extractReference(source, combined, `gmail:${message.id}`)
@@ -535,5 +549,5 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     created += 1
   }
 
-  return { ok: true, created, updated, skipped, scanned: messages.length }
+  return { ok: true, created, updated, skipped, ignored, scanned: messages.length, query }
 }

@@ -352,7 +352,7 @@ export function PaymentsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Import des paiements impossible.")
-      alert(`${data.created ?? 0} paiement(s) importé(s).\n${data.updated ?? 0} paiement(s) complété(s).\n${data.skipped ?? 0} paiement(s) ignoré(s) car déjà connus, attribués ou incomplets.\n${data.scanned ?? 0} email(s) scanné(s).`)
+      alert(`${data.created ?? 0} paiement(s) importé(s).\n${data.updated ?? 0} paiement(s) complété(s).\n${data.skipped ?? 0} paiement(s) ignoré(s) car déjà connus ou déjà attribués.\n${data.ignored ?? 0} email(s) scanné(s) mais non exploitables.\n${data.scanned ?? 0} email(s) scanné(s) au total.`)
       window.location.reload()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Import des paiements impossible.")

@@ -6,7 +6,10 @@ import { wrap } from "@/lib/api"
 
 function parseDate(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return null
-  const date = new Date(value)
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const date = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(value)
   if (Number.isNaN(date.getTime())) return null
   date.setHours(0, 0, 0, 0)
   return date
@@ -33,6 +36,7 @@ export const POST = wrap(async (req: Request) => {
         requireEnabled: false,
         startedAt: dateFrom,
         endedAt: dateTo,
+        manualImport: true,
       })
       : await scanPaymentEmails(session.user.tenantId)
     return NextResponse.json(result)
