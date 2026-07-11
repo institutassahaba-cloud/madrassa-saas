@@ -9,6 +9,7 @@ import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
 import { canonicalSubject, ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
+import { paymentProviderReference } from "@/lib/payment-reference"
 import { z } from "zod"
 
 const DEFAULT_SLOT_COLOR = "#10b981"
@@ -327,7 +328,7 @@ export const POST = wrap(async (req: Request) => {
             method: match ? (match.source === "PAYPAL" ? "PayPal" : "Virement") : (data.initialPaymentMethod || "Virement"),
             month: paymentMonth,
             year: paymentYear,
-            reference: match ? match.gmailMessageId : (data.initialPaymentReference || null),
+            reference: match ? paymentProviderReference(match) : (data.initialPaymentReference || null),
             paidDate,
             dueDate: new Date(paymentYear, paymentMonth - 1, 5),
             invoiceNumber: `FAC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,

@@ -234,9 +234,16 @@ function headerValue(headers: Array<{ name?: string | null; value?: string | nul
   return headers.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value ?? ""
 }
 
+function normalizeMatchName(value: string | null | undefined) {
+  return normalizePaymentAlias(value)
+    .replace(/\b(m|mr|mme|mlle|mle|monsieur|madame|mademoiselle)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function similarity(left: string, right: string) {
-  const a = normalizePaymentAlias(left)
-  const b = normalizePaymentAlias(right)
+  const a = normalizeMatchName(left)
+  const b = normalizeMatchName(right)
   if (!a || !b) return 0
   if (a === b) return 1
   const aWords = new Set(a.split(" ").filter(Boolean))
@@ -257,6 +264,7 @@ async function suggestStudentForPayment(tenantId: string, source: string, payerN
   })
 
   let best: { studentId: string; score: number; reason: string } | null = null
+  let ambiguous = false
   for (const candidate of candidates) {
     const payerScore = payerName ? similarity(payerName, candidate.alias) : 0
     const labelScore = label ? similarity(label, candidate.alias) * 0.7 : 0
@@ -269,15 +277,19 @@ async function suggestStudentForPayment(tenantId: string, source: string, payerN
           ? `Nom proche : ${candidate.alias}`
           : `Libellé proche : ${candidate.alias}`,
       }
+      ambiguous = false
+    } else if (best && score >= 0.45 && Math.abs(score - best.score) < 0.001 && candidate.studentId !== best.studentId) {
+      ambiguous = true
     }
   }
-  return best && best.score >= 0.45 ? best : null
+  return best && best.score >= 0.45 && !ambiguous ? best : null
 }
 
 type CertainPendingPayment = {
   id: string
   amount: number
   dueDate: Date | null
+  emailSentAt: Date | null
   invoiceNumber: string | null
   sessionNumber: number | null
   student: {
@@ -292,17 +304,20 @@ type CertainPendingPayment = {
     number: number
     subject: string
     teacher: { name: string | null }
+    paymentRequestedAt: Date | null
   } | null
 }
 
 async function findCertainPendingPayment({
   tenantId,
   amount,
+  paymentDate,
   studentId,
   score,
 }: {
   tenantId: string
   amount: number
+  paymentDate?: Date | null
   studentId: string | undefined
   score: number | undefined
 }): Promise<CertainPendingPayment | null> {
@@ -317,14 +332,17 @@ async function findCertainPendingPayment({
     },
     include: {
       student: { select: { firstName: true, lastName: true, email: true, payerName: true, monthlyFee: true } },
-      lessonSession: { select: { id: true, number: true, subject: true, teacher: { select: { name: true } } } },
+      lessonSession: { select: { id: true, number: true, subject: true, paymentRequestedAt: true, teacher: { select: { name: true } } } },
     },
     orderBy: { createdAt: "asc" },
   })
 
   const matchingAmount = pendingPayments.filter((payment) => {
     const expected = payment.expectedAmount ?? payment.student.monthlyFee
-    return Math.abs(expected - amount) < 0.01
+    const amountOk = Math.abs(expected - amount) <= 0.5
+    const requestDate = payment.emailSentAt ?? payment.lessonSession?.paymentRequestedAt ?? null
+    const dateOk = !paymentDate || !requestDate || paymentDate >= requestDate
+    return amountOk && dateOk
   })
 
   if (matchingAmount.length !== 1) return null
@@ -422,6 +440,14 @@ function beforeDateQuery(date: Date) {
   return `before:${year}/${month}/${day}`
 }
 
+function paymentProviderQuery(manualImport: boolean, payerQuery: string) {
+  if (payerQuery) return "(paypal OR wise OR transferwise)"
+  if (manualImport) {
+    return "(from:service@paypal.fr OR from:service@paypal.com OR from:paypal.com OR from:noreply@wise.com OR from:wise.com OR transferwise)"
+  }
+  return "(from:service@paypal.fr OR from:service@paypal.com OR from:paypal.com OR from:noreply@wise.com OR from:wise.com OR paypal OR wise OR transferwise)"
+}
+
 export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEmailsOptions = {}) {
   await ensurePaymentScanSettingsColumns()
   await ensurePaymentAliasSchema()
@@ -453,8 +479,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     payerQuery ? `"${payerQuery}"` : "",
     startedAt ? afterDateQuery(startedAt) : (payerQuery ? "" : "newer_than:45d"),
     endedAt ? beforeDateQuery(endedAt) : "",
-    // Recherche par nom : on cible quand même PayPal/Wise pour éviter le bruit.
-    payerQuery ? "(paypal OR wise OR transferwise)" : (manualImport ? "" : "(paypal OR wise OR transferwise OR virement OR paiement OR payment)"),
+    paymentProviderQuery(manualImport, payerQuery),
     !manualImport && paymentEmail ? `to:${paymentEmail}` : "",
     paymentEmail ? `-from:${paymentEmail}` : "",
     "-in:sent",
@@ -604,9 +629,11 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     }
 
     const suggestion = await suggestStudentForPayment(tenantId, source, detectedPayerName, paymentLabel)
+    const paymentDate = dateHeader ? new Date(dateHeader) : null
     const certainPendingPayment = await findCertainPendingPayment({
       tenantId,
       amount,
+      paymentDate,
       studentId: suggestion?.studentId,
       score: suggestion?.score,
     })
@@ -615,7 +642,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       source,
       reference,
       amount,
-      paymentDate: dateHeader ? new Date(dateHeader) : null,
+      paymentDate,
       detectedPayerName,
       studentId: suggestion?.studentId,
       score: suggestion?.score,

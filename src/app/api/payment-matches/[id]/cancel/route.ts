@@ -26,16 +26,16 @@ export const POST = wrap(async (_req: Request, { params }: { params: Promise<{ i
 
   const allocationPaymentIds = new Set(match.allocations.map((a) => a.paymentId))
 
-  // Tous les paiements liés à ce relevé partagent sa référence provider.
   const payments = await prisma.payment.findMany({
-    where: { tenantId: user.tenantId, reference: match.gmailMessageId, status: "CONFIRMED" },
+    where: { tenantId: user.tenantId, id: { in: [...allocationPaymentIds] }, status: "CONFIRMED" },
     select: { id: true, studentId: true },
   })
   const studentIds = new Set(payments.map((p) => p.studentId))
-  // Créés par une validation manuelle (ont une allocation) → supprimer.
-  const toDelete = payments.filter((p) => allocationPaymentIds.has(p.id)).map((p) => p.id)
-  // Demandes préexistantes auto-validées (sans allocation) → remettre en attente.
-  const toRevert = payments.filter((p) => !allocationPaymentIds.has(p.id)).map((p) => p.id)
+  const paymentIds = payments.map((p) => p.id)
+  // AUTO_CONFIRMED valide une demande existante : on la remet en attente.
+  // CONFIRMED manuel / nouvel élève crée des paiements dédiés : on les supprime.
+  const toRevert = match.status === "AUTO_CONFIRMED" ? paymentIds : []
+  const toDelete = match.status === "AUTO_CONFIRMED" ? [] : paymentIds
 
   await prisma.$transaction([
     prisma.paymentAllocation.deleteMany({ where: { paymentMatchId: match.id } }),

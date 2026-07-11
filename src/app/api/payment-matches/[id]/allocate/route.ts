@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
 import { DIRECTOR_REMAINDER_SUFFIX } from "@/lib/director-payer-alias"
+import { paymentProviderReference } from "@/lib/payment-reference"
 import { wrap } from "@/lib/api"
 
 type AllocationInput = {
@@ -40,10 +41,7 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
   const paymentMonth = paymentDate.getMonth() + 1
   const paymentYear = paymentDate.getFullYear()
   const method = match.source === "PAYPAL" ? "PayPal" : "Virement"
-  // PaymentMatch.gmailMessageId stores the unique provider reference for detected
-  // payments: PayPal transaction id, Wise transfer id, or bank transfer reference.
-  // One reference can fund several allocations, but it can only be confirmed once.
-  const providerReference = match.gmailMessageId
+  const providerReference = paymentProviderReference(match)
   const createdPayments = []
   const methodChangeNotifications: Array<{ studentName: string; previous: string | null; next: string }> = []
 
@@ -163,11 +161,12 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
   const remainder = +(match.receivedAmount - totalAllocated).toFixed(2)
   if (body.remainderForDirector === true && remainder > 0.01) {
     await prisma.paymentMatch.upsert({
-      where: { tenantId_gmailMessageId: { tenantId: user.tenantId, gmailMessageId: `${providerReference}${DIRECTOR_REMAINDER_SUFFIX}` } },
+      where: { tenantId_gmailMessageId: { tenantId: user.tenantId, gmailMessageId: `${match.gmailMessageId}${DIRECTOR_REMAINDER_SUFFIX}` } },
       create: {
         tenantId: user.tenantId,
         source: match.source,
-        gmailMessageId: `${providerReference}${DIRECTOR_REMAINDER_SUFFIX}`,
+        gmailMessageId: `${match.gmailMessageId}${DIRECTOR_REMAINDER_SUFFIX}`,
+        paymentReference: match.paymentReference,
         receivedAmount: remainder,
         detectedPayerName: match.detectedPayerName,
         paymentLabel: match.paymentLabel,
@@ -178,6 +177,7 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
       },
       update: {
         receivedAmount: remainder,
+        paymentReference: match.paymentReference,
         status: "DIRECTOR",
         reason: `Part pour le directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
       },
