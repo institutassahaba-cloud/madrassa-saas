@@ -125,6 +125,16 @@ function paymentReceivedAmount(payment: Pick<Payment, "amount" | "receivedAmount
   return Number(payment.receivedAmount ?? payment.amount ?? 0)
 }
 
+function sourceBadge(match: Pick<PaymentMatch, "source">) {
+  if (match.source === "PAYPAL") {
+    return <Badge className="bg-blue-100 text-blue-800">PayPal</Badge>
+  }
+  if (match.source === "WISE") {
+    return <Badge className="bg-emerald-100 text-emerald-800">Wise</Badge>
+  }
+  return <Badge variant="secondary">{match.source}</Badge>
+}
+
 function matchStatusConfig(status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" } {
   if (status === "TO_VERIFY") return { label: "À associer", variant: "warning" }
   if (status === "CONFIRMED") return { label: "Validé", variant: "info" }
@@ -696,120 +706,153 @@ export function PaymentsClient({
                 <div className="rounded-xl border border-dashed border-amber-200 bg-white/70 p-6 text-center text-sm text-amber-800">
                   Aucun paiement détecté dans cette période ou pour cette recherche.
                 </div>
-              ) : filteredPaymentMatches.map((match) => {
-                const status = matchStatusConfig(match.status)
-                const canAssociate = match.status === "TO_VERIFY" || match.status === "AUTO_CONFIRMED"
-                const canTrash = match.status === "TO_VERIFY"
-                const canDirector = match.status === "TO_VERIFY"
-                const canRestore = match.status === "TRASHED" || match.status === "DIRECTOR"
-                const canCancel = match.status === "CONFIRMED" || match.status === "AUTO_CONFIRMED"
-                return (
-                <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 gap-3">
-                    {canTrash ? (
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 shrink-0 rounded border-amber-300"
-                        checked={selectedMatchIds.has(match.id)}
-                        onChange={(event) => toggleMatchSelection(match.id, event.target.checked)}
-                        aria-label="Sélectionner ce paiement non traité"
-                      />
-                    ) : (
-                      <span className="mt-1 h-4 w-4 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                        <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
-                        <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-400">
-                        {match.student
-                          ? `Élève pressenti : ${matchStudentLabel(match)}`
-                          : "Aucun élève pressenti"}
-                        {match.reason ? ` · ${match.reason}` : ""}
-                      </p>
-                      {(match.paymentLabel || match.rawSubject) && (
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          Libellé : {match.paymentLabel || match.rawSubject}
-                        </p>
-                      )}
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        Reçu le : {formatDate(match.paymentDate || match.createdAt)}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-400">Numéro de transfert / transaction : {displayReference(match)}</p>
-                      {match.allocations && match.allocations.length > 0 && (
-                        <div className="mt-2 space-y-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1.5 text-xs text-blue-900">
-                          {match.allocations.map((allocation, index) => {
-                            const payment = allocation.payment
-                            if (!payment) return null
-                            const session = payment.lessonSession
-                              ? `${payment.lessonSession.subject} · Session ${payment.lessonSession.number}${payment.lessonSession.teacher.name ? ` · ${payment.lessonSession.teacher.name}` : ""}`
-                              : payment.sessionNumber ? `Session ${payment.sessionNumber}` : "Session non renseignée"
-                            return (
-                              <p key={`${payment.id}-${index}`}>
-                                Associé à <strong>{payment.student.firstName} {payment.student.lastName}</strong> · {session} · {formatCurrency(allocation.amount)}
-                              </p>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid gap-2 sm:flex sm:items-center">
-                    {canAssociate && (
-                      <Button size="sm" onClick={() => setSelectedMatch(match)}>
-                        <SplitSquareHorizontal className="h-4 w-4" />
-                        {match.status === "AUTO_CONFIRMED" ? "Corriger" : "Associer"}
-                      </Button>
-                    )}
-                    {canCancel && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => cancelMatch(match.id)}
-                        disabled={matchActionLoading === match.id}
-                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      >
-                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                        Annuler / Ré-attribuer
-                      </Button>
-                    )}
-                    {canDirector && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updatePaymentMatch(match.id, "director")}
-                        disabled={matchActionLoading === match.id}
-                        className="border-violet-200 text-violet-700 hover:bg-violet-50"
-                        title="Ce paiement est pour le directeur, pas pour un élève"
-                      >
-                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
-                        Pour le directeur
-                      </Button>
-                    )}
-                    {canRestore && (
-                      <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
-                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                        Remettre à associer
-                      </Button>
-                    )}
-                    {canTrash && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => updatePaymentMatch(match.id, "trash")}
-                        disabled={matchActionLoading === match.id}
-                        title="Mettre à la corbeille"
-                      >
-                        {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
-                      </Button>
-                    )}
-                  </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-amber-100 bg-white">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">
+                          <span className="sr-only">Sélection</span>
+                        </TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Référence</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Nom du payeur</TableHead>
+                        <TableHead>Montant</TableHead>
+                        <TableHead>Élève associé</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead className="text-right">Modifier</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPaymentMatches.map((match) => {
+                        const status = matchStatusConfig(match.status)
+                        const canAssociate = match.status === "TO_VERIFY" || match.status === "AUTO_CONFIRMED"
+                        const canTrash = match.status === "TO_VERIFY"
+                        const canDirector = match.status === "TO_VERIFY"
+                        const canRestore = match.status === "TRASHED" || match.status === "DIRECTOR"
+                        const canCancel = match.status === "CONFIRMED" || match.status === "AUTO_CONFIRMED"
+                        const allocations = match.allocations?.filter((allocation) => allocation.payment) ?? []
+                        const associatedLabel = allocations.length > 0
+                          ? null
+                          : match.student ? matchStudentLabel(match) : "—"
+
+                        return (
+                          <TableRow key={match.id} className="align-top">
+                            <TableCell>
+                              {canTrash && (
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-amber-300"
+                                  checked={selectedMatchIds.has(match.id)}
+                                  onChange={(event) => toggleMatchSelection(match.id, event.target.checked)}
+                                  aria-label="Sélectionner ce paiement non traité"
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {sourceBadge(match)}
+                            </TableCell>
+                            <TableCell className="min-w-[10rem] font-mono text-xs text-gray-700">
+                              {displayReference(match)}
+                            </TableCell>
+                            <TableCell className="min-w-[8rem] text-sm text-gray-700">
+                              {formatDate(match.paymentDate || match.createdAt)}
+                            </TableCell>
+                            <TableCell className="min-w-[12rem]">
+                              <p className="font-medium text-gray-900">{match.detectedPayerName || "Payeur non détecté"}</p>
+                              {(match.paymentLabel || match.rawSubject) && (
+                                <p className="mt-1 max-w-xs truncate text-xs text-gray-500" title={match.paymentLabel || match.rawSubject || undefined}>
+                                  {match.paymentLabel || match.rawSubject}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-semibold text-gray-900">
+                              {formatCurrency(match.receivedAmount)}
+                            </TableCell>
+                            <TableCell className="min-w-[16rem] text-sm text-gray-700">
+                              {allocations.length > 0 ? (
+                                <div className="space-y-1">
+                                  {allocations.map((allocation, index) => {
+                                    const payment = allocation.payment!
+                                    const session = payment.lessonSession
+                                      ? `${payment.lessonSession.subject} · Session ${payment.lessonSession.number}${payment.lessonSession.teacher.name ? ` · ${payment.lessonSession.teacher.name}` : ""}`
+                                      : payment.sessionNumber ? `Session ${payment.sessionNumber}` : "Session non renseignée"
+                                    return (
+                                      <div key={`${payment.id}-${index}`} className="rounded-md bg-blue-50 px-2 py-1 text-xs text-blue-900">
+                                        <strong>{payment.student.firstName} {payment.student.lastName}</strong>
+                                        <span className="block">{session} · {formatCurrency(allocation.amount)}</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              ) : (
+                                <span className={match.student ? "text-gray-700" : "text-gray-400"}>{associatedLabel}</span>
+                              )}
+                              {match.reason && <p className="mt-1 text-xs text-gray-400">{match.reason}</p>}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={status.variant}>{status.label}</Badge>
+                            </TableCell>
+                            <TableCell className="min-w-[13rem]">
+                              <div className="flex flex-wrap justify-end gap-2">
+                                {canAssociate && (
+                                  <Button size="sm" onClick={() => setSelectedMatch(match)}>
+                                    <SplitSquareHorizontal className="h-4 w-4" />
+                                    {match.status === "AUTO_CONFIRMED" ? "Corriger" : "Associer"}
+                                  </Button>
+                                )}
+                                {canCancel && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => cancelMatch(match.id)}
+                                    disabled={matchActionLoading === match.id}
+                                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  >
+                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                                    Modifier
+                                  </Button>
+                                )}
+                                {canDirector && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updatePaymentMatch(match.id, "director")}
+                                    disabled={matchActionLoading === match.id}
+                                    className="border-violet-200 text-violet-700 hover:bg-violet-50"
+                                    title="Ce paiement est pour le directeur, pas pour un élève"
+                                  >
+                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
+                                    Directeur
+                                  </Button>
+                                )}
+                                {canRestore && (
+                                  <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
+                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                                    Modifier
+                                  </Button>
+                                )}
+                                {canTrash && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => updatePaymentMatch(match.id, "trash")}
+                                    disabled={matchActionLoading === match.id}
+                                    title="Mettre à la corbeille"
+                                  >
+                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
-                )
-              })}
+              )}
             </div>}
           </CardContent>
       </Card>
