@@ -173,6 +173,7 @@ export function PaymentsClient({
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [paymentDeleteLoading, setPaymentDeleteLoading] = useState<string | null>(null)
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
+  const [selectedConfirmedMatchIds, setSelectedConfirmedMatchIds] = useState<Set<string>>(new Set())
   const [nowTime] = useState(() => Date.now())
 
   function paymentTeacherId(payment: Payment) {
@@ -272,6 +273,19 @@ export function PaymentsClient({
     setSelectedMatchIds(checked ? new Set(paymentMatches.map((match) => match.id)) : new Set())
   }
 
+  function toggleConfirmedMatchSelection(matchId: string, checked: boolean) {
+    setSelectedConfirmedMatchIds((current) => {
+      const next = new Set(current)
+      if (checked) next.add(matchId)
+      else next.delete(matchId)
+      return next
+    })
+  }
+
+  function toggleAllConfirmedMatches(checked: boolean) {
+    setSelectedConfirmedMatchIds(checked ? new Set(confirmedPaymentMatches.map((match) => match.id)) : new Set())
+  }
+
   async function updateScanControl(action: "activate" | "pause") {
     const confirmed = action === "activate"
       ? window.confirm("Activer le scan automatique à partir de maintenant ? Les anciens mails seront ignorés.")
@@ -368,6 +382,28 @@ export function PaymentsClient({
       window.location.reload()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
+      setMatchActionLoading(null)
+    }
+  }
+
+  async function reclassifySelectedConfirmedMatches() {
+    if (selectedConfirmedMatchIds.size === 0) return
+    const confirmed = window.confirm(
+      `Remettre ${selectedConfirmedMatchIds.size} paiement(s) validé(s) dans la période en cours ?\n\nLa date réelle de paiement restera inchangée. Seule la date de classement interne sera mise à jour.`
+    )
+    if (!confirmed) return
+    setMatchActionLoading("bulk-reclassify-confirmed")
+    try {
+      const res = await fetch("/api/payment-matches/reclassify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedConfirmedMatchIds) }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Reclassement impossible.")
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Reclassement impossible.")
       setMatchActionLoading(null)
     }
   }
@@ -628,22 +664,52 @@ export function PaymentsClient({
               </span>
             </button>
             {confirmedOpen && <div className="space-y-2">
+              <div className="flex flex-col gap-2 rounded-lg border border-blue-100 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-blue-300"
+                    checked={confirmedPaymentMatches.length > 0 && selectedConfirmedMatchIds.size === confirmedPaymentMatches.length}
+                    onChange={(event) => toggleAllConfirmedMatches(event.target.checked)}
+                  />
+                  Tout sélectionner
+                </label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={reclassifySelectedConfirmedMatches}
+                  disabled={selectedConfirmedMatchIds.size === 0 || matchActionLoading === "bulk-reclassify-confirmed"}
+                  className="border-blue-300 text-blue-800 hover:bg-blue-100"
+                >
+                  {matchActionLoading === "bulk-reclassify-confirmed" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                  Remettre dans la période en cours
+                </Button>
+              </div>
               {confirmedPaymentMatches.map((match) => {
                 const allocated = allocatedTotal(match)
                 const partial = allocated != null && match.receivedAmount - allocated > 0.01
                 return (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-blue-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
-                      <p className="font-semibold text-gray-900">{formatCurrency(partial ? allocated : match.receivedAmount)}{partial ? " validés" : ""}</p>
-                      {partial && <p className="text-xs text-gray-500">sur {formatCurrency(match.receivedAmount)} reçus</p>}
-                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                  <div className="flex min-w-0 gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-blue-300"
+                      checked={selectedConfirmedMatchIds.has(match.id)}
+                      onChange={(event) => toggleConfirmedMatchSelection(match.id, event.target.checked)}
+                      aria-label="Sélectionner ce paiement validé"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                        <p className="font-semibold text-gray-900">{formatCurrency(partial ? allocated : match.receivedAmount)}{partial ? " validés" : ""}</p>
+                        {partial && <p className="text-xs text-gray-500">sur {formatCurrency(match.receivedAmount)} reçus</p>}
+                        <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Validé pour : {matchStudentLabel(match)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Validé pour : {matchStudentLabel(match)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-400">Référence : {match.gmailMessageId}</p>
                   </div>
                   <Button
                     size="sm"
