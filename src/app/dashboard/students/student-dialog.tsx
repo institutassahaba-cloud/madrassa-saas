@@ -53,7 +53,7 @@ const DEFAULT_WELCOME_INTRO =
   "Nous sommes très heureux de vous accueillir à l'Institut As-Sahaba. Qu'Allah vous facilite un apprentissage béni et sincère."
 
 // Tarif mensuel = tarif horaire × durée d'un cours (h) × cours par semaine × 4 semaines.
-// Ex : 7 €/h, cours d'1h, 2 cours/sem → 7 × 1 × 2 × 4 = 56 €.
+// Ex : 7 €/h, cours d'1h, 2 cours/sem -> 7 x 1 x 2 x 4 = 56 €.
 function computeMonthlyFee(hourlyRate: string, duration: string, lessonsPerWeek: string): number {
   const rate = Number(hourlyRate)
   const hours = parseFloat((duration || "").replace(",", "."))
@@ -61,6 +61,19 @@ function computeMonthlyFee(hourlyRate: string, duration: string, lessonsPerWeek:
   if (!Number.isFinite(rate) || !Number.isFinite(hours) || !Number.isFinite(perWeek)) return 0
   if (rate <= 0 || hours <= 0 || perWeek <= 0) return 0
   return Math.round(rate * hours * perWeek * 4 * 100) / 100
+}
+
+function durationToMinutes(duration: string | null | undefined) {
+  const hours = parseFloat((duration || "").replace(",", "."))
+  if (!Number.isFinite(hours) || hours <= 0) return ""
+  return String(Math.round(hours * 60))
+}
+
+function minutesToDuration(minutes: string) {
+  const value = Number(minutes)
+  if (!Number.isFinite(value) || value <= 0) return ""
+  const hours = value / 60
+  return Number.isInteger(hours) ? String(hours) : String(Math.round(hours * 1000000) / 1000000)
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -1065,19 +1078,20 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
               )}
               <div className="space-y-1.5">
                 <Label>Durée d&apos;un cours {lockedByGroup && <span className="text-xs text-blue-500 ml-1">(classe)</span>}</Label>
-                <Select value={shared.duration} onValueChange={(v) => setSharedField("duration", v)} disabled={lockedByGroup}>
-                  <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0,5">30 min</SelectItem>
-                    <SelectItem value="1">1h</SelectItem>
-                    <SelectItem value="1,5">1h30</SelectItem>
-                    <SelectItem value="2">2h</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={durationToMinutes(shared.duration)}
+                  onChange={(e) => setSharedField("duration", minutesToDuration(e.target.value))}
+                  placeholder="ex: 20, 40, 45"
+                  disabled={lockedByGroup}
+                />
+                <p className="text-xs text-gray-400">Saisissez la durée exacte en minutes.</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Tarif horaire (€) {lockedByGroup && <span className="text-xs text-blue-500 ml-1">(auto)</span>}</Label>
-                <Input type="number" min="0" step="0.01" value={shared.hourlyRate} onChange={(e) => setSharedField("hourlyRate", e.target.value)} disabled={lockedByGroup} />
+                <Input type="number" min="0" step="0.01" value={shared.hourlyRate} onChange={(e) => setSharedField("hourlyRate", e.target.value)} placeholder="ex: 7, 12.50" disabled={lockedByGroup} />
               </div>
               {!student && (
                 <div className="space-y-1.5">
@@ -1179,20 +1193,20 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
                           <Input type="number" min="1" step="1" value={course.lessonsPerWeek} onChange={(e) => updateExtraCourse(course.id, "lessonsPerWeek", e.target.value)} className="bg-white" placeholder="ex: 1, 2..." />
                         </div>
                         <div className="space-y-1.5">
-                          <Label>Durée</Label>
-                          <Select value={course.duration} onValueChange={(value) => updateExtraCourse(course.id, "duration", value)}>
-                            <SelectTrigger className="bg-white"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="0,5">30 min</SelectItem>
-                              <SelectItem value="1">1h</SelectItem>
-                              <SelectItem value="1,5">1h30</SelectItem>
-                              <SelectItem value="2">2h</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Label>Durée en minutes</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={durationToMinutes(course.duration)}
+                            onChange={(e) => updateExtraCourse(course.id, "duration", minutesToDuration(e.target.value))}
+                            className="bg-white"
+                            placeholder="ex: 20, 40, 45"
+                          />
                         </div>
                         <div className="space-y-1.5">
                           <Label>Tarif horaire (€)</Label>
-                          <Input type="number" min="0" step="0.01" value={course.hourlyRate} onChange={(e) => updateExtraCourse(course.id, "hourlyRate", e.target.value)} className="bg-white" />
+                          <Input type="number" min="0" step="0.01" value={course.hourlyRate} onChange={(e) => updateExtraCourse(course.id, "hourlyRate", e.target.value)} className="bg-white" placeholder="ex: 7, 12.50" />
                         </div>
                         {!student && (
                           <div className="space-y-1.5">
