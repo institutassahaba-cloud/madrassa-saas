@@ -13,7 +13,7 @@ const GMAIL_SCOPES = [
 ]
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
 const PAYPAL_PAYMENT_SENDERS = ["service@paypal.fr"]
-const WISE_PAYMENT_SENDERS = ["noreply@wise.com", "silva.michael.perso@gmail.com"]
+const WISE_PAYMENT_SENDERS = ["noreply@wise.com"]
 
 function getBaseUrl() {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL
