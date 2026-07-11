@@ -327,6 +327,7 @@ async function autoConfirmIfCertain({
 type ScanPaymentEmailsOptions = {
   requireEnabled?: boolean
   startedAt?: Date | null
+  endedAt?: Date | null
 }
 
 function afterDateQuery(date: Date) {
@@ -334,6 +335,15 @@ function afterDateQuery(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const day = String(date.getDate()).padStart(2, "0")
   return `after:${year}/${month}/${day}`
+}
+
+function beforeDateQuery(date: Date) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + 1)
+  const year = next.getFullYear()
+  const month = String(next.getMonth() + 1).padStart(2, "0")
+  const day = String(next.getDate()).padStart(2, "0")
+  return `before:${year}/${month}/${day}`
 }
 
 export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEmailsOptions = {}) {
@@ -347,6 +357,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     select: { paymentScanEnabled: true, paymentScanStartedAt: true },
   })
   const startedAt = options.startedAt ?? scanSettings?.paymentScanStartedAt ?? null
+  const endedAt = options.endedAt ?? null
   if (requireEnabled && !scanSettings?.paymentScanEnabled) {
     return { ok: true, disabled: true, created: 0, updated: 0, skipped: 0, scanned: 0 }
   }
@@ -358,6 +369,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.FACTURATION_EMAIL ?? DEFAULT_FACTURATION_EMAIL
   const query = [
     startedAt ? afterDateQuery(startedAt) : "newer_than:45d",
+    endedAt ? beforeDateQuery(endedAt) : "",
     "(paypal OR wise OR transferwise OR virement OR paiement OR payment)",
     paymentEmail ? `to:${paymentEmail}` : "",
     paymentEmail ? `-from:${paymentEmail}` : "",
@@ -369,7 +381,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   // La dé-duplication par référence garantit qu'aucun paiement déjà classé ne revient.
   const list = await gmail.users.messages.list({
     userId: "me",
-    maxResults: 100,
+    maxResults: 500,
     q: query,
   })
   const messages = list.data.messages ?? []
@@ -388,6 +400,14 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     if (startedAt && internalDate && internalDate < startedAt) {
       skipped += 1
       continue
+    }
+    if (endedAt && internalDate) {
+      const endOfDay = new Date(endedAt)
+      endOfDay.setHours(23, 59, 59, 999)
+      if (internalDate > endOfDay) {
+        skipped += 1
+        continue
+      }
     }
     const headers = full.data.payload?.headers ?? []
     const subject = headerValue(headers, "subject")
@@ -435,6 +455,19 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
         updated += 1
         continue
       }
+      skipped += 1
+      continue
+    }
+
+    const alreadyAttributed = await prisma.payment.findFirst({
+      where: {
+        tenantId,
+        reference,
+        status: { in: ["CONFIRMED", "PAID"] },
+      },
+      select: { id: true },
+    })
+    if (alreadyAttributed) {
       skipped += 1
       continue
     }

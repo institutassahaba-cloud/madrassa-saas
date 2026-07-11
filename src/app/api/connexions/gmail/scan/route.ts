@@ -4,7 +4,15 @@ import { scanPaymentEmails } from "@/lib/payment-email-reader"
 import { ensurePaymentMatchLabelColumn } from "@/lib/payment-match-schema"
 import { wrap } from "@/lib/api"
 
-export const POST = wrap(async () => {
+function parseDate(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+export const POST = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
   if (!["DIRECTOR", "SECRETARY"].includes(session.user.role)) {
@@ -12,8 +20,21 @@ export const POST = wrap(async () => {
   }
 
   try {
+    const body = await req.json().catch(() => ({}))
+    const dateFrom = parseDate(body.dateFrom)
+    const dateTo = parseDate(body.dateTo)
+    if (dateFrom && dateTo && dateTo < dateFrom) {
+      return NextResponse.json({ error: "La date de fin doit être après la date de début." }, { status: 400 })
+    }
+
     await ensurePaymentMatchLabelColumn()
-    const result = await scanPaymentEmails(session.user.tenantId)
+    const result = dateFrom || dateTo
+      ? await scanPaymentEmails(session.user.tenantId, {
+        requireEnabled: false,
+        startedAt: dateFrom,
+        endedAt: dateTo,
+      })
+      : await scanPaymentEmails(session.user.tenantId)
     return NextResponse.json(result)
   } catch (error) {
     console.error("[gmail] scan failed:", error)

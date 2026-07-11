@@ -168,7 +168,8 @@ export function PaymentsClient({
   const [newStudentPaymentId, setNewStudentPaymentId] = useState("")
   const [scanState, setScanState] = useState(scanControl)
   const [scanLoading, setScanLoading] = useState(false)
-  const [unprocessedOpen, setUnprocessedOpen] = useState(paymentMatches.length > 0)
+  const [importLoading, setImportLoading] = useState(false)
+  const [unprocessedOpen, setUnprocessedOpen] = useState(true)
   const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
   const [confirmedOpen, setConfirmedOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
@@ -331,6 +332,32 @@ export function PaymentsClient({
       alert(error instanceof Error ? error.message : "Impossible de modifier le scan.")
     } finally {
       setScanLoading(false)
+    }
+  }
+
+  async function importUnprocessedPayments() {
+    if (!unprocessedDateFrom) {
+      alert("Choisissez une date de début pour importer les paiements Wise/PayPal.")
+      return
+    }
+    setImportLoading(true)
+    try {
+      const res = await fetch("/api/connexions/gmail/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dateFrom: unprocessedDateFrom,
+          dateTo: unprocessedDateTo || undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Import des paiements impossible.")
+      alert(`${data.created ?? 0} paiement(s) importé(s).\n${data.updated ?? 0} paiement(s) complété(s).\n${data.skipped ?? 0} paiement(s) ignoré(s) car déjà connus, attribués ou incomplets.\n${data.scanned ?? 0} email(s) scanné(s).`)
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Import des paiements impossible.")
+    } finally {
+      setImportLoading(false)
     }
   }
 
@@ -522,8 +549,7 @@ export function PaymentsClient({
         </Card>
       )}
 
-      {paymentMatches.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
+      <Card className="border-amber-200 bg-amber-50">
           <CardContent className="space-y-3 p-4">
             <button
               type="button"
@@ -543,7 +569,7 @@ export function PaymentsClient({
             </button>
 
             {unprocessedOpen && <div className="space-y-2">
-              <div className="grid gap-3 rounded-lg border border-amber-100 bg-white/70 px-3 py-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div className="grid gap-3 rounded-lg border border-amber-100 bg-white/70 px-3 py-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
                 <div className="space-y-1.5">
                   <Label>Reçu du</Label>
                   <Input type="date" value={unprocessedDateFrom} onChange={(event) => setUnprocessedDateFrom(event.target.value)} className="bg-white" />
@@ -560,6 +586,15 @@ export function PaymentsClient({
                   className="border-amber-300 text-amber-900 hover:bg-amber-100"
                 >
                   Effacer
+                </Button>
+                <Button
+                  type="button"
+                  onClick={importUnprocessedPayments}
+                  disabled={!unprocessedDateFrom || importLoading}
+                  className="gap-2 whitespace-nowrap"
+                >
+                  {importLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                  Importer Wise/PayPal
                 </Button>
               </div>
               <div className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
@@ -650,8 +685,7 @@ export function PaymentsClient({
               ))}
             </div>}
           </CardContent>
-        </Card>
-      )}
+      </Card>
 
       {autoPaymentMatches.length > 0 && (
         <Card className="border-emerald-200 bg-emerald-50">
