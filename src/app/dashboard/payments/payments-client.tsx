@@ -1,5 +1,5 @@
 "use client"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -218,6 +218,13 @@ export function PaymentsClient({
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [paymentDeleteLoading, setPaymentDeleteLoading] = useState<string | null>(null)
   const [localPaymentMatches, setLocalPaymentMatches] = useState(paymentMatches)
+  // Resynchro indispensable : après une association, le dialog appelle
+  // router.refresh() qui renvoie des `paymentMatches` frais côté serveur. Sans
+  // ce useEffect, la liste restait figée sur le 1er snapshot (le paiement associé
+  // ne disparaissait pas de « à associer » et le compteur restait faux).
+  useEffect(() => {
+    setLocalPaymentMatches(paymentMatches)
+  }, [paymentMatches])
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [selectedConfirmedMatchIds, setSelectedConfirmedMatchIds] = useState<Set<string>>(new Set())
   const [nowTime] = useState(() => Date.now())
@@ -1287,7 +1294,7 @@ export function PaymentsClient({
         student={null}
         groups={groups}
         teachers={teachers}
-        paymentMatches={paymentMatches}
+        paymentMatches={localPaymentMatches}
         preselectedPaymentMatchId={newStudentPaymentId}
       />
     </div>

@@ -136,17 +136,22 @@ function firstAmountMatch(text: string, patterns: RegExp[]) {
 }
 
 function extractAmount(source: string, text: string) {
+  // Devise : « (?:€|eur\b) » et NON « (?:€|eur)\b ». Le symbole € n'est pas un
+  // caractère de mot ; « (?:€|eur)\b » exige une frontière de mot APRÈS € qui
+  // n'existe jamais (€ suivi d'un espace = deux non-mots), donc ces patterns
+  // précis ne matchaient jamais le format réel « 52,00 € EUR » et on retombait
+  // sur le repli générique qui prend le 1er montant du texte (souvent le sujet).
   const sourcePatterns = source === "WISE"
     ? [
         // Wise actuel : « Montant reçu : 56 EUR ». C'est le champ le plus fiable.
-        /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b/i,
-        /vous\s+avez\s+re[çc]u\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b\s+de\b/i,
+        /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)/i,
+        /vous\s+avez\s+re[çc]u\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)\s+de\b/i,
       ]
     : source === "PAYPAL"
       ? [
           // PayPal actuel : « Sarah Makri vous a envoyé 52,00 € EUR ».
-          /vous\s+a\s+envoy[ée]\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b/i,
-          /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b/i,
+          /vous\s+a\s+envoy[ée]\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)/i,
+          /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)/i,
         ]
       : []
 
@@ -183,6 +188,11 @@ function cleanPayerName(raw: string) {
     // « Bonjour Lionel » → on ne garde que le nom réel. Boucle pour « Bonjour PayPal … ».
     .replace(/^(?:paypal|wise|transferwise|bonjour|bonsoir|hello|hi|hey|de|from)[\s,:]+/i, "")
     .replace(/^(?:paypal|wise|transferwise|bonjour|bonsoir|hello|hi|hey|de|from)[\s,:]+/i, "")
+    // Comptes joints Wise : « MR OU MME KHADIJA DRAME ». On retire la civilité
+    // (et l'éventuel « OU MME » du compte joint) pour ne garder que le vrai nom,
+    // sinon le « ou » résiduel fait chuter la similarité (0.667 au lieu de 1.0)
+    // et bloque l'auto-validation.
+    .replace(/^(?:m|mr|mme|mlle|mle|monsieur|madame|mademoiselle)\b(?:\s+ou\s+(?:m|mr|mme|mlle|mle|monsieur|madame|mademoiselle)\b)?[\s.,:]*/i, "")
     .replace(/[.,;:!?-]+$/g, "")
     .trim()
 }
