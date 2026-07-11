@@ -1,5 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -191,6 +192,7 @@ export function PaymentsClient({
   isDirector: boolean
   scanControl: { enabled: boolean; startedAt: string | null; lastRunAt?: string | null; lastError?: string | null }
 }) {
+  const router = useRouter()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [periodFilter, setPeriodFilter] = useState("CURRENT")
@@ -215,6 +217,7 @@ export function PaymentsClient({
   const [directorOpen, setDirectorOpen] = useState(false)
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [paymentDeleteLoading, setPaymentDeleteLoading] = useState<string | null>(null)
+  const [localPaymentMatches, setLocalPaymentMatches] = useState(paymentMatches)
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [selectedConfirmedMatchIds, setSelectedConfirmedMatchIds] = useState<Set<string>>(new Set())
   const [nowTime] = useState(() => Date.now())
@@ -264,7 +267,7 @@ export function PaymentsClient({
     return date.getTime()
   }
 
-  const filteredPaymentMatches = paymentMatches.filter((match) => {
+  const filteredPaymentMatches = localPaymentMatches.filter((match) => {
     const date = matchDateValue(match)
     const afterStart = !unprocessedDateFrom || date >= dayStart(unprocessedDateFrom)
     const beforeEnd = !unprocessedDateTo || date <= dayEnd(unprocessedDateTo)
@@ -323,7 +326,7 @@ export function PaymentsClient({
   const summary = {
     paid: filtered.filter((p) => (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)).reduce((sum, p) => sum + paymentReceivedAmount(p), 0),
     sentRequests: pendingPayments.length,
-    toVerify: paymentMatches.filter((match) => match.status === "TO_VERIFY").length,
+    toVerify: localPaymentMatches.filter((match) => match.status === "TO_VERIFY").length,
   }
 
   function pendingAgeDays(payment: Payment) {
@@ -438,7 +441,25 @@ export function PaymentsClient({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Action impossible.")
-      window.location.reload()
+      const nextStatus = action === "trash" ? "TRASHED" : action === "director" ? "DIRECTOR" : "TO_VERIFY"
+      setLocalPaymentMatches((current) => current.map((match) => (
+        match.id === matchId
+          ? {
+              ...match,
+              status: nextStatus,
+              reason: action === "director"
+                ? "Payeur connu : paiement pour le directeur (non comptabilisé)."
+                : action === "trash"
+                  ? "Paiement supprimé de la liste principale."
+                  : "Paiement restauré, à associer.",
+            }
+          : match
+      )))
+      setSelectedMatchIds((current) => {
+        const next = new Set(current)
+        next.delete(matchId)
+        return next
+      })
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
     } finally {
@@ -494,9 +515,16 @@ export function PaymentsClient({
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || "Action impossible.")
       }
-      window.location.reload()
+      const ids = new Set(visibleIds)
+      setLocalPaymentMatches((current) => current.map((match) => (
+        ids.has(match.id)
+          ? { ...match, status: "TRASHED", reason: "Paiement supprimé de la liste principale." }
+          : match
+      )))
+      setSelectedMatchIds(new Set())
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
+    } finally {
       setMatchActionLoading(null)
     }
   }
@@ -614,7 +642,7 @@ export function PaymentsClient({
               </div>
               <span className="flex items-center gap-2">
                 <Badge variant="warning">{toVerifyMatches.length} à associer</Badge>
-                <Badge variant="secondary">{filteredPaymentMatches.length} affiché(s) / {paymentMatches.length}</Badge>
+                <Badge variant="secondary">{filteredPaymentMatches.length} affiché(s) / {localPaymentMatches.length}</Badge>
                 {unprocessedOpen ? <ChevronUp className="h-4 w-4 text-amber-700" /> : <ChevronDown className="h-4 w-4 text-amber-700" />}
               </span>
             </button>
@@ -721,7 +749,7 @@ export function PaymentsClient({
                         <TableHead>Montant</TableHead>
                         <TableHead>Élève associé</TableHead>
                         <TableHead>Statut</TableHead>
-                        <TableHead className="text-right">Modifier</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -799,7 +827,7 @@ export function PaymentsClient({
                                 {canAssociate && (
                                   <Button size="sm" onClick={() => setSelectedMatch(match)}>
                                     <SplitSquareHorizontal className="h-4 w-4" />
-                                    {match.status === "AUTO_CONFIRMED" ? "Corriger" : "Associer"}
+                                    {match.status === "AUTO_CONFIRMED" ? "Réassocier" : "Associer élève"}
                                   </Button>
                                 )}
                                 {canCancel && (
@@ -811,7 +839,7 @@ export function PaymentsClient({
                                     className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                                   >
                                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                                    Modifier
+                                    Réassocier
                                   </Button>
                                 )}
                                 {canDirector && (
@@ -830,18 +858,20 @@ export function PaymentsClient({
                                 {canRestore && (
                                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                                    Modifier
+                                    Restaurer
                                   </Button>
                                 )}
                                 {canTrash && (
                                   <Button
-                                    size="icon"
-                                    variant="ghost"
+                                    size="sm"
+                                    variant="outline"
                                     onClick={() => updatePaymentMatch(match.id, "trash")}
                                     disabled={matchActionLoading === match.id}
+                                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                                     title="Mettre à la corbeille"
                                   >
                                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
+                                    Supprimer
                                   </Button>
                                 )}
                               </div>
@@ -1243,6 +1273,7 @@ export function PaymentsClient({
           lessonSessions={lessonSessions}
           paidBySession={paidBySession}
           onNewStudent={(matchId) => { setNewStudentPaymentId(matchId); setNewStudentOpen(true) }}
+          onAllocated={() => router.refresh()}
           onClose={() => setSelectedMatch(null)}
         />
       )}
@@ -1338,6 +1369,7 @@ function PaymentMatchDialog({
   lessonSessions,
   paidBySession,
   onNewStudent,
+  onAllocated,
   onClose,
 }: {
   match: PaymentMatch
@@ -1346,6 +1378,7 @@ function PaymentMatchDialog({
   lessonSessions: LessonSessionOption[]
   paidBySession: Record<string, string>
   onNewStudent: (matchId: string) => void
+  onAllocated: () => void
   onClose: () => void
 }) {
   const hintedStudent = students.find((student) => student.id === match.student?.id) ?? null
@@ -1479,7 +1512,7 @@ function PaymentMatchDialog({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Validation impossible.")
       onClose()
-      window.location.reload()
+      onAllocated()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Validation impossible.")
     } finally {

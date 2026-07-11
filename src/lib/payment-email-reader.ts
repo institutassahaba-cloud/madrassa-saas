@@ -107,15 +107,54 @@ function detectSource(text: string, fromHeader = "") {
   const from = normalizeEmail(fromHeader)
   if (WISE_PAYMENT_SENDERS.some((sender) => from.includes(sender))) return "WISE"
   if (PAYPAL_PAYMENT_SENDERS.some((sender) => from.includes(sender))) return "PAYPAL"
-  if (/wise|transferwise/i.test(haystack)) return "WISE"
-  if (/paypal/i.test(haystack)) return "PAYPAL"
+
+  const hasPaypalTemplate = /(?:vous\s+a\s+envoy[ée]|num[ée]ro\s+de\s+transaction|montant\s+re[çc]u)/i.test(haystack)
+    && /paypal/i.test(haystack)
+  const hasWiseTemplate = /(?:num[ée]ro\s+de\s+transfert|montant\s+re[çc]u|vous\s+avez\s+re[çc]u\s+[0-9]+(?:[,.][0-9]{1,2})?\s*(?:€|eur)\s+de)/i.test(haystack)
+    && /(?:wise|transferwise|noreply@wise\.com)/i.test(haystack)
+
+  if (hasPaypalTemplate && !hasWiseTemplate) return "PAYPAL"
+  if (hasWiseTemplate && !hasPaypalTemplate) return "WISE"
+  if (/paypal/i.test(from)) return "PAYPAL"
+  if (/wise|transferwise/i.test(from)) return "WISE"
   return "BANK"
 }
 
-function extractAmount(text: string) {
-  const match = text.match(/(?:€|EUR)\s*([0-9]+(?:[,.][0-9]{1,2})?)|([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|EUR)/i)
-  const raw = match?.[1] || match?.[2]
-  return raw ? Number(raw.replace(",", ".")) : null
+function parseAmount(raw: string | null | undefined) {
+  if (!raw) return null
+  const amount = Number(raw.replace(/\s/g, "").replace(",", "."))
+  return Number.isFinite(amount) && amount > 0 ? amount : null
+}
+
+function firstAmountMatch(text: string, patterns: RegExp[]) {
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    const amount = parseAmount(match?.[1] || match?.[2])
+    if (amount != null) return amount
+  }
+  return null
+}
+
+function extractAmount(source: string, text: string) {
+  const sourcePatterns = source === "WISE"
+    ? [
+        // Wise actuel : « Montant reçu : 56 EUR ». C'est le champ le plus fiable.
+        /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b/i,
+        /vous\s+avez\s+re[çc]u\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b\s+de\b/i,
+      ]
+    : source === "PAYPAL"
+      ? [
+          // PayPal actuel : « Sarah Makri vous a envoyé 52,00 € EUR ».
+          /vous\s+a\s+envoy[ée]\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b/i,
+          /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur)\b/i,
+        ]
+      : []
+
+  return firstAmountMatch(text, sourcePatterns)
+    ?? firstAmountMatch(text, [
+      /(?:€|EUR)\s*([0-9]+(?:[,.][0-9]{1,2})?)/i,
+      /([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|EUR)/i,
+    ])
 }
 
 function extractReference(source: string, text: string, fallback: string) {
@@ -556,7 +595,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       ignored += 1
       continue
     }
-    const amount = extractAmount(combined)
+    const amount = extractAmount(source, combined)
     if (!amount) {
       ignored += 1
       continue
@@ -577,7 +616,17 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     const legacyKeys = [gmailId, `gmail:${gmailId}`, extractedReference].filter(Boolean) as string[]
     const existing = await prisma.paymentMatch.findFirst({
       where: { tenantId, gmailMessageId: { in: legacyKeys } },
-      select: { id: true, status: true, gmailMessageId: true, detectedPayerName: true, paymentReference: true, paymentLabel: true, studentId: true },
+      select: {
+        id: true,
+        status: true,
+        source: true,
+        gmailMessageId: true,
+        receivedAmount: true,
+        detectedPayerName: true,
+        paymentReference: true,
+        paymentLabel: true,
+        studentId: true,
+      },
     })
     if (existing) {
       // Migration en place : on bascule la clé vers l'ID Gmail réel et on
@@ -587,7 +636,10 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       const needsReference = !existing.paymentReference && Boolean(paymentReference)
       const canBackfillName = !existing.detectedPayerName && Boolean(detectedPayerName)
       const needsLabel = !existing.paymentLabel && Boolean(paymentLabel)
-      if (needsKeyMigration || needsReference || canBackfillName || needsLabel) {
+      const canCorrectOpenMatch = existing.status === "TO_VERIFY"
+      const needsSourceCorrection = canCorrectOpenMatch && existing.source !== source
+      const needsAmountCorrection = canCorrectOpenMatch && Math.abs(Number(existing.receivedAmount) - amount) > 0.01
+      if (needsKeyMigration || needsReference || canBackfillName || needsLabel || needsSourceCorrection || needsAmountCorrection) {
         const backfillLabel = existing.paymentLabel ?? paymentLabel
         const suggestion = existing.status === "TO_VERIFY" && canBackfillName && !existing.studentId
           ? await suggestStudentForPayment(tenantId, source, detectedPayerName, backfillLabel)
@@ -596,6 +648,8 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
           where: { id: existing.id },
           data: {
             ...(needsKeyMigration ? { gmailMessageId: gmailId } : {}),
+            ...(needsSourceCorrection ? { source } : {}),
+            ...(needsAmountCorrection ? { receivedAmount: amount } : {}),
             ...(needsReference ? { paymentReference } : {}),
             ...(canBackfillName ? { detectedPayerName } : {}),
             ...(needsLabel ? { paymentLabel: backfillLabel } : {}),
@@ -604,7 +658,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
               : {}),
           },
         })
-        if (canBackfillName || needsReference || needsLabel) updated += 1
+        if (canBackfillName || needsReference || needsLabel || needsSourceCorrection || needsAmountCorrection) updated += 1
         else skipped += 1
         continue
       }
