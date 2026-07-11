@@ -12,6 +12,8 @@ const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
 ]
 const DEFAULT_FACTURATION_EMAIL = "facturation.institutassahaba@gmail.com"
+const PAYPAL_PAYMENT_SENDERS = ["service@paypal.fr"]
+const WISE_PAYMENT_SENDERS = ["noreply@wise.com", "silva.michael.perso@gmail.com"]
 
 function getBaseUrl() {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL
@@ -102,6 +104,9 @@ function detectSource(text: string, fromHeader = "") {
   // corps visible. Sans ça ils étaient classés BANK puis IGNORÉS à l'import
   // manuel → paiements manquants.
   const haystack = `${text}\n${fromHeader}`
+  const from = normalizeEmail(fromHeader)
+  if (WISE_PAYMENT_SENDERS.some((sender) => from.includes(sender))) return "WISE"
+  if (PAYPAL_PAYMENT_SENDERS.some((sender) => from.includes(sender))) return "PAYPAL"
   if (/wise|transferwise/i.test(haystack)) return "WISE"
   if (/paypal/i.test(haystack)) return "PAYPAL"
   return "BANK"
@@ -204,6 +209,10 @@ function extractPayerName(source: string, text: string, subject = "", fromHeader
   }
   // Wise ancien format : "Vous avez reçu .. EUR de "Nom Prénom"" — le nom est entre guillemets.
   const wisePatterns = [
+    // Format Wise actuel : « Vous avez reçu 56 EUR de MR OU MME ... ».
+    /vous\s+avez\s+re[çc]u\s+[0-9]+(?:[,.][0-9]{1,2})?\s*(?:€|eur)\s+de\s+([^.\n\r]{2,100})/i,
+    // Bloc détails Wise actuel : « De : MR OU MME ... ».
+    /\bde\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{2,100})/i,
     /(?:reçu|recu|received)[^"]*?\b(?:de|from)\s+"([^"]{2,80})"/i,
     /\b(?:de|from)\s+"([^"]{2,80})"/i,
   ]
@@ -443,7 +452,13 @@ function beforeDateQuery(date: Date) {
 function paymentProviderQuery(manualImport: boolean, payerQuery: string) {
   if (payerQuery) return "(paypal OR wise OR transferwise)"
   if (manualImport) return ""
-  return "(from:service@paypal.fr OR from:service@paypal.com OR from:paypal.com OR from:noreply@wise.com OR from:silva.michael.perso@gmail.com OR from:wise.com OR paypal OR wise OR transferwise)"
+  return `(${[
+    ...PAYPAL_PAYMENT_SENDERS.map((sender) => `from:${sender}`),
+    ...WISE_PAYMENT_SENDERS.map((sender) => `from:${sender}`),
+    "paypal",
+    "wise",
+    "transferwise",
+  ].join(" OR ")})`
 }
 
 export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEmailsOptions = {}) {
