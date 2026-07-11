@@ -120,7 +120,9 @@ function extractAmount(text: string) {
 
 function extractReference(source: string, text: string, fallback: string) {
   // PayPal : « Numéro de transaction 2MC04570LK807561J » ou « la transaction 2MC0… ».
-  const paypal = text.match(/(?:num[ée]ro\s+de\s+transaction|transaction\s*id|transaction|référence|reference)\s*[:#]?\s*([A-Z0-9]{10,24})/i)
+  const paypal = text.match(/(?:num[ée]ro\s+de\s+transaction|transaction\s*id|transaction|référence|reference)[^A-Z0-9]{0,80}([A-Z0-9]{10,24})/i)
+    || text.match(/activities\/details\/([A-Z0-9]{10,24})/i)
+    || text.match(/details_([A-Z0-9]{10,24})/i)
   // Wise : « Numéro de transfert : #2242560083 ». Le numéro est toujours préfixé « # ».
   const wise = text.match(/#\s*([0-9]{6,20})/)
     || text.match(/(?:num[ée]ro\s+de\s+transfert|transfert|transfer|virement|référence|reference)\s*[:#]?\s*#?\s*([A-Z0-9-]{6,36})/i)
@@ -583,10 +585,11 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       // au statut d'un paiement déjà validé, classé directeur ou supprimé.
       const needsKeyMigration = existing.gmailMessageId !== gmailId
       const needsReference = !existing.paymentReference && Boolean(paymentReference)
-      const canBackfillName = existing.status === "TO_VERIFY" && !existing.detectedPayerName && Boolean(detectedPayerName)
-      if (needsKeyMigration || needsReference || canBackfillName) {
+      const canBackfillName = !existing.detectedPayerName && Boolean(detectedPayerName)
+      const needsLabel = !existing.paymentLabel && Boolean(paymentLabel)
+      if (needsKeyMigration || needsReference || canBackfillName || needsLabel) {
         const backfillLabel = existing.paymentLabel ?? paymentLabel
-        const suggestion = canBackfillName && !existing.studentId
+        const suggestion = existing.status === "TO_VERIFY" && canBackfillName && !existing.studentId
           ? await suggestStudentForPayment(tenantId, source, detectedPayerName, backfillLabel)
           : null
         await prisma.paymentMatch.update({
@@ -594,13 +597,14 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
           data: {
             ...(needsKeyMigration ? { gmailMessageId: gmailId } : {}),
             ...(needsReference ? { paymentReference } : {}),
-            ...(canBackfillName ? { detectedPayerName, paymentLabel: backfillLabel } : {}),
+            ...(canBackfillName ? { detectedPayerName } : {}),
+            ...(needsLabel ? { paymentLabel: backfillLabel } : {}),
             ...(suggestion
               ? { studentId: suggestion.studentId, score: suggestion.score, reason: suggestion.reason }
               : {}),
           },
         })
-        if (canBackfillName) updated += 1
+        if (canBackfillName || needsReference || needsLabel) updated += 1
         else skipped += 1
         continue
       }
