@@ -442,10 +442,8 @@ function beforeDateQuery(date: Date) {
 
 function paymentProviderQuery(manualImport: boolean, payerQuery: string) {
   if (payerQuery) return "(paypal OR wise OR transferwise)"
-  if (manualImport) {
-    return "(from:service@paypal.fr OR from:service@paypal.com OR from:paypal.com OR from:noreply@wise.com OR from:wise.com OR transferwise)"
-  }
-  return "(from:service@paypal.fr OR from:service@paypal.com OR from:paypal.com OR from:noreply@wise.com OR from:wise.com OR paypal OR wise OR transferwise)"
+  if (manualImport) return ""
+  return "(from:service@paypal.fr OR from:service@paypal.com OR from:paypal.com OR from:noreply@wise.com OR from:silva.michael.perso@gmail.com OR from:wise.com OR paypal OR wise OR transferwise)"
 }
 
 export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEmailsOptions = {}) {
