@@ -73,29 +73,84 @@ function decodeBase64Url(value: string) {
   return Buffer.from(normalized, "base64").toString("utf8")
 }
 
-function readPayloadText(payload: unknown): string {
+// Lit les parties d'un type MIME donné (text/plain ou text/html), récursivement.
+function readBodyByMime(payload: unknown, mime: string): string {
   const part = payload as {
     mimeType?: string
     body?: { data?: string }
     parts?: unknown[]
   } | null
   if (!part) return ""
-  const ownText = part.body?.data && (part.mimeType?.includes("text/plain") || part.mimeType?.includes("text/html"))
+  const own = part.body?.data && part.mimeType?.includes(mime)
     ? decodeBase64Url(part.body.data)
     : ""
-  const children = Array.isArray(part.parts) ? part.parts.map(readPayloadText).join("\n") : ""
-  return [ownText, children].filter(Boolean).join("\n")
+  const children = Array.isArray(part.parts)
+    ? part.parts.map((child) => readBodyByMime(child, mime)).filter(Boolean).join("\n")
+    : ""
+  return [own, children].filter(Boolean).join("\n")
+}
+
+function decodeEntities(value: string) {
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_m, n) => String.fromCharCode(parseInt(n, 16)))
+}
+
+// Convertit le HTML en texte propre en IMITANT le getPlainBody() de Gmail :
+// on supprime <head>/<style>/<script> (sinon le CSS polluait l'extraction, ex.
+// « interpolation-mode:bicubic » → payeur "bicubic"), on transforme les images
+// en « [image: <alt>] » (le corps PayPal donne « [image: PayPal] <payeur> vous
+// a envoyé »), puis on retire les balises et on décode les entités.
+function htmlToText(html: string) {
+  return decodeEntities(
+    String(html || "")
+      .replace(/<head[\s\S]*?<\/head>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<img[^>]*\balt\s*=\s*"([^"]*)"[^>]*>/gi, (_m, alt) => (alt ? ` [image: ${alt}] ` : " "))
+      .replace(/<img[^>]*>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  )
+    .replace(/ /g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s*\n\s*/g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim()
+}
+
+// Corps de mail exploitable : on privilégie la partie texte/plain quand elle
+// existe, sinon on convertit le HTML (les mails PayPal n'ont QUE du HTML).
+function readEmailBody(payload: unknown): string {
+  const plain = readBodyByMime(payload, "text/plain").trim()
+  if (plain) return decodeEntities(plain).replace(/ /g, " ").replace(/[ \t]+/g, " ").trim()
+  return htmlToText(readBodyByMime(payload, "text/html"))
+}
+
+function normalizeSpaces(value: string | null | undefined) {
+  return String(value || "").replace(/\s+/g, " ").trim()
 }
 
 function cleanText(value: string | null | undefined) {
   return (value || "")
-    // Blocs <style>/<script> : leur CONTENU (CSS/JS) survivrait au retrait des balises
-    // et polluerait l'extraction du nom (ex: « interpolation-mode:bicubic » → payeur "bicubic").
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim()
+}
+
+// Paiement PayPal SORTANT (« Vous avez envoyé un paiement », « voici votre
+// reçu ») : à ne jamais compter comme un encaissement.
+function isOutgoingPaypal(subject: string, text: string) {
+  return /vous\s+avez\s+envoy[ée]|voici\s+votre\s+re[çc]u/i.test(`${subject}\n${text}`)
+    && !/vous\s+a\s+envoy[ée]/i.test(text)
 }
 
 function detectSource(text: string, fromHeader = "") {
@@ -120,46 +175,30 @@ function detectSource(text: string, fromHeader = "") {
   return "BANK"
 }
 
-function parseAmount(raw: string | null | undefined) {
-  if (!raw) return null
-  const amount = Number(raw.replace(/\s/g, "").replace(",", "."))
+function toAmount(raw: string | null | undefined) {
+  if (raw == null) return null
+  const amount = parseFloat(String(raw).replace(",", ".").replace(/[^\d.-]/g, ""))
   return Number.isFinite(amount) && amount > 0 ? amount : null
 }
 
-function firstAmountMatch(text: string, patterns: RegExp[]) {
+// Montant : logique portée du script Apps Script éprouvé. On lit le corps
+// nettoyé (imité de getPlainBody) et on prend le 1er montant en euros, en
+// privilégiant les formats à 2 décimales (« 28,00 € ») puis « 56 EUR ».
+function extractAmount(text: string) {
+  const t = normalizeSpaces(text)
+  const patterns = [
+    /(\d+[.,]\d{2})\s?(?:€|EUR)\b/i,
+    /(?:€|EUR)\s?(\d+[.,]\d{2})/i,
+    /(\d+)\s?(?:€|EUR)\b/i,
+    /montant\s+re[çc]u[^0-9]{0,30}(\d+[.,]?\d*)/i,
+    /montant[^0-9]{0,30}(\d+[.,]?\d*)/i,
+  ]
   for (const pattern of patterns) {
-    const match = text.match(pattern)
-    const amount = parseAmount(match?.[1] || match?.[2])
+    const match = t.match(pattern)
+    const amount = toAmount(match?.[1])
     if (amount != null) return amount
   }
   return null
-}
-
-function extractAmount(source: string, text: string) {
-  // Devise : « (?:€|eur\b) » et NON « (?:€|eur)\b ». Le symbole € n'est pas un
-  // caractère de mot ; « (?:€|eur)\b » exige une frontière de mot APRÈS € qui
-  // n'existe jamais (€ suivi d'un espace = deux non-mots), donc ces patterns
-  // précis ne matchaient jamais le format réel « 52,00 € EUR » et on retombait
-  // sur le repli générique qui prend le 1er montant du texte (souvent le sujet).
-  const sourcePatterns = source === "WISE"
-    ? [
-        // Wise actuel : « Montant reçu : 56 EUR ». C'est le champ le plus fiable.
-        /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)/i,
-        /vous\s+avez\s+re[çc]u\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)\s+de\b/i,
-      ]
-    : source === "PAYPAL"
-      ? [
-          // PayPal actuel : « Sarah Makri vous a envoyé 52,00 € EUR ».
-          /vous\s+a\s+envoy[ée]\s+\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)/i,
-          /montant\s+re[çc]u\s*[:\-]?\s*\*{0,2}\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|eur\b)/i,
-        ]
-      : []
-
-  return firstAmountMatch(text, sourcePatterns)
-    ?? firstAmountMatch(text, [
-      /(?:€|EUR)\s*([0-9]+(?:[,.][0-9]{1,2})?)/i,
-      /([0-9]+(?:[,.][0-9]{1,2})?)\s*(?:€|EUR)/i,
-    ])
 }
 
 function extractReference(source: string, text: string, fallback: string) {
@@ -175,23 +214,23 @@ function extractReference(source: string, text: string, fallback: string) {
 }
 
 function cleanPayerName(raw: string) {
-  return raw
-    .replace(/["'«»]/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\b[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, " ")
-    .replace(/\b(?:a|à)\s+envoy[ée]\b.*$/i, " ")
-    .replace(/\b(?:sent|paid|has sent)\b.*$/i, " ")
-    .replace(/\b(?:vous|you)\b.*$/i, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    // Préfixes marque/salutation collés au nom, ex. « PayPal drame khadi »,
-    // « Bonjour Lionel » → on ne garde que le nom réel. Boucle pour « Bonjour PayPal … ».
+  // Aligné sur cleanPersonName_ du script Apps Script + garde-fous SaaS.
+  return normalizeSpaces(
+    String(raw || "")
+      .replace(/\[image:[^\]]*\]/gi, " ")
+      .replace(/["'«»]/g, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\b[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, " ")
+      .replace(/\b(?:EUR|USD)\b/gi, " ")
+      .replace(/€/g, " ")
+      .replace(/\bvous\s+a\s+envoy[ée]\b.*$/i, " ")
+      .replace(/\bvous\s+a\s+pay[ée]\b.*$/i, " ")
+      .replace(/\b(?:sent|paid|has sent)\b.*$/i, " "),
+  )
+    // Préfixes marque/salutation, ex. « PayPal drame khadi », « Bonjour Lionel ».
     .replace(/^(?:paypal|wise|transferwise|bonjour|bonsoir|hello|hi|hey|de|from)[\s,:]+/i, "")
     .replace(/^(?:paypal|wise|transferwise|bonjour|bonsoir|hello|hi|hey|de|from)[\s,:]+/i, "")
-    // Comptes joints Wise : « MR OU MME KHADIJA DRAME ». On retire la civilité
-    // (et l'éventuel « OU MME » du compte joint) pour ne garder que le vrai nom,
-    // sinon le « ou » résiduel fait chuter la similarité (0.667 au lieu de 1.0)
-    // et bloque l'auto-validation.
+    // Comptes joints Wise : « MR OU MME KHADIJA DRAME » → « KHADIJA DRAME ».
     .replace(/^(?:m|mr|mme|mlle|mle|monsieur|madame|mademoiselle)\b(?:\s+ou\s+(?:m|mr|mme|mlle|mle|monsieur|madame|mademoiselle)\b)?[\s.,:]*/i, "")
     .replace(/[.,;:!?-]+$/g, "")
     .trim()
@@ -209,74 +248,40 @@ function isUsablePayerName(value: string | null | undefined) {
   return /[A-Za-zÀ-ÿ]{2,}/.test(normalized)
 }
 
-function firstPayerNameMatch(values: string[], patterns: RegExp[]) {
-  for (const value of values) {
-    for (const pattern of patterns) {
-      const match = value.match(pattern)
-      const name = match?.[1] ? cleanPayerName(match[1]) : ""
-      if (isUsablePayerName(name)) return name
-    }
-  }
-  return null
-}
-
-function extractPayerName(source: string, text: string, subject = "", fromHeader = "") {
-  // PayPal : le corps (« … vous a envoyé ») est fiable ; on le lit AVANT le sujet,
-  // dont la formule générique « Vous avez reçu de l'argent » piégeait l'extraction.
-  const values = source === "PAYPAL" ? [text, subject] : [subject, text]
+// Nom du payeur : logique portée du script Apps Script éprouvé.
+// PayPal : « [image: PayPal] <Nom> vous a envoyé » (ancre du logo dans le corps).
+// Wise : le nom vient du sujet « Argent reçu de <Nom> » (borné en fin de ligne).
+function extractPayerName(source: string, text: string, fromHeader = "") {
+  const flat = normalizeSpaces(text)
   if (source === "PAYPAL") {
-    const paypalPatterns = [
-      // On ne capture QUE des caractères de nom (lettres, espaces, apostrophes,
-      // tirets, points) juste avant « vous a envoyé ». La virgule après la
-      // salutation (« Bonjour Michael Silva Araujo, ») borne la capture ; un
-      // éventuel « PayPal » de tête est retiré par cleanPayerName.
-      /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{1,60}?)\s+(?:vous\s+a\s+envoy[ée]|vous\s+a\s+pay[ée]|sent\s+you|paid\s+you)\b/i,
-      /(?:vous\s+avez\s+re[çc]u|you\s+received)(?:[^.\n\r]{0,120}?)(?:\s+de|\s+from)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
-      /(?:exp[ée]diteur|sender|client|customer|payeur|payer)\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
-      /(?:nom|name)\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,80})/i,
-    ]
-    const name = firstPayerNameMatch(values, paypalPatterns)
-    if (name) return name
-
+    // 1) Ancre exacte : le logo PayPal précède immédiatement le payeur.
+    let match = flat.match(/\[image:\s*PayPal\]\s*(.+?)\s+vous\s+a\s+envoy[ée]/i)
+    if (match?.[1]) { const name = cleanPayerName(match[1]); if (isUsablePayerName(name)) return name }
+    // 2) Repli : « <Nom> vous a envoyé », borné à gauche par début / virgule de
+    //    salutation (« Bonjour Michael Silva, ») / deux-points.
+    match = flat.match(/(?:^|[,:]\s*)([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{1,60}?)\s+vous\s+a\s+envoy[ée]/i)
+    if (match?.[1]) { const name = cleanPayerName(match[1]); if (isUsablePayerName(name)) return name }
+    // 3) Repli : nom dans l'en-tête From « "Nom" <...> ».
     const fromName = fromHeader.match(/^"?([^"<@]{3,80})"?\s*</)?.[1]
-    const cleanedFromName = fromName ? cleanPayerName(fromName) : ""
-    if (isUsablePayerName(cleanedFromName) && !/paypal/i.test(cleanedFromName)) return cleanedFromName
+    if (fromName) { const name = cleanPayerName(fromName); if (isUsablePayerName(name) && !/paypal/i.test(name)) return name }
+    return null
   }
 
   if (source === "WISE") {
-    // Sujet Wise (sans guillemets), ex. « Argent reçu de Nom Prénom ».
-    // Le sujet est sur une seule ligne : on capture jusqu'à la fin de ligne.
-    const subjectPatterns = [
-      /re[çc]u\s+de\s+l['’]argent\s+de\s+(.+)$/i,
-      /\bde\s+la\s+part\s+de\s+(.+)$/i,
-      /argent\s+re[çc]u\s+de\s+(.+)$/i,
-      /re[çc]u\s+de\s+(.+)$/i,
+    // Le nom Wise vient d'abord du sujet (borné par fin de ligne), sinon du corps.
+    const patterns = [
+      /argent\s+re[çc]u\s+de\s+(.+?)(?:\s*\n|$)/i,
+      /re[çc]u\s+de\s+l['’]argent\s+de\s+(.+?)(?:\s*\n|$)/i,
+      /\bde\s+la\s+part\s+de\s+(.+?)(?:\s*\n|$)/i,
+      /(.+?)\s+vous\s+a\s+envoy[ée]\s+de\s+l['’]argent/i,
+      /vous\s+avez\s+re[çc]u\s+[0-9]+(?:[,.][0-9]{1,2})?\s*(?:€|eur)\s+de\s+(.+?)(?:\s*\n|$|\.)/i,
+      /\bde\s*:\s*(.+?)(?:\s*\n|$)/i,
     ]
-    for (const pattern of subjectPatterns) {
-      const match = subject.match(pattern)
+    for (const pattern of patterns) {
+      const match = text.match(pattern)
       const name = match?.[1] ? cleanPayerName(match[1]) : ""
       if (isUsablePayerName(name)) return name
     }
-  }
-  // Wise ancien format : "Vous avez reçu .. EUR de "Nom Prénom"" — le nom est entre guillemets.
-  const wisePatterns = [
-    // Format Wise actuel : « Vous avez reçu 56 EUR de MR OU MME ... ».
-    /vous\s+avez\s+re[çc]u\s+[0-9]+(?:[,.][0-9]{1,2})?\s*(?:€|eur)\s+de\s+([^.\n\r]{2,100})/i,
-    // Bloc détails Wise actuel : « De : MR OU MME ... ».
-    /\bde\s*:\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{2,100})/i,
-    /(?:reçu|recu|received)[^"]*?\b(?:de|from)\s+"([^"]{2,80})"/i,
-    /\b(?:de|from)\s+"([^"]{2,80})"/i,
-  ]
-  const commonPatterns = [
-    // \b obligatoire : sans lui, « mode:bicubic » (CSS) matche via la fin de « moDE : »
-    /\b(?:de|from|payeur|payer)\s*:\s*([A-Za-zÀ-ÿ' -]{3,80})/i,
-    /([A-Za-zÀ-ÿ' -]{3,80})\s+(?:vous a envoyé|sent you|paid you)/i,
-  ]
-  const patterns = source === "WISE" ? [...wisePatterns, ...commonPatterns] : commonPatterns
-  for (const pattern of patterns) {
-    const match = text.match(pattern)
-    const name = match?.[1] ? cleanPayerName(match[1]) : ""
-    if (isUsablePayerName(name)) return name
   }
   return null
 }
@@ -598,14 +603,32 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       skipped += 1
       continue
     }
-    const bodyText = cleanText(readPayloadText(full.data.payload))
-    const combined = `${subject}\n${full.data.snippet ?? ""}\n${bodyText}`
-    const source = detectSource(combined, fromHeader)
-    if (manualImport && !["PAYPAL", "WISE"].includes(source)) {
+    // Mails internes de l'institut (récap quotidien, notifications maison…) : un
+    // vrai paiement vient TOUJOURS de paypal.fr / wise.com, jamais d'une adresse
+    // « institutassahaba ». Leur tableau récap contient « Montant reçu » + « PayPal »
+    // et piégeait detectSource → faux paiements « Payeur non détecté » 28 €.
+    if (/institut\.?assahaba/i.test(fromHeader) || /r[ée]capitulatif\s+paiements/i.test(subject)) {
       ignored += 1
       continue
     }
-    const amount = extractAmount(source, combined)
+    // Corps nettoyé « à la Gmail » (getPlainBody) : le sujet reste sur sa
+    // propre ligne (le nom Wise vient du sujet, borné par le saut de ligne).
+    const bodyText = readEmailBody(full.data.payload)
+    const combined = `${subject}\n${full.data.snippet ?? ""}\n${bodyText}`
+    const source = detectSource(combined, fromHeader)
+    // On ne garde QUE les vrais encaissements PayPal/Wise : ni virement bancaire,
+    // ni mail de récap interne (« Récapitulatif paiements »), ni PayPal SORTANT
+    // (« Vous avez envoyé »). Ce filtre s'applique à TOUS les scans (avant, il ne
+    // valait qu'en import manuel → d'où les lignes « Payeur non détecté » 28 €).
+    if (!["PAYPAL", "WISE"].includes(source)) {
+      ignored += 1
+      continue
+    }
+    if (source === "PAYPAL" && isOutgoingPaypal(subject, combined)) {
+      ignored += 1
+      continue
+    }
+    const amount = extractAmount(combined)
     if (!amount) {
       ignored += 1
       continue
@@ -618,7 +641,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     const extractedReference = extractReference(source, combined, "")
     const paymentReference = extractedReference || null
     const reference = extractedReference || `gmail:${gmailId}` // conservé pour lier le Payment
-    const detectedPayerName = extractPayerName(source, combined, subject, fromHeader)
+    const detectedPayerName = extractPayerName(source, combined, fromHeader)
     const paymentLabel = extractLabel(subject, combined)
     // On retrouve la ligne existante par le nouvel ID Gmail, mais aussi par les
     // anciennes clés (référence extraite, ou repli « gmail:<id> ») pour migrer les
