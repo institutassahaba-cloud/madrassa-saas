@@ -126,6 +126,11 @@ function paymentReceivedAmount(payment: Pick<Payment, "amount" | "receivedAmount
   return Number(payment.receivedAmount ?? payment.amount ?? 0)
 }
 
+function paymentValidationDateValue(payment: Pick<Payment, "confirmedAt" | "paidDate">) {
+  const date = payment.confirmedAt || payment.paidDate
+  return date ? new Date(date).getTime() : null
+}
+
 function sourceBadge(match: Pick<PaymentMatch, "source">) {
   if (match.source === "PAYPAL") {
     return <Badge className="bg-blue-100 text-blue-800">PayPal</Badge>
@@ -223,6 +228,7 @@ export function PaymentsClient({
   // ce useEffect, la liste restait figée sur le 1er snapshot (le paiement associé
   // ne disparaissait pas de « à associer » et le compteur restait faux).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalPaymentMatches(paymentMatches)
   }, [paymentMatches])
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
@@ -256,6 +262,10 @@ export function PaymentsClient({
 
   function paymentDateValue(payment: Payment) {
     return new Date(payment.confirmedAt || payment.paidDate || payment.createdAt).getTime()
+  }
+
+  function paymentHasValidatedSession(payment: Payment) {
+    return Boolean(payment.lessonSession?.id || payment.sessionNumber != null)
   }
 
   function matchDateValue(match: PaymentMatch) {
@@ -301,24 +311,31 @@ export function PaymentsClient({
   })
   const toVerifyMatches = filteredPaymentMatches.filter((match) => match.status === "TO_VERIFY")
 
-  const filtered = payments.filter((p) => {
+  const selectedPeriod = paymentPeriods.find((item) => item.id === periodFilter)
+
+  function matchesSelectedPeriod(date: number | null) {
+    if (periodFilter === "ALL") return true
+    if (!selectedPeriod || date == null) return false
+    return (!selectedPeriod.start || date > new Date(selectedPeriod.start).getTime()) && (!selectedPeriod.end || date <= new Date(selectedPeriod.end).getTime())
+  }
+
+  function matchesPaymentSearchAndTeacher(p: Payment) {
     const name = paymentStudentLabel(p).toLowerCase()
     const teacherName = paymentTeacherName(p).toLowerCase()
     const matchSearch = name.includes(search.toLowerCase()) || teacherName.includes(search.toLowerCase()) || (p.reference ?? "").includes(search)
+    const matchTeacher = teacherFilter === "ALL" || paymentTeacherId(p) === teacherFilter
+    return matchSearch && matchTeacher
+  }
+
+  const filtered = payments.filter((p) => {
     const matchStatus =
       statusFilter === "ALL" ? true
       : statusFilter === "PAID" ? (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)
       : statusFilter === "AWAITING" ? (PAYMENT_AWAITING_STATUSES as readonly string[]).includes(p.status)
       : p.status === statusFilter
-    const matchTeacher = teacherFilter === "ALL" || paymentTeacherId(p) === teacherFilter
-    const period = paymentPeriods.find((item) => item.id === periodFilter)
     const paymentDate = paymentDateValue(p)
-    const matchPeriod = !period || periodFilter === "ALL"
-      ? true
-      : period.isCurrent && !period.start
-        ? false
-      : (!period.start || paymentDate >= new Date(period.start).getTime()) && (!period.end || paymentDate <= new Date(period.end).getTime())
-    return matchSearch && matchStatus && matchTeacher && matchPeriod
+    const matchPeriod = matchesSelectedPeriod(paymentDate)
+    return matchesPaymentSearchAndTeacher(p) && matchStatus && matchPeriod
   }).sort((a, b) => {
     const direction = sortDirection === "asc" ? 1 : -1
     if (sortKey === "student") {
@@ -330,8 +347,20 @@ export function PaymentsClient({
     return (paymentDateValue(a) - paymentDateValue(b)) * direction
   })
 
+  const validatedPaymentsForPeriod = payments.filter((p) => (
+    matchesPaymentSearchAndTeacher(p)
+    && paymentHasValidatedSession(p)
+    && (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)
+    && matchesSelectedPeriod(paymentValidationDateValue(p))
+  ))
+  const selectedPeriodLabel = periodFilter === "CURRENT"
+    ? "période en cours"
+    : periodFilter === "ALL"
+      ? "toutes les périodes"
+      : selectedPeriod?.label.toLowerCase() ?? "la période sélectionnée"
+
   const summary = {
-    paid: filtered.filter((p) => (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)).reduce((sum, p) => sum + paymentReceivedAmount(p), 0),
+    paid: validatedPaymentsForPeriod.reduce((sum, p) => sum + paymentReceivedAmount(p), 0),
     sentRequests: pendingPayments.length,
     toVerify: localPaymentMatches.filter((match) => match.status === "TO_VERIFY").length,
   }
@@ -577,8 +606,9 @@ export function PaymentsClient({
           <CardContent className="p-4 flex items-center gap-3">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
             <div>
-              <p className="text-xs text-gray-500">Paiements validés</p>
+              <p className="text-xs text-gray-500">Paiements validés · {selectedPeriodLabel}</p>
               <p className="text-lg font-bold text-gray-900">{formatCurrency(summary.paid)}</p>
+              <p className="text-[11px] text-gray-400">{validatedPaymentsForPeriod.length} session{validatedPaymentsForPeriod.length > 1 ? "s" : ""} validée{validatedPaymentsForPeriod.length > 1 ? "s" : ""}</p>
             </div>
           </CardContent>
         </Card>
@@ -644,12 +674,11 @@ export function PaymentsClient({
               <div>
                 <h3 className="font-semibold text-amber-900">Paiements détectés / recherche Gmail</h3>
                 <p className="text-sm text-amber-700">
-                  Recherchez par date, nom ou référence. Les paiements déjà validés restent affichés avec leur association actuelle.
+                  Seuls les paiements <strong>à associer</strong> apparaissent ici. Une fois attribué, un paiement quitte cette liste (il passe dans « Paiements validés »).
                 </p>
               </div>
               <span className="flex items-center gap-2">
                 <Badge variant="warning">{toVerifyMatches.length} à associer</Badge>
-                <Badge variant="secondary">{filteredPaymentMatches.length} affiché(s) / {localPaymentMatches.length}</Badge>
                 {unprocessedOpen ? <ChevronUp className="h-4 w-4 text-amber-700" /> : <ChevronDown className="h-4 w-4 text-amber-700" />}
               </span>
             </button>
@@ -737,9 +766,9 @@ export function PaymentsClient({
                   Mettre les non traités sélectionnés à la corbeille
                 </Button>
               </div>
-              {filteredPaymentMatches.length === 0 ? (
+              {toVerifyMatches.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-amber-200 bg-white/70 p-6 text-center text-sm text-amber-800">
-                  Aucun paiement détecté dans cette période ou pour cette recherche.
+                  Aucun paiement à associer. Les paiements attribués sont dans « Paiements validés ».
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-lg border border-amber-100 bg-white">
@@ -760,7 +789,7 @@ export function PaymentsClient({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPaymentMatches.map((match) => {
+                      {toVerifyMatches.map((match) => {
                         const status = matchStatusConfig(match.status)
                         const canAssociate = match.status === "TO_VERIFY" || match.status === "AUTO_CONFIRMED"
                         const canTrash = match.status === "TO_VERIFY"
@@ -1818,6 +1847,7 @@ function StudentCombobox({
 }
 
 function SecretaryPayBlock() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ secretaryName: string; collectedTotal: number; amount: number; paymentCount: number; periodStart: string; periodEnd: string } | null>(null)
   const [confirmed, setConfirmed] = useState(false)
@@ -1836,6 +1866,7 @@ function SecretaryPayBlock() {
     await fetch("/api/salaries/secretary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: true }) })
     setConfirmed(true)
     setLoading(false)
+    router.refresh()
   }
 
   return (
