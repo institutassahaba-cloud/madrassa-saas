@@ -233,6 +233,8 @@ export function PaymentsClient({
   }, [paymentMatches])
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [selectedConfirmedMatchIds, setSelectedConfirmedMatchIds] = useState<Set<string>>(new Set())
+  const [selectedTrashedIds, setSelectedTrashedIds] = useState<Set<string>>(new Set())
+  const [selectedDirectorIds, setSelectedDirectorIds] = useState<Set<string>>(new Set())
   const [nowTime] = useState(() => Date.now())
 
   function paymentTeacherId(payment: Payment) {
@@ -565,6 +567,73 @@ export function PaymentsClient({
     }
   }
 
+  // Boucle une action (trash/director/restore/delete) sur plusieurs paiements.
+  async function runBulkMatchAction(ids: string[], action: string) {
+    for (const matchId of ids) {
+      const res = await fetch(`/api/payment-matches/${matchId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Action impossible.")
+    }
+  }
+
+  // « à associer » → directeur, en lot.
+  async function directorSelectedMatches() {
+    const ids = toVerifyMatches.map((match) => match.id).filter((id) => selectedMatchIds.has(id))
+    if (ids.length === 0) return
+    if (!window.confirm(`Classer ${ids.length} paiement(s) pour le directeur ? Ils quitteront la liste « à associer ».`)) return
+    setMatchActionLoading("bulk-director")
+    try {
+      await runBulkMatchAction(ids, "director")
+      setSelectedMatchIds(new Set())
+      router.refresh()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Action impossible.")
+    } finally {
+      setMatchActionLoading(null)
+    }
+  }
+
+  // Corbeille : restaurer OU supprimer définitivement, en lot.
+  async function bulkTrashedAction(action: "restore" | "delete") {
+    const ids = trashedPaymentMatches.map((match) => match.id).filter((id) => selectedTrashedIds.has(id))
+    if (ids.length === 0) return
+    const message = action === "delete"
+      ? `Supprimer DÉFINITIVEMENT ${ids.length} paiement(s) de la corbeille ? Action irréversible.`
+      : `Restaurer ${ids.length} paiement(s) dans « à associer » ?`
+    if (!window.confirm(message)) return
+    setMatchActionLoading(`bulk-trashed-${action}`)
+    try {
+      await runBulkMatchAction(ids, action)
+      setSelectedTrashedIds(new Set())
+      router.refresh()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Action impossible.")
+    } finally {
+      setMatchActionLoading(null)
+    }
+  }
+
+  // Directeur → « à associer », en lot.
+  async function restoreSelectedDirectorMatches() {
+    const ids = directorPaymentMatches.map((match) => match.id).filter((id) => selectedDirectorIds.has(id))
+    if (ids.length === 0) return
+    if (!window.confirm(`Remettre ${ids.length} paiement(s) dans « à associer » (ce n'est pas pour le directeur) ?`)) return
+    setMatchActionLoading("bulk-director-restore")
+    try {
+      await runBulkMatchAction(ids, "restore")
+      setSelectedDirectorIds(new Set())
+      router.refresh()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Action impossible.")
+    } finally {
+      setMatchActionLoading(null)
+    }
+  }
+
   async function reclassifySelectedConfirmedMatches() {
     if (selectedConfirmedMatchIds.size === 0) return
     const confirmed = window.confirm(
@@ -755,16 +824,28 @@ export function PaymentsClient({
                   />
                   Tout sélectionner
                 </label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={trashSelectedMatches}
-                  disabled={!toVerifyMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-trash"}
-                  className="border-amber-300 text-amber-900 hover:bg-amber-100"
-                >
-                  {matchActionLoading === "bulk-trash" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  Mettre les non traités sélectionnés à la corbeille
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={directorSelectedMatches}
+                    disabled={!toVerifyMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-director"}
+                    className="border-violet-300 text-violet-900 hover:bg-violet-100"
+                  >
+                    {matchActionLoading === "bulk-director" ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
+                    Classer pour le directeur
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={trashSelectedMatches}
+                    disabled={!toVerifyMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-trash"}
+                    className="border-amber-300 text-amber-900 hover:bg-amber-100"
+                  >
+                    {matchActionLoading === "bulk-trash" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Mettre à la corbeille
+                  </Button>
+                </div>
               </div>
               {toVerifyMatches.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-amber-200 bg-white/70 p-6 text-center text-sm text-amber-800">
@@ -1069,15 +1150,61 @@ export function PaymentsClient({
               </span>
             </button>
             {trashOpen && <div className="space-y-2">
+              <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300"
+                    checked={trashedPaymentMatches.length > 0 && trashedPaymentMatches.every((match) => selectedTrashedIds.has(match.id))}
+                    onChange={(event) => setSelectedTrashedIds(event.target.checked ? new Set(trashedPaymentMatches.map((m) => m.id)) : new Set())}
+                  />
+                  Tout sélectionner
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => bulkTrashedAction("restore")}
+                    disabled={selectedTrashedIds.size === 0 || matchActionLoading === "bulk-trashed-restore"}
+                  >
+                    {matchActionLoading === "bulk-trashed-restore" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                    Restaurer
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => bulkTrashedAction("delete")}
+                    disabled={selectedTrashedIds.size === 0 || matchActionLoading === "bulk-trashed-delete"}
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    {matchActionLoading === "bulk-trashed-delete" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Supprimer définitivement
+                  </Button>
+                </div>
+              </div>
               {trashedPaymentMatches.map((match) => (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
-                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
-                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-gray-300"
+                      checked={selectedTrashedIds.has(match.id)}
+                      onChange={(event) => setSelectedTrashedIds((current) => {
+                        const next = new Set(current)
+                        if (event.target.checked) next.add(match.id)
+                        else next.delete(match.id)
+                        return next
+                      })}
+                      aria-label="Sélectionner ce paiement de la corbeille"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                        <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                        <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                      </div>
+                      <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
@@ -1110,15 +1237,50 @@ export function PaymentsClient({
               </span>
             </button>
             {directorOpen && <div className="space-y-2">
+              <div className="flex flex-col gap-2 rounded-lg border border-violet-100 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-sm font-medium text-violet-900">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-violet-300"
+                    checked={directorPaymentMatches.length > 0 && directorPaymentMatches.every((match) => selectedDirectorIds.has(match.id))}
+                    onChange={(event) => setSelectedDirectorIds(event.target.checked ? new Set(directorPaymentMatches.map((m) => m.id)) : new Set())}
+                  />
+                  Tout sélectionner
+                </label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={restoreSelectedDirectorMatches}
+                  disabled={selectedDirectorIds.size === 0 || matchActionLoading === "bulk-director-restore"}
+                  className="border-violet-300 text-violet-900 hover:bg-violet-100"
+                >
+                  {matchActionLoading === "bulk-director-restore" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                  Remettre dans « à associer »
+                </Button>
+              </div>
               {directorPaymentMatches.map((match) => (
                 <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-violet-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
-                      <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
-                      <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-violet-300"
+                      checked={selectedDirectorIds.has(match.id)}
+                      onChange={(event) => setSelectedDirectorIds((current) => {
+                        const next = new Set(current)
+                        if (event.target.checked) next.add(match.id)
+                        else next.delete(match.id)
+                        return next
+                      })}
+                      aria-label="Sélectionner ce paiement directeur"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={match.source === "PAYPAL" ? "info" : "secondary"}>{match.source === "PAYPAL" ? "PayPal" : "Wise"}</Badge>
+                        <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                        <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                      </div>
+                      <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}

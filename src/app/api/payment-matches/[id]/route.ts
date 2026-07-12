@@ -46,5 +46,15 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ ok: true, status: "TO_VERIFY" })
   }
 
+  if (action === "delete") {
+    // Suppression DÉFINITIVE, réservée aux paiements en corbeille (jamais un
+    // paiement validé/directeur/à associer). Pas d'allocation à ce stade.
+    if (match.status !== "TRASHED") {
+      return NextResponse.json({ error: "Seuls les paiements en corbeille peuvent être supprimés définitivement." }, { status: 400 })
+    }
+    await prisma.paymentMatch.delete({ where: { id } })
+    return NextResponse.json({ ok: true, deleted: true })
+  }
+
   return NextResponse.json({ error: "Action inconnue." }, { status: 400 })
 })
