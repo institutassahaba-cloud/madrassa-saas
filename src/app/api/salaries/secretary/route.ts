@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { PAYMENT_PAID_STATUSES } from "@/lib/payment-status"
+import { getValidatedPaymentPeriodStart, validatedPaymentAmount } from "@/lib/payment-period"
 import { wrap } from "@/lib/api"
 
 export const POST = wrap(async (req: Request) => {
@@ -25,19 +26,11 @@ export const POST = wrap(async (req: Request) => {
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
+  const periodStart = await getValidatedPaymentPeriodStart(tenantId, now)
   const results = []
 
   for (const sec of secretaries) {
-    const lastClosedSalary = await prisma.teacherSalary.findFirst({
-      where: {
-        tenantId,
-        teacherId: sec.id,
-        NOT: { month, year },
-      },
-      orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
-    })
-
-    const since = lastClosedSalary?.periodEnd ?? new Date(2000, 0, 1)
+    const since = periodStart
 
     const payments = await prisma.payment.findMany({
       where: {
@@ -45,12 +38,16 @@ export const POST = wrap(async (req: Request) => {
         status: { in: [...PAYMENT_PAID_STATUSES] },
         OR: [
           { confirmedAt: { gt: since, lte: now } },
-          { confirmedAt: null, createdAt: { gt: since, lte: now } },
+          { confirmedAt: null, paidDate: { gt: since, lte: now } },
+        ],
+        AND: [
+          { OR: [{ lessonSessionId: { not: null } }, { sessionNumber: { not: null } }] },
         ],
       },
       select: {
         id: true,
         amount: true,
+        receivedAmount: true,
         method: true,
         reference: true,
         paidDate: true,
@@ -61,7 +58,7 @@ export const POST = wrap(async (req: Request) => {
       orderBy: { createdAt: "asc" },
     })
 
-    const collectedTotal = payments.reduce((sum, payment) => sum + Number(payment.amount), 0)
+    const collectedTotal = payments.reduce((sum, payment) => sum + validatedPaymentAmount(payment), 0)
     const rate = 0.10
     const amount = +(collectedTotal * rate).toFixed(2)
     const paymentLines = payments.map((payment) => {
@@ -70,7 +67,7 @@ export const POST = wrap(async (req: Request) => {
       const student = `${payment.student.firstName} ${payment.student.lastName}`.trim()
       const ref = payment.reference ? ` · réf. ${payment.reference}` : ""
       const method = payment.method ? ` · ${payment.method}` : ""
-      return `${date} · ${student} · ${Number(payment.amount).toFixed(2)} €${method}${ref} · enregistré le ${closedAt.toLocaleString("fr-FR")}`
+      return `${date} · ${student} · ${validatedPaymentAmount(payment).toFixed(2)} €${method}${ref} · validé le ${closedAt.toLocaleString("fr-FR")}`
     })
     const notes = [
       `Commission secrétaire 10% sur ${collectedTotal.toFixed(2)} € encaissés.`,

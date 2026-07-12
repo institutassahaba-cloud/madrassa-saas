@@ -1,39 +1,26 @@
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
-import { formatCurrency, getMonthName } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { PAYMENT_PAID_STATUSES, PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
+import { getValidatedPaymentPeriodStart, validatedPaymentAmount } from "@/lib/payment-period"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Users, UserCheck, AlertCircle, TrendingUp,
-  Banknote, BookOpen, Calendar, BarChart3,
-} from "lucide-react"
-import { RevenueChart } from "@/components/dashboard/revenue-chart"
-import { PaymentStatusChart } from "@/components/dashboard/payment-status-chart"
+import { Users, UserCheck, AlertCircle, TrendingUp, BookOpen, UserX } from "lucide-react"
 import { RecentPayments } from "@/components/dashboard/recent-payments"
+import { SubjectDistributionChart } from "@/components/dashboard/subject-distribution-chart"
 import { TeacherHome } from "./teacher-home"
 import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
 
 async function getStats(tenantId: string) {
   const now = new Date()
-  const month = now.getMonth() + 1
-  const year = now.getFullYear()
-
-  // Cycle de facturation : du 25 du mois précédent au 25 du mois courant
-  const startOfBillingMonth = new Date(year, month - 1, 25, 0, 0, 0)
-  if (now < startOfBillingMonth) {
-    startOfBillingMonth.setMonth(startOfBillingMonth.getMonth() - 1)
-  }
-  const scanSettings = await prisma.tenantSettings.findUnique({
-    where: { tenantId },
-    select: { paymentScanStartedAt: true },
-  })
-  const revenueStart = scanSettings?.paymentScanStartedAt ?? startOfBillingMonth
-  const receivedPaymentDateFilter = {
+  const revenueStart = await getValidatedPaymentPeriodStart(tenantId, now)
+  const validatedSessionPaymentFilter = {
     OR: [
-      { confirmedAt: { gte: revenueStart, lte: now } },
-      { confirmedAt: null, paidDate: { gte: revenueStart, lte: now } },
-      { confirmedAt: null, paidDate: null, createdAt: { gte: revenueStart, lte: now } },
+      { confirmedAt: { gt: revenueStart, lte: now } },
+      { confirmedAt: null, paidDate: { gt: revenueStart, lte: now } },
+    ],
+    AND: [
+      { OR: [{ lessonSessionId: { not: null } }, { sessionNumber: { not: null } }] },
     ],
   }
 
@@ -46,7 +33,6 @@ async function getStats(tenantId: string) {
     totalAttendances,
     presentAttendances,
     recentPayments,
-    paymentsByStatus,
     activeBySubject,
   ] = await Promise.all([
     prisma.student.count({ where: { tenantId } }),
@@ -60,7 +46,7 @@ async function getStats(tenantId: string) {
       where: {
         tenantId,
         status: { in: [...PAYMENT_PAID_STATUSES] },
-        ...receivedPaymentDateFilter,
+        ...validatedSessionPaymentFilter,
       },
       select: { amount: true, receivedAmount: true },
     }),
@@ -73,11 +59,6 @@ async function getStats(tenantId: string) {
       take: 8,
       include: { student: { select: { firstName: true, lastName: true, group: { select: { teacher: { select: { name: true } } } } } } },
     }),
-    prisma.payment.groupBy({
-      by: ["status"],
-      where: { tenantId, month, year },
-      _count: true,
-    }),
     prisma.student.groupBy({
       by: ["subject"],
       where: { tenantId, status: "ACTIVE", subject: { not: null } },
@@ -89,16 +70,12 @@ async function getStats(tenantId: string) {
     totalStudents,
     activeStudents,
     latePayments,
-    monthRevenue: receivedPayments.reduce((sum, payment) => sum + Number(payment.receivedAmount ?? payment.amount ?? 0), 0),
+    monthRevenue: receivedPayments.reduce((sum, payment) => sum + validatedPaymentAmount(payment), 0),
     totalTeachers,
     attendanceRate: totalAttendances > 0 ? Math.round((presentAttendances / totalAttendances) * 100) : 0,
     recentPayments,
-    paymentsByStatus,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     activeBySubject: (activeBySubject as any[]).map((g: any) => ({ subject: g.subject, count: g._count })),
-    billingStart: revenueStart,
-    month,
-    year,
   }
 }
 
@@ -121,27 +98,43 @@ export default async function DashboardPage() {
   }
 
   const stats = await getStats(tenantId)
+  const dashboardNow = new Date()
+  const inactiveThreshold = new Date(dashboardNow.getTime() - 4 * 24 * 60 * 60 * 1000)
 
-  // Élèves en pause avec date de recontact passée ou aujourd'hui
-  const recontactStudents = await prisma.student.findMany({
-    where: {
-      tenantId,
-      status: "PAUSED",
-      recontactDate: { not: null, lte: new Date() },
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      phone: true,
-      parentPhone: true,
-      recontactDate: true,
-      group: { select: { teacher: { select: { name: true } } } },
-    },
-    orderBy: { recontactDate: "asc" },
-  })
-
-  const billingLabel = `Revenus depuis le 25/${String(stats.billingStart.getMonth() + 1).padStart(2, "0")}`
+  const [recontactStudents, inactiveTeachers] = await Promise.all([
+    // Élèves en pause avec date de recontact passée ou aujourd'hui
+    prisma.student.findMany({
+      where: {
+        tenantId,
+        status: "PAUSED",
+        recontactDate: { not: null, lte: new Date() },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        parentPhone: true,
+        recontactDate: true,
+        group: { select: { teacher: { select: { name: true } } } },
+      },
+      orderBy: { recontactDate: "asc" },
+    }),
+    prisma.user.findMany({
+      where: {
+        tenantId,
+        role: "TEACHER",
+        isActive: true,
+        OR: [
+          { lastLoginAt: null },
+          { lastLoginAt: { lt: inactiveThreshold } },
+        ],
+      },
+      select: { id: true, name: true, lastLoginAt: true },
+      orderBy: [{ lastLoginAt: { sort: "asc", nulls: "first" } }, { name: "asc" }],
+      take: 8,
+    }),
+  ])
 
   const kpis = [
     {
@@ -161,9 +154,9 @@ export default async function DashboardPage() {
       bg: "bg-red-50",
     },
     {
-      label: billingLabel,
+      label: "Paiements validés",
       value: formatCurrency(stats.monthRevenue),
-      sub: "paiements reçus",
+      sub: "période en cours",
       icon: TrendingUp,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
@@ -213,30 +206,35 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Élèves par matière */}
-      {stats.activeBySubject.length > 0 && (
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm font-medium text-gray-500 mb-3">Élèves actifs par matière</p>
-            <div className="flex flex-wrap gap-3">
-              {stats.activeBySubject.map((s: { subject: string; count: number }) => (
-                <div key={s.subject} className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                  <span className="text-sm text-gray-700">{s.subject}</span>
-                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{s.count}</span>
-                </div>
-              ))}
+      <SubjectDistributionChart data={stats.activeBySubject} />
+
+      {inactiveTeachers.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800">
+              <UserX className="h-5 w-5" />
+              Professeurs à relancer
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {inactiveTeachers.map((teacher) => {
+                const days = teacher.lastLoginAt
+                  ? Math.floor((dashboardNow.getTime() - teacher.lastLoginAt.getTime()) / 86400000)
+                  : null
+                return (
+                  <div key={teacher.id} className="rounded-lg border border-amber-100 bg-white px-3 py-2">
+                    <p className="font-medium text-gray-900">{teacher.name}</p>
+                    <p className="mt-0.5 text-xs text-amber-700">
+                      {days == null ? "Jamais connecté(e)" : `Dernière connexion il y a ${days} jour${days > 1 ? "s" : ""}`}
+                    </p>
+                  </div>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <RevenueChart tenantId={tenantId} />
-        </div>
-        <PaymentStatusChart data={stats.paymentsByStatus} />
-      </div>
 
       {/* Recent Payments */}
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

@@ -4,7 +4,7 @@
 // ║  GET https://TON-DOMAINE/api/cron/check-inactivity             ║
 // ║  Header: Authorization: Bearer <CRON_SECRET>                   ║
 // ║  Planification : tous les jours à 8h00                         ║
-// ║  → Alerte la secrétaire si un prof est inactif depuis 7 jours  ║
+// ║  → Alerte directeur + secrétaires si un prof est inactif       ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { NextResponse } from "next/server"
@@ -19,14 +19,19 @@ export const GET = wrap(async (req: Request) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const inactivityThresholdDays = 4
+  const inactivityThreshold = new Date(Date.now() - inactivityThresholdDays * 24 * 60 * 60 * 1000)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const tomorrowStart = new Date(todayStart)
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
 
   const inactiveTeachers = await prisma.user.findMany({
     where: {
       role: "TEACHER",
       isActive: true,
       OR: [
-        { lastLoginAt: { lt: sevenDaysAgo } },
+        { lastLoginAt: { lt: inactivityThreshold } },
         { lastLoginAt: null },
       ],
     },
@@ -37,14 +42,15 @@ export const GET = wrap(async (req: Request) => {
     return NextResponse.json({ message: "Aucun prof inactif", count: 0 })
   }
 
-  const byTenant = new Map<string, { tenantName: string; teachers: string[] }>()
+  const byTenant = new Map<string, { tenantName: string; teachers: { id: string; name: string; lastLoginAt: Date | null }[] }>()
   for (const t of inactiveTeachers) {
     const entry = byTenant.get(t.tenantId) || { tenantName: t.tenant.name, teachers: [] }
-    entry.teachers.push(t.name)
+    entry.teachers.push({ id: t.id, name: t.name, lastLoginAt: t.lastLoginAt })
     byTenant.set(t.tenantId, entry)
   }
 
   let emailsSent = 0
+  let appNotifications = 0
 
   for (const [tenantId, { tenantName, teachers }] of byTenant) {
     const secretaries = await prisma.user.findMany({
@@ -54,7 +60,12 @@ export const GET = wrap(async (req: Request) => {
 
     if (secretaries.length === 0) continue
 
-    const teacherList = teachers.map((n) => `• ${n}`).join("<br />")
+    const teacherList = teachers.map((teacher) => {
+      const days = teacher.lastLoginAt
+        ? Math.floor((Date.now() - teacher.lastLoginAt.getTime()) / 86400000)
+        : null
+      return `• ${teacher.name}${days == null ? " — jamais connecté(e)" : ` — ${days} jour(s) sans connexion`}`
+    }).join("<br />")
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /></head>
 <body style="margin:0;padding:0;background:#FBF8F1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 <table width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#FBF8F1"><tbody><tr><td align="center" style="padding:32px 12px;">
@@ -66,9 +77,9 @@ export const GET = wrap(async (req: Request) => {
 ⚠️ Alerte d'inactivité
 </td></tr>
 <tr><td style="padding:18px 36px 8px;font-size:15px;line-height:25px;color:#1A2440;">
-Les professeurs suivants ne se sont pas connectés depuis <strong>7 jours ou plus</strong> :<br /><br />
+Les professeurs suivants ne se sont pas connectés depuis <strong>${inactivityThresholdDays} jours ou plus</strong> :<br /><br />
 ${teacherList}<br /><br />
-Merci de vérifier qu'ils remplissent bien leur cahier de cours.
+Merci de vérifier qu'ils remplissent bien leur cahier de cours et qu'ils ont accès à leur espace.
 </td></tr>
 <tr><td height="20"></td></tr>
 <tr><td align="center" bgcolor="#F4EFE3" style="background:#F4EFE3;padding:16px 32px;font-size:12px;color:#5C6577;">
@@ -85,18 +96,39 @@ Merci de vérifier qu'ils remplissent bien leur cahier de cours.
       emailsSent++
     }
 
-    for (const teacherName of teachers) {
+    for (const teacher of teachers) {
+      const title = `${teacher.name} ne s'est pas connecté(e)`
+      const days = teacher.lastLoginAt
+        ? Math.floor((Date.now() - teacher.lastLoginAt.getTime()) / 86400000)
+        : null
+      const body = days == null
+        ? `${teacher.name} ne s'est encore jamais connecté(e).`
+        : `${teacher.name} ne s'est pas connecté(e) depuis ${days} jour(s).`
+
+      const existing = await prisma.notification.findFirst({
+        where: {
+          tenantId,
+          type: "TEACHER_INACTIVE",
+          title,
+          recipient: null,
+          createdAt: { gte: todayStart, lt: tomorrowStart },
+        },
+        select: { id: true },
+      })
+      if (existing) continue
+
       await prisma.notification.create({
         data: {
           tenantId,
           type: "TEACHER_INACTIVE",
-          title: `${teacherName} ne s'est pas connecté(e) depuis 7 jours`,
-          body: `Attention : ${teacherName} n'a pas rempli son tableau depuis plus de 7 jours.`,
+          title,
+          body,
           channel: "APP",
         },
-      }).catch(() => {})
+      })
+      appNotifications++
     }
   }
 
-  return NextResponse.json({ message: "Vérification terminée", inactiveCount: inactiveTeachers.length, emailsSent })
+  return NextResponse.json({ message: "Vérification terminée", inactiveCount: inactiveTeachers.length, emailsSent, appNotifications })
 })

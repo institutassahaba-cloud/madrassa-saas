@@ -5,6 +5,7 @@ import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-sc
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { getEffectiveUser } from "@/lib/view-as"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
+import { getValidatedPaymentPeriodStart } from "@/lib/payment-period"
 import { PaymentsClient } from "./payments-client"
 
 export default async function PaymentsPage() {
@@ -20,7 +21,7 @@ export default async function PaymentsPage() {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [payments, students, teachers, groups, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
+  const [payments, students, teachers, groups, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods, currentPaymentPeriodStart] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -134,10 +135,16 @@ export default async function PaymentsPage() {
       select: { paymentScanEnabled: true, paymentScanStartedAt: true, paymentScanLastRunAt: true, paymentScanLastError: true },
     }),
     prisma.teacherSalary.findMany({
-      where: { tenantId: user.tenantId, periodStart: { not: null }, periodEnd: { not: null } },
+      where: {
+        tenantId: user.tenantId,
+        periodStart: { not: null },
+        periodEnd: { not: null },
+        teacher: { role: "SECRETARY" },
+      },
       select: { periodStart: true, periodEnd: true, createdAt: true },
       orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
     }),
+    getValidatedPaymentPeriodStart(user.tenantId, now),
   ])
 
   // Clé "studentId:sessionNumber" -> date du paiement le plus récent.
@@ -150,10 +157,8 @@ export default async function PaymentsPage() {
   }
 
   const periodMap = new Map<string, { id: string; label: string; start: string | null; end: string | null; isCurrent?: boolean }>()
-  let latestPeriodEnd: Date | null = null
   for (const salary of salaryPeriods) {
     if (!salary.periodStart || !salary.periodEnd) continue
-    if (!latestPeriodEnd || salary.periodEnd > latestPeriodEnd) latestPeriodEnd = salary.periodEnd
     const start = salary.periodStart.toISOString()
     const end = salary.periodEnd.toISOString()
     const key = `${start}__${end}`
@@ -169,7 +174,7 @@ export default async function PaymentsPage() {
   const paymentPeriods = [
     {
       id: "CURRENT",
-      start: scanSettings?.paymentScanStartedAt?.toISOString() ?? null,
+      start: currentPaymentPeriodStart.toISOString(),
       end: null,
       isCurrent: true,
       label: "Période en cours",
