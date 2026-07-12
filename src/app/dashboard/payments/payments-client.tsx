@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { PaymentDialog } from "./payment-dialog"
 import { StudentDialog } from "../students/student-dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -178,6 +179,7 @@ export function PaymentsClient({
   currentYear,
   isDirector,
   scanControl,
+  periodControl,
 }: {
   payments: Payment[]
   students: Student[]
@@ -196,6 +198,7 @@ export function PaymentsClient({
   currentYear: number
   isDirector: boolean
   scanControl: { enabled: boolean; startedAt: string | null; lastRunAt?: string | null; lastError?: string | null }
+  periodControl: { currentStart: string; isManual: boolean }
 }) {
   const router = useRouter()
   const [search, setSearch] = useState("")
@@ -220,6 +223,8 @@ export function PaymentsClient({
   const [confirmedOpen, setConfirmedOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
   const [directorOpen, setDirectorOpen] = useState(false)
+  const [periodDialogOpen, setPeriodDialogOpen] = useState(false)
+  const [periodLoading, setPeriodLoading] = useState(false)
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [paymentDeleteLoading, setPaymentDeleteLoading] = useState<string | null>(null)
   const [localPaymentMatches, setLocalPaymentMatches] = useState(paymentMatches)
@@ -656,6 +661,62 @@ export function PaymentsClient({
     }
   }
 
+  // Fixe le début de la « période en cours » sur un paiement précis : ce
+  // paiement et tous les suivants sont comptés, les précédents sortent du total.
+  async function setPeriodStartFromPayment(payment: Payment) {
+    const when = paymentValidationDateValue(payment)
+    if (when == null) {
+      alert("Ce paiement n'a pas de date de validation exploitable.")
+      return
+    }
+    const label = paymentStudentLabel(payment)
+    const confirmed = window.confirm(
+      `Démarrer la « période en cours » à partir de ce paiement ?\n\n${formatCurrency(paymentReceivedAmount(payment))} · ${label} · ${formatDate(new Date(when).toISOString())}\n\nSeuls ce paiement et les suivants seront comptés dans le total.`
+    )
+    if (!confirmed) return
+    setPeriodLoading(true)
+    try {
+      const res = await fetch("/api/payments/period", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startAt: new Date(when).toISOString() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Impossible de fixer la période.")
+      setPeriodDialogOpen(false)
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Impossible de fixer la période.")
+      setPeriodLoading(false)
+    }
+  }
+
+  async function resetPeriodStart() {
+    const confirmed = window.confirm("Revenir au calcul automatique de la période (remise à zéro le 25 de chaque mois) ?")
+    if (!confirmed) return
+    setPeriodLoading(true)
+    try {
+      const res = await fetch("/api/payments/period", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reset: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Réinitialisation impossible.")
+      setPeriodDialogOpen(false)
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Réinitialisation impossible.")
+      setPeriodLoading(false)
+    }
+  }
+
+  // Paiements validés (payés + session validée), triés du plus récent au plus
+  // ancien : c'est la liste dans laquelle le directeur pointe le départ de période.
+  const validatedPaymentsForPicker = payments
+    .filter((p) => paymentHasValidatedSession(p) && (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status) && paymentValidationDateValue(p) != null)
+    .sort((a, b) => (paymentValidationDateValue(b) ?? 0) - (paymentValidationDateValue(a) ?? 0))
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -673,11 +734,36 @@ export function PaymentsClient({
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-            <div>
+            <CheckCircle2 className="h-8 w-8 shrink-0 text-emerald-500" />
+            <div className="min-w-0">
               <p className="text-xs text-gray-500">Paiements validés · {selectedPeriodLabel}</p>
               <p className="text-lg font-bold text-gray-900">{formatCurrency(summary.paid)}</p>
               <p className="text-[11px] text-gray-400">{validatedPaymentsForPeriod.length} session{validatedPaymentsForPeriod.length > 1 ? "s" : ""} validée{validatedPaymentsForPeriod.length > 1 ? "s" : ""}</p>
+              {isDirector && (
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="text-[11px] text-gray-400">
+                    Période en cours depuis le {formatDate(periodControl.currentStart)}
+                    {periodControl.isManual ? " (manuel)" : ""}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPeriodDialogOpen(true)}
+                    className="text-[11px] font-medium text-emerald-700 hover:underline"
+                  >
+                    Modifier
+                  </button>
+                  {periodControl.isManual && (
+                    <button
+                      type="button"
+                      onClick={resetPeriodStart}
+                      disabled={periodLoading}
+                      className="text-[11px] font-medium text-gray-500 hover:underline disabled:opacity-50"
+                    >
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1488,6 +1574,48 @@ export function PaymentsClient({
         paymentMatches={localPaymentMatches}
         preselectedPaymentMatchId={newStudentPaymentId}
       />
+
+      <Dialog open={periodDialogOpen} onOpenChange={(next) => { if (!periodLoading) setPeriodDialogOpen(next) }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Modifier la période en cours</DialogTitle>
+            <DialogDescription>
+              Choisissez le paiement à partir duquel démarre la période. Ce paiement et tous les suivants seront comptés dans le total « Paiements validés ». Les précédents en sortent.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55vh] overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100">
+            {validatedPaymentsForPicker.length === 0 ? (
+              <p className="p-4 text-sm text-gray-500">Aucun paiement validé à afficher.</p>
+            ) : (
+              validatedPaymentsForPicker.map((payment) => {
+                const when = paymentValidationDateValue(payment)
+                const isCurrentStart = when != null && Math.abs(when - 1 - new Date(periodControl.currentStart).getTime()) < 1000
+                return (
+                  <button
+                    key={payment.id}
+                    type="button"
+                    onClick={() => setPeriodStartFromPayment(payment)}
+                    disabled={periodLoading}
+                    className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-emerald-50 disabled:opacity-50 ${isCurrentStart ? "bg-emerald-50" : ""}`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-gray-900">{paymentStudentLabel(payment)}</span>
+                      <span className="block text-xs text-gray-400">{when != null ? formatDate(new Date(when).toISOString()) : "—"}{isCurrentStart ? " · début actuel" : ""}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold text-gray-900">{formatCurrency(paymentReceivedAmount(payment))}</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+          {periodControl.isManual && (
+            <Button variant="outline" onClick={resetPeriodStart} disabled={periodLoading} className="w-full">
+              {periodLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RotateCcw className="h-4 w-4 mr-1" />}
+              Réinitialiser (calcul automatique le 25)
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

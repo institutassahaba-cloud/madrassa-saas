@@ -18,6 +18,9 @@ export function ensurePaymentScanSettingsColumns() {
     // pour afficher une alerte visible au lieu d'un échec silencieux.
     addColumn('ALTER TABLE "TenantSettings" ADD COLUMN "paymentScanLastRunAt" DATETIME'),
     addColumn('ALTER TABLE "TenantSettings" ADD COLUMN "paymentScanLastError" TEXT'),
+    // Début manuel de la « période en cours » : quand le directeur pointe un
+    // paiement précis comme départ. Null = calcul automatique (25 du mois, etc.).
+    addColumn('ALTER TABLE "TenantSettings" ADD COLUMN "paymentPeriodStartAt" DATETIME'),
   ]).then(() => undefined)
 
   return paymentScanSettingsReady

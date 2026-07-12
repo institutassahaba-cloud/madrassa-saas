@@ -10,7 +10,7 @@ export async function getValidatedPaymentPeriodStart(tenantId: string, now = new
   const [scanSettings, latestSecretarySalary] = await Promise.all([
     prisma.tenantSettings.findUnique({
       where: { tenantId },
-      select: { paymentScanStartedAt: true },
+      select: { paymentScanStartedAt: true, paymentPeriodStartAt: true },
     }),
     prisma.teacherSalary.findFirst({
       where: {
@@ -23,6 +23,11 @@ export async function getValidatedPaymentPeriodStart(tenantId: string, now = new
     }),
   ])
 
+  // Override manuel : si le directeur a pointé un paiement précis comme départ
+  // de la période en cours, il fait autorité (il peut être plus ancien ou plus
+  // récent que le calcul auto). « Réinitialiser » remet ce champ à null.
+  if (scanSettings?.paymentPeriodStartAt) return scanSettings.paymentPeriodStartAt
+
   const starts = [
     getBillingCycleStart(now),
     scanSettings?.paymentScanStartedAt ?? null,
@@ -30,6 +35,16 @@ export async function getValidatedPaymentPeriodStart(tenantId: string, now = new
   ].filter((date): date is Date => Boolean(date))
 
   return starts.reduce((latest, date) => (date > latest ? date : latest))
+}
+
+// Indique si la période courante est un override manuel (pour l'UI : label +
+// bouton « Réinitialiser »).
+export async function getManualPeriodStart(tenantId: string): Promise<Date | null> {
+  const settings = await prisma.tenantSettings.findUnique({
+    where: { tenantId },
+    select: { paymentPeriodStartAt: true },
+  })
+  return settings?.paymentPeriodStartAt ?? null
 }
 
 export function validatedPaymentAmount(payment: { amount?: number | null; receivedAmount?: number | null }) {
