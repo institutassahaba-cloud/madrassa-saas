@@ -44,9 +44,12 @@ export const POST = wrap(async (req: Request) => {
     return NextResponse.json({ error: "studentId and subject required" }, { status: 400 })
   }
 
-  const resolvedLessonCount = lessonCount == null || lessonCount === "" ? 8 : Number(lessonCount)
-  if (!Number.isInteger(resolvedLessonCount) || resolvedLessonCount < 1 || resolvedLessonCount > 100) {
-    return NextResponse.json({ error: "lessonCount must be between 1 and 100" }, { status: 400 })
+  const hasExplicitLessonCount = !(lessonCount == null || lessonCount === "")
+  if (hasExplicitLessonCount) {
+    const n = Number(lessonCount)
+    if (!Number.isInteger(n) || n < 1 || n > 100) {
+      return NextResponse.json({ error: "lessonCount must be between 1 and 100" }, { status: 400 })
+    }
   }
 
   const student = await prisma.student.findFirst({
@@ -54,6 +57,17 @@ export const POST = wrap(async (req: Request) => {
     include: { group: { select: { teacherId: true } } },
   })
   if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
+
+  // Nombre de cours d'une nouvelle session = FORFAIT de l'élève (cours par
+  // semaine × 4 semaines) quand il n'est pas fourni explicitement. Avant, le
+  // défaut était codé en dur à 8 → la validation d'un paiement créait toujours
+  // 8 cours quel que soit le forfait (élève à 4 cours/mois → 8 crédités à tort).
+  // Repli sur 8 si le forfait n'est pas renseigné.
+  const resolvedLessonCount = hasExplicitLessonCount
+    ? Number(lessonCount)
+    : student.lessonsPerWeek && student.lessonsPerWeek > 0
+      ? student.lessonsPerWeek * 4
+      : 8
   if (user.role === "TEACHER") {
     const canManageStudent =
       student.group?.teacherId === user.id ||
