@@ -181,17 +181,20 @@ function toAmount(raw: string | null | undefined) {
   return Number.isFinite(amount) && amount > 0 ? amount : null
 }
 
-// Montant : logique portée du script Apps Script éprouvé. On lit le corps
-// nettoyé (imité de getPlainBody) et on prend le 1er montant en euros, en
-// privilégiant les formats à 2 décimales (« 28,00 € ») puis « 56 EUR ».
+// Montant : on lit le montant reçu de façon robuste. IMPORTANT : ne JAMAIS
+// utiliser « (?:€|eur)\b » — le symbole € n'est pas un caractère de mot, donc
+// « \b » après € ne matche jamais le format réel « 22,00 € EUR » (le montant
+// finissait null → le paiement était ignoré → scan cassé). On privilégie
+// « Montant reçu », puis les tournures « vous a envoyé / avez reçu X € », puis
+// le 1er montant à 2 décimales, sans jamais exiger de frontière après €.
 function extractAmount(text: string) {
   const t = normalizeSpaces(text)
   const patterns = [
-    /(\d+[.,]\d{2})\s?(?:€|EUR)\b/i,
-    /(?:€|EUR)\s?(\d+[.,]\d{2})/i,
-    /(\d+)\s?(?:€|EUR)\b/i,
-    /montant\s+re[çc]u[^0-9]{0,30}(\d+[.,]?\d*)/i,
-    /montant[^0-9]{0,30}(\d+[.,]?\d*)/i,
+    /montant\s+re[çc]u[^0-9]{0,30}(\d+(?:[.,]\d{1,2})?)/i,
+    /(?:vous\s+a\s+envoy[ée]|vous\s+avez\s+re[çc]u)[^0-9]{0,20}(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur)/i,
+    /(\d+[.,]\d{2})\s*(?:€|eur)/i,
+    /(?:€|eur)\s*(\d+[.,]\d{2})/i,
+    /(\d+)\s*(?:€|eur\b)/i,
   ]
   for (const pattern of patterns) {
     const match = t.match(pattern)
