@@ -161,6 +161,16 @@ function displayReference(match: Pick<PaymentMatch, "paymentReference" | "gmailM
   return legacy
 }
 
+function paymentMonthKeyFromTime(time: number) {
+  const date = new Date(time)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+}
+
+function formatPaymentMonthLabel(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number)
+  return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+}
+
 export function PaymentsClient({
   payments,
   students,
@@ -203,7 +213,7 @@ export function PaymentsClient({
   const router = useRouter()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
-  const [periodFilter, setPeriodFilter] = useState("CURRENT")
+  const [periodFilter] = useState("CURRENT")
   const [teacherFilter, setTeacherFilter] = useState("ALL")
   const [unprocessedDateFrom, setUnprocessedDateFrom] = useState("")
   const [unprocessedDateTo, setUnprocessedDateTo] = useState("")
@@ -220,9 +230,12 @@ export function PaymentsClient({
   const [importLoading, setImportLoading] = useState(false)
   const [unprocessedOpen, setUnprocessedOpen] = useState(true)
   const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
-  const [confirmedOpen, setConfirmedOpen] = useState(false)
+  const [confirmedOpen, setConfirmedOpen] = useState(true)
   const [trashOpen, setTrashOpen] = useState(false)
   const [directorOpen, setDirectorOpen] = useState(false)
+  const [pendingOpen, setPendingOpen] = useState(true)
+  const [historyOpen, setHistoryOpen] = useState(true)
+  const [historyMonthKey, setHistoryMonthKey] = useState("LATEST")
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false)
   const [periodLoading, setPeriodLoading] = useState(false)
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
@@ -334,15 +347,33 @@ export function PaymentsClient({
     return matchSearch && matchTeacher
   }
 
+  const paymentHistoryMonths = useMemo(() => {
+    const months = new Map<string, number>()
+    for (const payment of payments) {
+      const key = paymentMonthKeyFromTime(paymentDateValue(payment))
+      months.set(key, (months.get(key) ?? 0) + 1)
+    }
+    return Array.from(months.entries())
+      .map(([key, count]) => ({ key, count, label: formatPaymentMonthLabel(key) }))
+      .sort((a, b) => b.key.localeCompare(a.key))
+  }, [payments])
+  const activeHistoryMonthKey = historyMonthKey === "LATEST"
+    ? paymentHistoryMonths[0]?.key ?? "ALL"
+    : historyMonthKey
+  const activeHistoryMonthIndex = paymentHistoryMonths.findIndex((month) => month.key === activeHistoryMonthKey)
+
+  function matchesSelectedHistoryMonth(payment: Payment) {
+    if (activeHistoryMonthKey === "ALL") return true
+    return paymentMonthKeyFromTime(paymentDateValue(payment)) === activeHistoryMonthKey
+  }
+
   const filtered = payments.filter((p) => {
     const matchStatus =
       statusFilter === "ALL" ? true
       : statusFilter === "PAID" ? (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)
       : statusFilter === "AWAITING" ? (PAYMENT_AWAITING_STATUSES as readonly string[]).includes(p.status)
       : p.status === statusFilter
-    const paymentDate = paymentDateValue(p)
-    const matchPeriod = matchesSelectedPeriod(paymentDate)
-    return matchesPaymentSearchAndTeacher(p) && matchStatus && matchPeriod
+    return matchesPaymentSearchAndTeacher(p) && matchStatus && matchesSelectedHistoryMonth(p)
   }).sort((a, b) => {
     const direction = sortDirection === "asc" ? 1 : -1
     if (sortKey === "student") {
@@ -787,6 +818,64 @@ export function PaymentsClient({
         </Card>
       </div>
 
+      {pendingPayments.length > 0 && (
+        <Card className="border-amber-200">
+          <CardContent className="space-y-3 p-4">
+            <button
+              type="button"
+              onClick={() => setPendingOpen((value) => !value)}
+              className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <h3 className="font-semibold text-gray-900">Paiements en attente</h3>
+                <p className="text-sm text-gray-500">Vert : 1 à 3 jours · Orange : 4 à 5 jours · Rouge : 6 jours et plus.</p>
+              </div>
+              <span className="flex items-center gap-2">
+                <Badge variant="warning">{pendingPayments.length} en attente</Badge>
+                {pendingOpen ? <ChevronUp className="h-4 w-4 text-amber-700" /> : <ChevronDown className="h-4 w-4 text-amber-700" />}
+              </span>
+            </button>
+            {pendingOpen && (
+              <div className="grid gap-2 lg:grid-cols-2">
+                {pendingPayments.map((payment) => {
+                  const days = pendingAgeDays(payment)
+                  return (
+                    <div key={payment.id} className={`rounded-xl border p-3 ${pendingTone(days)}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">{paymentStudentLabel(payment)}</p>
+                          {payment.student.paymentGraceAllowed && (
+                            <p className="mt-0.5 text-xs font-medium text-amber-700">Cours autorisé par le directeur</p>
+                          )}
+                          <p className="text-xs opacity-80">
+                            {payment.lessonSession?.subject || "Session"} · Session {payment.sessionNumber ?? payment.lessonSession?.number ?? "—"}
+                            {` · Professeur : ${paymentTeacherName(payment)}`}
+                            {payment.student.group?.name ? ` · ${payment.student.group.name}` : ""}
+                          </p>
+                        </div>
+                        <Badge variant={days >= 6 ? "destructive" : days >= 4 ? "warning" : "success"}>{days} j</Badge>
+                      </div>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm font-semibold">{formatCurrency(payment.amount)}</p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full justify-center bg-white/90 text-gray-900 hover:bg-white sm:w-auto"
+                          onClick={() => { setEditPayment(payment); setDialogOpen(true) }}
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
+                          Ajouter manuellement le paiement
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Calcul paie secrétaire (directeur) */}
       {isDirector && <SecretaryPayBlock />}
 
@@ -1134,8 +1223,7 @@ export function PaymentsClient({
         </Card>
       )}
 
-      {confirmedPaymentMatches.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50/60">
+      <Card className="border-blue-200 bg-blue-50/60">
           <CardContent className="space-y-3 p-4">
             <button
               type="button"
@@ -1145,7 +1233,7 @@ export function PaymentsClient({
               <div>
                 <h3 className="font-semibold text-blue-900">Paiements validés (récents)</h3>
                 <p className="text-sm text-blue-700">
-                  En cas d&apos;erreur, annulez pour ré-attribuer : les sessions concernées repasseront en « non payé ».
+                  Paiements validés de la période en cours. En cas d&apos;erreur, annulez pour ré-attribuer.
                 </p>
               </div>
               <span className="flex items-center gap-2">
@@ -1175,7 +1263,11 @@ export function PaymentsClient({
                   Remettre dans la période en cours
                 </Button>
               </div>
-              {confirmedPaymentMatches.map((match) => {
+              {confirmedPaymentMatches.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-blue-200 bg-white/70 p-6 text-center text-sm text-blue-800">
+                  Aucun paiement validé dans la période en cours.
+                </div>
+              ) : confirmedPaymentMatches.map((match) => {
                 const allocated = allocatedTotal(match)
                 const partial = allocated != null && match.receivedAmount - allocated > 0.01
                 return (
@@ -1216,7 +1308,6 @@ export function PaymentsClient({
             </div>}
           </CardContent>
         </Card>
-      )}
 
       {trashedPaymentMatches.length > 0 && (
         <Card className="border-gray-200 bg-gray-50">
@@ -1379,94 +1470,93 @@ export function PaymentsClient({
         </Card>
       )}
 
-      {pendingPayments.length > 0 && (
-        <Card>
-          <CardContent className="space-y-3 p-4">
+      {/* History */}
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((value) => !value)}
+            className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
+          >
             <div>
-              <h3 className="font-semibold text-gray-900">Paiements en attente</h3>
-              <p className="text-sm text-gray-500">Vert : 1 à 3 jours · Orange : 4 à 5 jours · Rouge : 6 jours et plus.</p>
+              <h3 className="font-semibold text-gray-900">Historique des paiements</h3>
+              <p className="text-sm text-gray-500">Classé par mois avec recherche, professeur et statut.</p>
             </div>
-            <div className="grid gap-2 lg:grid-cols-2">
-              {pendingPayments.map((payment) => {
-                const days = pendingAgeDays(payment)
-                return (
-                  <div key={payment.id} className={`rounded-xl border p-3 ${pendingTone(days)}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold">{paymentStudentLabel(payment)}</p>
-                        {payment.student.paymentGraceAllowed && (
-                          <p className="mt-0.5 text-xs font-medium text-amber-700">Cours autorisé par le directeur</p>
-                        )}
-                        <p className="text-xs opacity-80">
-                          {payment.lessonSession?.subject || "Session"} · Session {payment.sessionNumber ?? payment.lessonSession?.number ?? "—"}
-                          {` · Professeur : ${paymentTeacherName(payment)}`}
-                          {payment.student.group?.name ? ` · ${payment.student.group.name}` : ""}
-                        </p>
-                      </div>
-                      <Badge variant={days >= 6 ? "destructive" : days >= 4 ? "warning" : "success"}>{days} j</Badge>
-                    </div>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm font-semibold">{formatCurrency(payment.amount)}</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full justify-center bg-white/90 text-gray-900 hover:bg-white sm:w-auto"
-                        onClick={() => { setEditPayment(payment); setDialogOpen(true) }}
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                        Ajouter manuellement le paiement
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            <span className="flex items-center gap-2">
+              <Badge variant="secondary">{filtered.length} paiement(s)</Badge>
+              {historyOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+            </span>
+          </button>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_12rem_10rem_minmax(16rem,18rem)]">
-            <div className="relative min-w-0">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input placeholder="Rechercher..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-            <Select value={teacherFilter} onValueChange={setTeacherFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Professeur" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tous professeurs</SelectItem>
-                {teachers.map((teacher) => (
-                  <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Statut" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tous statuts</SelectItem>
-                <SelectItem value="PAID">Payé</SelectItem>
-                <SelectItem value="AWAITING">En attente</SelectItem>
-                <SelectItem value="REJECTED">Rejeté</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={periodFilter} onValueChange={setPeriodFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Période" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Toutes les périodes</SelectItem>
-                {paymentPeriods.map((period) => (
-                  <SelectItem key={period.id} value={period.id}>{period.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          {historyOpen && (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_12rem_10rem_minmax(16rem,18rem)]">
+                <div className="relative min-w-0">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input placeholder="Rechercher..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
+                <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Professeur" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tous professeurs</SelectItem>
+                    {teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Statut" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tous statuts</SelectItem>
+                    <SelectItem value="PAID">Payé</SelectItem>
+                    <SelectItem value="AWAITING">En attente</SelectItem>
+                    <SelectItem value="REJECTED">Rejeté</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={activeHistoryMonthKey} onValueChange={setHistoryMonthKey}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Mois" /></SelectTrigger>
+                  <SelectContent>
+                    {paymentHistoryMonths.length === 0 ? (
+                      <SelectItem value="ALL">Aucun mois</SelectItem>
+                    ) : (
+                      paymentHistoryMonths.map((month) => (
+                        <SelectItem key={month.key} value={month.key}>{month.label} ({month.count})</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
+              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium capitalize text-gray-900">
+                    {activeHistoryMonthKey === "ALL" ? "Tous les mois" : formatPaymentMonthLabel(activeHistoryMonthKey)}
+                  </p>
+                  <p className="text-xs text-gray-500">Une page par mois dans l&apos;historique.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={activeHistoryMonthIndex < 0 || activeHistoryMonthIndex >= paymentHistoryMonths.length - 1}
+                    onClick={() => setHistoryMonthKey(paymentHistoryMonths[activeHistoryMonthIndex + 1]?.key ?? activeHistoryMonthKey)}
+                  >
+                    Mois précédent
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={activeHistoryMonthIndex <= 0}
+                    onClick={() => setHistoryMonthKey(paymentHistoryMonths[activeHistoryMonthIndex - 1]?.key ?? activeHistoryMonthKey)}
+                  >
+                    Mois suivant
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1536,6 +1626,9 @@ export function PaymentsClient({
               )}
             </TableBody>
           </Table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

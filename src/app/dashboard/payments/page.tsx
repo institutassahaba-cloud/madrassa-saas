@@ -20,8 +20,9 @@ export default async function PaymentsPage() {
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
+  const currentPaymentPeriodStart = await getValidatedPaymentPeriodStart(user.tenantId, now)
 
-  const [payments, students, teachers, groups, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods, currentPaymentPeriodStart] = await Promise.all([
+  const [payments, students, teachers, groups, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -97,13 +98,20 @@ export default async function PaymentsPage() {
       take: 30,
     }),
     prisma.paymentMatch.findMany({
-      where: { tenantId: user.tenantId, status: "CONFIRMED" },
+      where: {
+        tenantId: user.tenantId,
+        status: "CONFIRMED",
+        OR: [
+          { confirmedAt: { gt: currentPaymentPeriodStart, lte: now } },
+          { confirmedAt: null, paymentDate: { gt: currentPaymentPeriodStart, lte: now } },
+        ],
+      },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
         allocations: { select: { amount: true } },
       },
       orderBy: { confirmedAt: "desc" },
-      take: 30,
+      take: 200,
     }),
     prisma.paymentMatch.findMany({
       where: { tenantId: user.tenantId, status: "TRASHED" },
@@ -144,7 +152,6 @@ export default async function PaymentsPage() {
       select: { periodStart: true, periodEnd: true, createdAt: true },
       orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
     }),
-    getValidatedPaymentPeriodStart(user.tenantId, now),
   ])
 
   // Clé "studentId:sessionNumber" -> date du paiement le plus récent.
