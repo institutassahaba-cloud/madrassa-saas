@@ -1,11 +1,5 @@
-// ╔══════════════════════════════════════════════════════════════════╗
-// ║  TODO AVANT DÉPLOIEMENT :                                      ║
-// ║  Configurer un cron quotidien (ex: cron-job.org) qui appelle : ║
-// ║  GET https://TON-DOMAINE/api/cron/check-inactivity             ║
-// ║  Header: Authorization: Bearer <CRON_SECRET>                   ║
-// ║  Planification : tous les jours à 8h00                         ║
-// ║  → Alerte directeur + secrétaires si un prof est inactif       ║
-// ╚══════════════════════════════════════════════════════════════════╝
+// Cron Vercel quotidien (voir vercel.json, 8h UTC) :
+// alerte directeur + secrétaires si un prof ne s'est pas connecté depuis 4 jours.
 
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
