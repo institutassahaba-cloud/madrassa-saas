@@ -591,9 +591,12 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   let skipped = 0
   let ignored = 0
   const ignoredReasons: Record<string, number> = {}
-  const ignore = (reason: string) => {
+  const ignoredSamples: Array<{ reason: string; from: string; subject: string; date: string | null }> = []
+  const skippedMatches: Array<{ status: string; payerName: string | null; reference: string | null; amount: number }> = []
+  const ignore = (reason: string, sample?: { from: string; subject: string; date: string | null }) => {
     ignored += 1
     ignoredReasons[reason] = (ignoredReasons[reason] ?? 0) + 1
+    if (sample && ignoredSamples.length < 5) ignoredSamples.push(sample)
   }
 
   for (const message of messages) {
@@ -620,6 +623,11 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     const subject = headerValue(headers, "subject")
     const dateHeader = headerValue(headers, "date")
     const fromHeader = headerValue(headers, "from")
+    const sample = {
+      from: cleanText(fromHeader).slice(0, 120),
+      subject: cleanText(subject).slice(0, 160),
+      date: internalDate?.toISOString() ?? null,
+    }
     if (paymentEmail && normalizeEmail(fromHeader).includes(normalizeEmail(paymentEmail))) {
       skipped += 1
       continue
@@ -629,7 +637,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     // « institutassahaba ». Leur tableau récap contient « Montant reçu » + « PayPal »
     // et piégeait detectSource → faux paiements « Payeur non détecté » 28 €.
     if (/institut\.?assahaba/i.test(fromHeader) || /r[ée]capitulatif\s+paiements/i.test(subject)) {
-      ignore("mail interne institut")
+      ignore("mail interne institut", sample)
       continue
     }
     // Corps nettoyé « à la Gmail » (getPlainBody) : le sujet reste sur sa
@@ -642,16 +650,16 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     // (« Vous avez envoyé »). Ce filtre s'applique à TOUS les scans (avant, il ne
     // valait qu'en import manuel → d'où les lignes « Payeur non détecté » 28 €).
     if (!["PAYPAL", "WISE"].includes(source)) {
-      ignore("expéditeur ou modèle non reconnu Wise/PayPal")
+      ignore("expéditeur ou modèle non reconnu Wise/PayPal", sample)
       continue
     }
     if (source === "PAYPAL" && isOutgoingPaypal(subject, combined)) {
-      ignore("PayPal sortant")
+      ignore("PayPal sortant", sample)
       continue
     }
     const amount = extractAmount(combined)
     if (!amount) {
-      ignore("montant introuvable")
+      ignore("montant introuvable", sample)
       continue
     }
     // Verrou anti-doublon = l'ID Gmail RÉEL du message (unique par nature).
@@ -665,7 +673,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     const detectedPayerName = extractPayerName(source, combined, fromHeader)
     const paymentLabel = extractLabel(subject, combined)
     if (payerQuery && !matchesPayerSearch(payerQuery, [detectedPayerName, paymentLabel, subject, full.data.snippet, bodyText])) {
-      ignore("ne correspond pas à la recherche")
+      ignore("ne correspond pas à la recherche", sample)
       continue
     }
     // On retrouve la ligne existante par le nouvel ID Gmail, mais aussi par les
@@ -687,6 +695,14 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       },
     })
     if (existing) {
+      if (payerQuery && skippedMatches.length < 5) {
+        skippedMatches.push({
+          status: existing.status,
+          payerName: detectedPayerName ?? existing.detectedPayerName ?? null,
+          reference: paymentReference ?? existing.paymentReference ?? null,
+          amount,
+        })
+      }
       // La migration de clé (ancienne réf → ID Gmail réel) s'applique à tous les
       // statuts sans jamais toucher aux autres champs.
       const needsKeyMigration = existing.gmailMessageId !== gmailId
@@ -774,6 +790,9 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       select: { id: true },
     })
     if (alreadyAttributed) {
+      if (payerQuery && skippedMatches.length < 5) {
+        skippedMatches.push({ status: "PAYMENT_ALREADY_ATTRIBUTED", payerName: detectedPayerName, reference: paymentReference, amount })
+      }
       skipped += 1
       continue
     }
@@ -845,5 +864,5 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     created += 1
   }
 
-  return { ok: true, created, updated, skipped, ignored, ignoredReasons, scanned: messages.length, query }
+  return { ok: true, created, updated, skipped, ignored, ignoredReasons, ignoredSamples, skippedMatches, scanned: messages.length, query }
 }

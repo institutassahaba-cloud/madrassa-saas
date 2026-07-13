@@ -151,13 +151,30 @@ function matchStatusConfig(status: string): { label: string; variant: "default" 
   return { label: status, variant: "outline" }
 }
 
-function formatScanDiagnostics(data: { ignoredReasons?: Record<string, number> }) {
+function formatScanDiagnostics(data: {
+  ignoredReasons?: Record<string, number>
+  ignoredSamples?: Array<{ reason: string; from: string; subject: string; date: string | null }>
+  skippedMatches?: Array<{ status: string; payerName: string | null; reference: string | null; amount: number }>
+}) {
+  const sections: string[] = []
   const entries = Object.entries(data.ignoredReasons ?? {}).filter(([, count]) => Number(count) > 0)
-  if (entries.length === 0) return ""
-  return `\n\nDétail des emails non exploitables :\n${entries
+  if (entries.length > 0) {
+    sections.push(`Détail des emails non exploitables :\n${entries
     .sort((a, b) => Number(b[1]) - Number(a[1]))
     .map(([reason, count]) => `- ${count} : ${reason}`)
-    .join("\n")}`
+    .join("\n")}`)
+  }
+  if ((data.skippedMatches ?? []).length > 0) {
+    sections.push(`Déjà connus trouvés :\n${data.skippedMatches!
+      .map((item) => `- ${item.status} : ${item.payerName || "payeur inconnu"} · ${formatCurrency(item.amount)} · ${item.reference || "sans référence"}`)
+      .join("\n")}`)
+  }
+  if ((data.ignoredSamples ?? []).length > 0) {
+    sections.push(`Exemples rejetés :\n${data.ignoredSamples!
+      .map((item) => `- ${item.reason} · ${item.from || "expéditeur inconnu"} · ${item.subject || "sans sujet"}`)
+      .join("\n")}`)
+  }
+  return sections.length ? `\n\n${sections.join("\n\n")}` : ""
 }
 
 // Référence lisible à afficher : la vraie référence (n° transfert Wise / transaction
