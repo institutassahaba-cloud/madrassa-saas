@@ -323,6 +323,19 @@ function similarity(left: string, right: string) {
   return total ? common / total : 0
 }
 
+function matchesPayerSearch(query: string, values: Array<string | null | undefined>) {
+  const needle = normalizeMatchName(query)
+  if (!needle) return true
+  const words = needle.split(" ").filter((word) => word.length > 1)
+  return values.some((value) => {
+    const normalized = normalizeMatchName(value)
+    if (!normalized) return false
+    if (normalized.includes(needle)) return true
+    if (words.length > 0 && words.every((word) => normalized.includes(word))) return true
+    return similarity(query, normalized) >= 0.45
+  })
+}
+
 async function suggestStudentForPayment(tenantId: string, source: string, payerName: string | null, label: string | null) {
   await ensurePaymentAliasSchema()
   const candidates = await prisma.paymentAlias.findMany({
@@ -550,8 +563,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   const gmail = await getGmailClient(tenantId)
   const paymentEmail = process.env.PAYMENT_EMAIL ?? process.env.GMAIL_PAYMENT_USER ?? process.env.FACTURATION_EMAIL ?? DEFAULT_FACTURATION_EMAIL
   const query = [
-    payerQuery ? `"${payerQuery}"` : "",
-    startedAt ? afterDateQuery(startedAt) : (payerQuery ? "" : "newer_than:45d"),
+    startedAt ? afterDateQuery(startedAt) : (payerQuery ? "newer_than:365d" : "newer_than:45d"),
     endedAt ? beforeDateQuery(endedAt) : "",
     paymentProviderQuery(manualImport, payerQuery),
     paymentEmail ? `-from:${paymentEmail}` : "",
@@ -578,6 +590,11 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   let updated = 0
   let skipped = 0
   let ignored = 0
+  const ignoredReasons: Record<string, number> = {}
+  const ignore = (reason: string) => {
+    ignored += 1
+    ignoredReasons[reason] = (ignoredReasons[reason] ?? 0) + 1
+  }
 
   for (const message of messages) {
     if (!message.id) continue
@@ -612,7 +629,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     // « institutassahaba ». Leur tableau récap contient « Montant reçu » + « PayPal »
     // et piégeait detectSource → faux paiements « Payeur non détecté » 28 €.
     if (/institut\.?assahaba/i.test(fromHeader) || /r[ée]capitulatif\s+paiements/i.test(subject)) {
-      ignored += 1
+      ignore("mail interne institut")
       continue
     }
     // Corps nettoyé « à la Gmail » (getPlainBody) : le sujet reste sur sa
@@ -625,16 +642,16 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     // (« Vous avez envoyé »). Ce filtre s'applique à TOUS les scans (avant, il ne
     // valait qu'en import manuel → d'où les lignes « Payeur non détecté » 28 €).
     if (!["PAYPAL", "WISE"].includes(source)) {
-      ignored += 1
+      ignore("expéditeur ou modèle non reconnu Wise/PayPal")
       continue
     }
     if (source === "PAYPAL" && isOutgoingPaypal(subject, combined)) {
-      ignored += 1
+      ignore("PayPal sortant")
       continue
     }
     const amount = extractAmount(combined)
     if (!amount) {
-      ignored += 1
+      ignore("montant introuvable")
       continue
     }
     // Verrou anti-doublon = l'ID Gmail RÉEL du message (unique par nature).
@@ -647,6 +664,10 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     const reference = extractedReference || `gmail:${gmailId}` // conservé pour lier le Payment
     const detectedPayerName = extractPayerName(source, combined, fromHeader)
     const paymentLabel = extractLabel(subject, combined)
+    if (payerQuery && !matchesPayerSearch(payerQuery, [detectedPayerName, paymentLabel, subject, full.data.snippet, bodyText])) {
+      ignore("ne correspond pas à la recherche")
+      continue
+    }
     // On retrouve la ligne existante par le nouvel ID Gmail, mais aussi par les
     // anciennes clés (référence extraite, ou repli « gmail:<id> ») pour migrer les
     // lignes déjà en base sans jamais créer de doublon.
@@ -824,5 +845,5 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     created += 1
   }
 
-  return { ok: true, created, updated, skipped, ignored, scanned: messages.length, query }
+  return { ok: true, created, updated, skipped, ignored, ignoredReasons, scanned: messages.length, query }
 }

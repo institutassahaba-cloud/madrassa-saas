@@ -42,6 +42,15 @@ function statusColor(dateStr: string | null, isActive: boolean) {
   return { bg: "bg-red-50", dot: "bg-red-500", label: "Inactif" }
 }
 
+function formatScanDiagnostics(data: { ignoredReasons?: Record<string, number> }) {
+  const entries = Object.entries(data.ignoredReasons ?? {}).filter(([, count]) => Number(count) > 0)
+  if (entries.length === 0) return ""
+  return `\n\nDétail des emails non exploitables :\n${entries
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([reason, count]) => `- ${count} : ${reason}`)
+    .join("\n")}`
+}
+
 function ConnectionState({ connected }: { connected: boolean }) {
   return (
     <span className={`inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none ${connected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
@@ -104,7 +113,7 @@ export function ConnexionsClient({ members: initial, userRole, mailStatus }: { m
         alert(data.error || "Lecture de la boîte facturation impossible.")
         return
       }
-      alert(`${data.created ?? 0} nouveau(x) paiement(s) détecté(s). ${data.updated ?? 0} complété(s) (nom rattrapé). ${data.skipped ?? 0} email(s) ignoré(s).`)
+      alert(`${data.created ?? 0} nouveau(x) paiement(s) détecté(s). ${data.updated ?? 0} complété(s) (nom rattrapé). ${data.skipped ?? 0} email(s) déjà connu(s). ${data.ignored ?? 0} email(s) non exploitable(s).${formatScanDiagnostics(data)}`)
       window.location.href = "/dashboard/payments"
     } finally {
       setScanLoading(false)

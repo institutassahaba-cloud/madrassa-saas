@@ -151,6 +151,15 @@ function matchStatusConfig(status: string): { label: string; variant: "default" 
   return { label: status, variant: "outline" }
 }
 
+function formatScanDiagnostics(data: { ignoredReasons?: Record<string, number> }) {
+  const entries = Object.entries(data.ignoredReasons ?? {}).filter(([, count]) => Number(count) > 0)
+  if (entries.length === 0) return ""
+  return `\n\nDétail des emails non exploitables :\n${entries
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([reason, count]) => `- ${count} : ${reason}`)
+    .join("\n")}`
+}
+
 // Référence lisible à afficher : la vraie référence (n° transfert Wise / transaction
 // PayPal) en priorité. Sinon, pour les anciennes lignes, on tolère l'ancienne clé —
 // mais on masque l'ID Gmail brut (hex), inutile à l'utilisateur.
@@ -459,7 +468,7 @@ export function PaymentsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Import des paiements impossible.")
-      alert(`${data.created ?? 0} paiement(s) importé(s).\n${data.updated ?? 0} paiement(s) complété(s).\n${data.skipped ?? 0} paiement(s) ignoré(s) car déjà connus ou déjà attribués.\n${data.ignored ?? 0} email(s) scanné(s) mais non exploitables.\n${data.scanned ?? 0} email(s) scanné(s) au total.`)
+      alert(`${data.created ?? 0} paiement(s) importé(s).\n${data.updated ?? 0} paiement(s) complété(s).\n${data.skipped ?? 0} paiement(s) ignoré(s) car déjà connus ou déjà attribués.\n${data.ignored ?? 0} email(s) scanné(s) mais non exploitables.\n${data.scanned ?? 0} email(s) scanné(s) au total.${formatScanDiagnostics(data)}`)
       window.location.reload()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Import des paiements impossible.")
@@ -483,7 +492,7 @@ export function PaymentsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Recherche Gmail impossible.")
-      alert(`Recherche « ${name} » :\n${data.created ?? 0} nouveau(x) paiement(s) importé(s).\n${data.updated ?? 0} complété(s).\n${data.skipped ?? 0} déjà connu(s).\n${data.scanned ?? 0} email(s) scanné(s).`)
+      alert(`Recherche « ${name} » :\n${data.created ?? 0} nouveau(x) paiement(s) importé(s).\n${data.updated ?? 0} complété(s).\n${data.skipped ?? 0} déjà connu(s).\n${data.ignored ?? 0} non exploitable(s).\n${data.scanned ?? 0} email(s) scanné(s).${formatScanDiagnostics(data)}`)
       window.location.reload()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Recherche Gmail impossible.")
