@@ -214,8 +214,7 @@ model PaymentAlias {
   @@index([tenantId, type])
 }
 
-// Payeurs identifiés comme étant pour le directeur (pas un élève) : virements
-// personnels (ex: épouse, fille...) reçus sur la même boîte de facturation.
+// Payeurs identifiés comme élèves/familles du directeur, hors institut.
 // Appris manuellement une fois, puis reconnus automatiquement au scan suivant.
 model DirectorPayerAlias {
   id         String    @id @default(cuid())

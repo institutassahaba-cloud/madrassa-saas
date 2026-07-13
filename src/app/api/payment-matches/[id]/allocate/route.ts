@@ -154,8 +154,8 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
     ).catch((err) => console.error("[alias] apprentissage échoué:", err))
   }
 
-  // Part « directeur » : le reste non alloué du virement est tracé comme un
-  // PaymentMatch DIRECTOR séparé (trouvable, jamais compté dans les revenus).
+  // Part « élèves du directeur » : le reste non alloué du virement est tracé
+  // comme un PaymentMatch DIRECTOR séparé (trouvable, jamais compté dans les revenus).
   // Le nom du payeur n'est PAS appris comme payeur directeur : il paie aussi
   // des sessions d'élèves.
   const remainder = +(match.receivedAmount - totalAllocated).toFixed(2)
@@ -172,14 +172,14 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
         paymentLabel: match.paymentLabel,
         paymentDate: match.paymentDate,
         status: "DIRECTOR",
-        reason: `Part pour le directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
+        reason: `Part élèves du directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
         rawSubject: match.rawSubject,
       },
       update: {
         receivedAmount: remainder,
         paymentReference: match.paymentReference,
         status: "DIRECTOR",
-        reason: `Part pour le directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
+        reason: `Part élèves du directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
       },
     })
   }

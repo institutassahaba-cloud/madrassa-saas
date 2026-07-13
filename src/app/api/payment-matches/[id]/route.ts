@@ -22,7 +22,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
 
   if (action === "trash") {
     if (match.status !== "TO_VERIFY") {
-      return NextResponse.json({ error: "Seuls les paiements non traités peuvent être mis à la corbeille." }, { status: 400 })
+      return NextResponse.json({ error: "Seuls les paiements à associer peuvent être ignorés." }, { status: 400 })
     }
     await prisma.paymentMatch.update({ where: { id }, data: { status: "TRASHED" } })
     return NextResponse.json({ ok: true, status: "TRASHED" })
@@ -30,7 +30,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
 
   if (action === "director") {
     if (match.status !== "TO_VERIFY") {
-      return NextResponse.json({ error: "Seuls les paiements non traités peuvent être marqués pour le directeur." }, { status: 400 })
+      return NextResponse.json({ error: "Seuls les paiements à associer peuvent être classés en élèves du directeur." }, { status: 400 })
     }
     await prisma.paymentMatch.update({ where: { id }, data: { status: "DIRECTOR" } })
     await learnDirectorPayerAlias(user.tenantId, match.source, match.detectedPayerName)
@@ -40,17 +40,17 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
 
   if (action === "restore") {
     if (match.status !== "TRASHED" && match.status !== "DIRECTOR") {
-      return NextResponse.json({ error: "Ce paiement n'est pas dans la corbeille ni marqué pour le directeur." }, { status: 400 })
+      return NextResponse.json({ error: "Ce paiement n'est pas ignoré ni classé en élèves du directeur." }, { status: 400 })
     }
     await prisma.paymentMatch.update({ where: { id }, data: { status: "TO_VERIFY" } })
     return NextResponse.json({ ok: true, status: "TO_VERIFY" })
   }
 
   if (action === "delete") {
-    // Suppression DÉFINITIVE, réservée aux paiements en corbeille (jamais un
+    // Suppression DÉFINITIVE, réservée aux paiements ignorés (jamais un
     // paiement validé/directeur/à associer). Pas d'allocation à ce stade.
     if (match.status !== "TRASHED") {
-      return NextResponse.json({ error: "Seuls les paiements en corbeille peuvent être supprimés définitivement." }, { status: 400 })
+      return NextResponse.json({ error: "Seuls les paiements ignorés peuvent être supprimés définitivement." }, { status: 400 })
     }
     await prisma.paymentMatch.delete({ where: { id } })
     return NextResponse.json({ ok: true, deleted: true })

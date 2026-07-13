@@ -146,8 +146,8 @@ function matchStatusConfig(status: string): { label: string; variant: "default" 
   if (status === "TO_VERIFY") return { label: "À associer", variant: "warning" }
   if (status === "CONFIRMED") return { label: "Validé", variant: "info" }
   if (status === "AUTO_CONFIRMED") return { label: "Auto-validé", variant: "success" }
-  if (status === "DIRECTOR") return { label: "Directeur", variant: "secondary" }
-  if (status === "TRASHED") return { label: "Corbeille", variant: "secondary" }
+  if (status === "DIRECTOR") return { label: "Élève directeur", variant: "secondary" }
+  if (status === "TRASHED") return { label: "Ignoré", variant: "secondary" }
   return { label: status, variant: "outline" }
 }
 
@@ -494,9 +494,9 @@ export function PaymentsClient({
 
   async function updatePaymentMatch(matchId: string, action: "trash" | "restore" | "director") {
     const confirmed = action === "trash"
-      ? window.confirm("Mettre ce paiement non traité dans la corbeille ? Vous pourrez le restaurer ensuite.")
+      ? window.confirm("Ignorer ce paiement ? Il quittera les paiements à associer, mais vous pourrez le restaurer ensuite.")
       : action === "director"
-        ? window.confirm("Marquer ce paiement comme étant pour le directeur ? Il ne sera plus compté ni proposé dans les paiements non traités. Le même payeur sera reconnu automatiquement la prochaine fois.")
+        ? window.confirm("Classer ce paiement dans les élèves du directeur ? Il ne sera plus compté ni proposé dans les paiements à associer. Le même payeur sera reconnu automatiquement la prochaine fois.")
         : true
     if (!confirmed) return
     setMatchActionLoading(matchId)
@@ -515,9 +515,9 @@ export function PaymentsClient({
               ...match,
               status: nextStatus,
               reason: action === "director"
-                ? "Payeur connu : paiement pour le directeur (non comptabilisé)."
+                ? "Payeur connu : élève du directeur (hors institut)."
                 : action === "trash"
-                  ? "Paiement supprimé de la liste principale."
+                  ? "Paiement ignoré : hors institut."
                   : "Paiement restauré, à associer.",
             }
           : match
@@ -569,7 +569,7 @@ export function PaymentsClient({
   async function trashSelectedMatches() {
     const visibleIds = toVerifyMatches.map((match) => match.id).filter((id) => selectedMatchIds.has(id))
     if (visibleIds.length === 0) return
-    const confirmed = window.confirm(`Mettre ${visibleIds.length} paiement(s) non traité(s) dans la corbeille ? Vous pourrez les restaurer ensuite.`)
+    const confirmed = window.confirm(`Ignorer ${visibleIds.length} paiement(s) ? Ils quitteront les paiements à associer, mais vous pourrez les restaurer ensuite.`)
     if (!confirmed) return
     setMatchActionLoading("bulk-trash")
     try {
@@ -585,7 +585,7 @@ export function PaymentsClient({
       const ids = new Set(visibleIds)
       setLocalPaymentMatches((current) => current.map((match) => (
         ids.has(match.id)
-          ? { ...match, status: "TRASHED", reason: "Paiement supprimé de la liste principale." }
+          ? { ...match, status: "TRASHED", reason: "Paiement ignoré : hors institut." }
           : match
       )))
       setSelectedMatchIds(new Set())
@@ -609,11 +609,11 @@ export function PaymentsClient({
     }
   }
 
-  // « à associer » → directeur, en lot.
+  // « à associer » → élèves du directeur, en lot.
   async function directorSelectedMatches() {
     const ids = toVerifyMatches.map((match) => match.id).filter((id) => selectedMatchIds.has(id))
     if (ids.length === 0) return
-    if (!window.confirm(`Classer ${ids.length} paiement(s) pour le directeur ? Ils quitteront la liste « à associer ».`)) return
+    if (!window.confirm(`Classer ${ids.length} paiement(s) dans les élèves du directeur ? Ils quitteront la liste « à associer ».`)) return
     setMatchActionLoading("bulk-director")
     try {
       await runBulkMatchAction(ids, "director")
@@ -626,12 +626,12 @@ export function PaymentsClient({
     }
   }
 
-  // Corbeille : restaurer OU supprimer définitivement, en lot.
+  // Paiements ignorés : restaurer OU supprimer définitivement, en lot.
   async function bulkTrashedAction(action: "restore" | "delete") {
     const ids = trashedPaymentMatches.map((match) => match.id).filter((id) => selectedTrashedIds.has(id))
     if (ids.length === 0) return
     const message = action === "delete"
-      ? `Supprimer DÉFINITIVEMENT ${ids.length} paiement(s) de la corbeille ? Action irréversible.`
+      ? `Supprimer DÉFINITIVEMENT ${ids.length} paiement(s) ignoré(s) ? Action irréversible.`
       : `Restaurer ${ids.length} paiement(s) dans « à associer » ?`
     if (!window.confirm(message)) return
     setMatchActionLoading(`bulk-trashed-${action}`)
@@ -646,11 +646,11 @@ export function PaymentsClient({
     }
   }
 
-  // Directeur → « à associer », en lot.
+  // Élèves du directeur → « à associer », en lot.
   async function restoreSelectedDirectorMatches() {
     const ids = directorPaymentMatches.map((match) => match.id).filter((id) => selectedDirectorIds.has(id))
     if (ids.length === 0) return
-    if (!window.confirm(`Remettre ${ids.length} paiement(s) dans « à associer » (ce n'est pas pour le directeur) ?`)) return
+    if (!window.confirm(`Remettre ${ids.length} paiement(s) dans « à associer » (ce n'est pas un élève du directeur) ?`)) return
     setMatchActionLoading("bulk-director-restore")
     try {
       await runBulkMatchAction(ids, "restore")
@@ -804,7 +804,7 @@ export function PaymentsClient({
           <CardContent className="p-4 flex items-center gap-3">
             <AlertTriangle className="h-8 w-8 text-red-500" />
             <div>
-              <p className="text-xs text-gray-500">À vérifier / non traités</p>
+              <p className="text-xs text-gray-500">Paiements à associer</p>
               <p className="text-lg font-bold text-gray-900">{summary.toVerify}</p>
             </div>
           </CardContent>
@@ -909,9 +909,9 @@ export function PaymentsClient({
               className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <h3 className="font-semibold text-amber-900">Paiements détectés / recherche Gmail</h3>
+                <h3 className="font-semibold text-amber-900">Paiements à associer</h3>
                 <p className="text-sm text-amber-700">
-                  Seuls les paiements <strong>à associer</strong> apparaissent ici. Une fois attribué, un paiement quitte cette liste (il passe dans « Paiements validés »).
+                  Payeurs inconnus du système : associez à un élève, classez en élèves du directeur, ou ignorez si le virement est hors institut.
                 </p>
               </div>
               <span className="flex items-center gap-2">
@@ -1001,7 +1001,7 @@ export function PaymentsClient({
                     className="border-violet-300 text-violet-900 hover:bg-violet-100"
                   >
                     {matchActionLoading === "bulk-director" ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
-                    Classer pour le directeur
+                    Élèves du directeur
                   </Button>
                   <Button
                     size="sm"
@@ -1011,7 +1011,7 @@ export function PaymentsClient({
                     className="border-amber-300 text-amber-900 hover:bg-amber-100"
                   >
                     {matchActionLoading === "bulk-trash" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    Mettre à la corbeille
+                    Ignorer
                   </Button>
                 </div>
               </div>
@@ -1020,152 +1020,119 @@ export function PaymentsClient({
                   Aucun paiement à associer. Les paiements attribués sont dans « Paiements validés ».
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-amber-100 bg-white">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10">
-                          <span className="sr-only">Sélection</span>
-                        </TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead>Référence</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Nom du payeur</TableHead>
-                        <TableHead>Montant</TableHead>
-                        <TableHead>Élève associé</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {toVerifyMatches.map((match) => {
-                        const status = matchStatusConfig(match.status)
-                        const canAssociate = match.status === "TO_VERIFY" || match.status === "AUTO_CONFIRMED"
-                        const canTrash = match.status === "TO_VERIFY"
-                        const canDirector = match.status === "TO_VERIFY"
-                        const canRestore = match.status === "TRASHED" || match.status === "DIRECTOR"
-                        const canCancel = match.status === "CONFIRMED" || match.status === "AUTO_CONFIRMED"
-                        const allocations = match.allocations?.filter((allocation) => allocation.payment) ?? []
-                        const associatedLabel = allocations.length > 0
-                          ? null
-                          : match.student ? matchStudentLabel(match) : "—"
+                <div className="space-y-2">
+                  {toVerifyMatches.map((match) => {
+                    const status = matchStatusConfig(match.status)
+                    const allocations = match.allocations?.filter((allocation) => allocation.payment) ?? []
+                    const canAssociate = match.status === "TO_VERIFY" || match.status === "AUTO_CONFIRMED"
+                    const canTrash = match.status === "TO_VERIFY"
+                    const canDirector = match.status === "TO_VERIFY"
+                    const canRestore = match.status === "TRASHED" || match.status === "DIRECTOR"
+                    const canCancel = match.status === "CONFIRMED" || match.status === "AUTO_CONFIRMED"
 
-                        return (
-                          <TableRow key={match.id} className="align-top">
-                            <TableCell>
-                              {canTrash && (
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-amber-300"
-                                  checked={selectedMatchIds.has(match.id)}
-                                  onChange={(event) => toggleMatchSelection(match.id, event.target.checked)}
-                                  aria-label="Sélectionner ce paiement non traité"
-                                />
-                              )}
-                            </TableCell>
-                            <TableCell>
+                    return (
+                      <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 gap-3">
+                          {canTrash && (
+                            <input
+                              type="checkbox"
+                              className="mt-1 h-4 w-4 shrink-0 rounded border-amber-300"
+                              checked={selectedMatchIds.has(match.id)}
+                              onChange={(event) => toggleMatchSelection(match.id, event.target.checked)}
+                              aria-label="Sélectionner ce paiement à associer"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
                               {sourceBadge(match)}
-                            </TableCell>
-                            <TableCell className="min-w-[10rem] font-mono text-xs text-gray-700">
-                              {displayReference(match)}
-                            </TableCell>
-                            <TableCell className="min-w-[8rem] text-sm text-gray-700">
-                              {formatDate(match.paymentDate || match.createdAt)}
-                            </TableCell>
-                            <TableCell className="min-w-[12rem]">
-                              <p className="font-medium text-gray-900">{match.detectedPayerName || "Payeur non détecté"}</p>
-                              {(match.paymentLabel || match.rawSubject) && (
-                                <p className="mt-1 max-w-xs truncate text-xs text-gray-500" title={match.paymentLabel || match.rawSubject || undefined}>
-                                  {match.paymentLabel || match.rawSubject}
-                                </p>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-semibold text-gray-900">
-                              {formatCurrency(match.receivedAmount)}
-                            </TableCell>
-                            <TableCell className="min-w-[16rem] text-sm text-gray-700">
-                              {allocations.length > 0 ? (
-                                <div className="space-y-1">
-                                  {allocations.map((allocation, index) => {
-                                    const payment = allocation.payment!
-                                    const session = payment.lessonSession
-                                      ? `${payment.lessonSession.subject} · Session ${payment.lessonSession.number}${payment.lessonSession.teacher.name ? ` · ${payment.lessonSession.teacher.name}` : ""}`
-                                      : payment.sessionNumber ? `Session ${payment.sessionNumber}` : "Session non renseignée"
-                                    return (
-                                      <div key={`${payment.id}-${index}`} className="rounded-md bg-blue-50 px-2 py-1 text-xs text-blue-900">
-                                        <strong>{payment.student.firstName} {payment.student.lastName}</strong>
-                                        <span className="block">{session} · {formatCurrency(allocation.amount)}</span>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              ) : (
-                                <span className={match.student ? "text-gray-700" : "text-gray-400"}>{associatedLabel}</span>
-                              )}
-                              {match.reason && <p className="mt-1 text-xs text-gray-400">{match.reason}</p>}
-                            </TableCell>
-                            <TableCell>
+                              <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                              <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
                               <Badge variant={status.variant}>{status.label}</Badge>
-                            </TableCell>
-                            <TableCell className="min-w-[13rem]">
-                              <div className="flex flex-wrap justify-end gap-2">
-                                {canAssociate && (
-                                  <Button size="sm" onClick={() => setSelectedMatch(match)}>
-                                    <SplitSquareHorizontal className="h-4 w-4" />
-                                    {match.status === "AUTO_CONFIRMED" ? "Réassocier" : "Associer élève"}
-                                  </Button>
-                                )}
-                                {canCancel && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => cancelMatch(match.id)}
-                                    disabled={matchActionLoading === match.id}
-                                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                  >
-                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                                    Réassocier
-                                  </Button>
-                                )}
-                                {canDirector && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => updatePaymentMatch(match.id, "director")}
-                                    disabled={matchActionLoading === match.id}
-                                    className="border-violet-200 text-violet-700 hover:bg-violet-50"
-                                    title="Ce paiement est pour le directeur, pas pour un élève"
-                                  >
-                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
-                                    Directeur
-                                  </Button>
-                                )}
-                                {canRestore && (
-                                  <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
-                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                                    Restaurer
-                                  </Button>
-                                )}
-                                {canTrash && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => updatePaymentMatch(match.id, "trash")}
-                                    disabled={matchActionLoading === match.id}
-                                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                    title="Mettre à la corbeille"
-                                  >
-                                    {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
-                                    Supprimer
-                                  </Button>
-                                )}
+                            </div>
+                            <p className="mt-1 text-xs text-gray-400">
+                              Reçu le {formatDate(match.paymentDate || match.createdAt)} · Référence : {displayReference(match)}
+                            </p>
+                            {allocations.length > 0 ? (
+                              <div className="mt-2 space-y-1">
+                                {allocations.map((allocation, index) => {
+                                  const payment = allocation.payment!
+                                  const session = payment.lessonSession
+                                    ? `${payment.lessonSession.subject} · Session ${payment.lessonSession.number}${payment.lessonSession.teacher.name ? ` · ${payment.lessonSession.teacher.name}` : ""}`
+                                    : payment.sessionNumber ? `Session ${payment.sessionNumber}` : "Session non renseignée"
+                                  return (
+                                    <div key={`${payment.id}-${index}`} className="rounded-md bg-blue-50 px-2 py-1 text-xs text-blue-900">
+                                      <strong>{payment.student.firstName} {payment.student.lastName}</strong>
+                                      <span className="block">{session} · {formatCurrency(allocation.amount)}</span>
+                                    </div>
+                                  )
+                                })}
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
+                            ) : (
+                              <p className="mt-1 text-xs text-gray-400">
+                                {match.student ? `Élève pressenti : ${matchStudentLabel(match)}` : "Aucun élève pressenti"}
+                                {match.reason ? ` · ${match.reason}` : ""}
+                              </p>
+                            )}
+                            {(match.paymentLabel || match.rawSubject) && (
+                              <p className="mt-0.5 max-w-3xl truncate text-xs text-gray-500" title={match.paymentLabel || match.rawSubject || undefined}>
+                                Libellé : {match.paymentLabel || match.rawSubject}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid gap-2 sm:flex sm:items-center sm:justify-end">
+                          {canAssociate && (
+                            <Button size="sm" onClick={() => setSelectedMatch(match)}>
+                              <SplitSquareHorizontal className="h-4 w-4" />
+                              {match.status === "AUTO_CONFIRMED" ? "Réassocier" : "Associer élève"}
+                            </Button>
+                          )}
+                          {canCancel && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelMatch(match.id)}
+                              disabled={matchActionLoading === match.id}
+                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            >
+                              {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                              Réassocier
+                            </Button>
+                          )}
+                          {canDirector && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updatePaymentMatch(match.id, "director")}
+                              disabled={matchActionLoading === match.id}
+                              className="border-violet-200 text-violet-700 hover:bg-violet-50"
+                              title="Ce paiement concerne les élèves du directeur"
+                            >
+                              {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
+                              Élève directeur
+                            </Button>
+                          )}
+                          {canRestore && (
+                            <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
+                              {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                              Restaurer
+                            </Button>
+                          )}
+                          {canTrash && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => updatePaymentMatch(match.id, "trash")}
+                              disabled={matchActionLoading === match.id}
+                              title="Ignorer ce paiement hors institut"
+                            >
+                              {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>}
@@ -1311,11 +1278,11 @@ export function PaymentsClient({
               className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <h3 className="font-semibold text-gray-900">Corbeille des paiements détectés</h3>
-                <p className="text-sm text-gray-500">Paiements retirés des non traités, restaurables si besoin.</p>
+                <h3 className="font-semibold text-gray-900">Paiements ignorés</h3>
+                <p className="text-sm text-gray-500">Paiements hors institut retirés des paiements à associer, restaurables si besoin.</p>
               </div>
               <span className="flex items-center gap-2">
-                <Badge variant="secondary">{trashedPaymentMatches.length} dans la corbeille</Badge>
+                <Badge variant="secondary">{trashedPaymentMatches.length} ignoré(s)</Badge>
                 {trashOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
               </span>
             </button>
@@ -1365,7 +1332,7 @@ export function PaymentsClient({
                         else next.delete(match.id)
                         return next
                       })}
-                      aria-label="Sélectionner ce paiement de la corbeille"
+                      aria-label="Sélectionner ce paiement ignoré"
                     />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1378,7 +1345,7 @@ export function PaymentsClient({
                   </div>
                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                    Remettre dans non traités
+                    Remettre dans « à associer »
                   </Button>
                 </div>
               ))}
@@ -1396,9 +1363,9 @@ export function PaymentsClient({
               className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <h3 className="font-semibold text-violet-900">Paiements pour le directeur</h3>
+                <h3 className="font-semibold text-violet-900">Paiements élèves du directeur</h3>
                 <p className="text-sm text-violet-700">
-                  Virements reçus qui ne concernent aucun élève (ex: famille du directeur). Non comptabilisés, non proposés dans « non traités ».
+                  Virements reçus qui concernent les élèves/familles du directeur. Non comptabilisés, non proposés dans « à associer ».
                 </p>
               </div>
               <span className="flex items-center gap-2">
@@ -1441,7 +1408,7 @@ export function PaymentsClient({
                         else next.delete(match.id)
                         return next
                       })}
-                      aria-label="Sélectionner ce paiement directeur"
+                      aria-label="Sélectionner ce paiement élève du directeur"
                     />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1454,7 +1421,7 @@ export function PaymentsClient({
                   </div>
                   <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                     {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                    Ce n&apos;est pas pour le directeur
+                    Ce n&apos;est pas un élève du directeur
                   </Button>
                 </div>
               ))}
@@ -1803,8 +1770,8 @@ function PaymentMatchDialog({
 
   const allocated = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
   const remaining = match.receivedAmount - allocated
-  // Encart « reste pour le directeur » : seulement quand une allocation partielle existe
-  // (paiement entièrement pour le directeur = bouton dédié sur la carte, pas ce dialogue).
+  // Encart « reste élèves du directeur » : seulement quand une allocation partielle existe
+  // (paiement entièrement élève du directeur = bouton dédié sur la carte, pas ce dialogue).
   const hasRemainder = allocated > 0 && remaining > 0.01
 
   // "teacherId:studentId" -> matières distinctes, affichées entre parenthèses
@@ -1993,8 +1960,8 @@ function PaymentMatchDialog({
                     onChange={(event) => setRemainderForDirector(event.target.checked)}
                   />
                   <span>
-                    Le reste ({formatCurrency(remaining)}) est <strong>pour le directeur</strong> — il ne sera pas compté
-                    dans les paiements des élèves et restera trouvable dans « Paiements pour le directeur ».
+                    Le reste ({formatCurrency(remaining)}) est <strong>pour les élèves du directeur</strong> — il ne sera pas compté
+                    dans les paiements de l&apos;institut et restera trouvable dans « Paiements élèves du directeur ».
                   </span>
                 </label>
                 {!remainderForDirector && (

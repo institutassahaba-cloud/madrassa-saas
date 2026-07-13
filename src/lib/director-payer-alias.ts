@@ -42,9 +42,8 @@ function normalizeType(type: string | null | undefined) {
   return "ANY"
 }
 
-// Un payeur connu (ex: le directeur lui-même, son épouse, sa fille...) dont les
-// virements ne concernent aucun élève. Vérifié au scan pour classer directement
-// le paiement en statut DIRECTOR, sans repasser par « non traités ».
+// Un payeur connu côté élèves du directeur. Vérifié au scan pour classer
+// directement le paiement en statut DIRECTOR, sans repasser par « à associer ».
 export async function isKnownDirectorPayer(tenantId: string, source: string, payerName: string | null | undefined) {
   const normalized = normalizePaymentAlias(payerName)
   if (!normalized) return false
@@ -57,7 +56,7 @@ export async function isKnownDirectorPayer(tenantId: string, source: string, pay
   return Boolean(match)
 }
 
-// Mémorise le payeur → « pour le directeur », suite à un marquage manuel.
+// Mémorise le payeur → « élève du directeur », suite à un marquage manuel.
 export async function learnDirectorPayerAlias(tenantId: string, source: string, payerName: string | null | undefined) {
   const alias = (payerName ?? "").trim()
   const normalized = normalizePaymentAlias(alias)

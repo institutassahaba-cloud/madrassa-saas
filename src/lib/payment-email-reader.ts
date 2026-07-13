@@ -275,8 +275,10 @@ function extractPayerName(source: string, text: string, fromHeader = "") {
     const patterns = [
       /argent\s+re[çc]u\s+de\s+(.+?)(?:\s*\n|$)/i,
       /re[çc]u\s+de\s+l['’]argent\s+de\s+(.+?)(?:\s*\n|$)/i,
+      /vous\s+avez\s+re[çc]u\s+de\s+l['’]argent\s+de\s+(.+?)(?:\.|\s*\n|€|\beur\b|$)/i,
       /\bde\s+la\s+part\s+de\s+(.+?)(?:\s*\n|$)/i,
       /(.+?)\s+vous\s+a\s+envoy[ée]\s+de\s+l['’]argent/i,
+      /(.+?)\s+a\s+envoy[ée]\s+de\s+l['’]argent/i,
       /vous\s+avez\s+re[çc]u\s+[0-9]+(?:[,.][0-9]{1,2})?\s*(?:€|eur)\s+de\s+(.+?)(?:\s*\n|$|\.)/i,
       /\bde\s*:\s*(.+?)(?:\s*\n|$)/i,
     ]
@@ -552,7 +554,6 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     startedAt ? afterDateQuery(startedAt) : (payerQuery ? "" : "newer_than:45d"),
     endedAt ? beforeDateQuery(endedAt) : "",
     paymentProviderQuery(manualImport, payerQuery),
-    !manualImport && paymentEmail ? `to:${paymentEmail}` : "",
     paymentEmail ? `-from:${paymentEmail}` : "",
     "-in:sent",
   ].filter(Boolean).join(" ")
@@ -672,14 +673,14 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
       const isOpenMatch = existing.status === "TO_VERIFY"
       const isTrashed = existing.status === "TRASHED"
       if (isOpenMatch || isTrashed) {
-        // Paiement NON validé (« à associer ») OU en corbeille : le rescan le
+        // Paiement NON validé (« à associer ») OU ignoré : le rescan le
         // RÉ-EXTRAIT entièrement avec le parser courant et ÉCRASE les anciennes
         // valeurs (nom, montant, source, libellé). C'est ce qui permet aux
         // corrections de parsing de rattraper les vieilles lignes (« bicubic »,
         // montant du sujet au lieu du corps, « MR OU MME » collé au nom…).
-        // Une ligne en corbeille RESTE en corbeille : on ne re-suggère pas
-        // d'élève et on ne touche pas à son motif « supprimé ». Les paiements
-        // validés / auto-validés / directeur ne passent JAMAIS ici.
+        // Une ligne ignorée RESTE ignorée : on ne re-suggère pas d'élève et on
+        // ne touche pas à son motif. Les paiements validés / auto-validés /
+        // élèves du directeur ne passent JAMAIS ici.
         const nameChanged = (existing.detectedPayerName ?? null) !== (detectedPayerName ?? null)
         const labelChanged = (existing.paymentLabel ?? null) !== (paymentLabel ?? null)
         const sourceChanged = existing.source !== source
@@ -688,7 +689,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
 
         if (needsKeyMigration || nameChanged || labelChanged || sourceChanged || amountChanged || referenceChanged) {
           // La suggestion d'élève n'est recalculée que pour un « à associer »
-          // (jamais pour la corbeille) quand le nom / libellé change — et remise
+          // (jamais pour les ignorés) quand le nom / libellé change — et remise
           // à zéro si plus aucune correspondance, pour ne pas garder une
           // association fantôme issue de l'ancien nom erroné.
           const suggestion = isOpenMatch && (nameChanged || labelChanged)
@@ -720,7 +721,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
         continue
       }
 
-      // Statuts protégés (validé / auto-validé / directeur) : on
+      // Statuts protégés (validé / auto-validé / élèves du directeur) : on
       // COMPLÈTE uniquement les champs vides, jamais d'écrasement.
       const needsReference = !existing.paymentReference && Boolean(paymentReference)
       const canBackfillName = !existing.detectedPayerName && Boolean(detectedPayerName)
@@ -768,7 +769,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
           paymentLabel,
           paymentDate: dateHeader ? new Date(dateHeader) : null,
           status: "DIRECTOR",
-          reason: "Payeur connu : paiement pour le directeur (non comptabilisé).",
+          reason: "Payeur connu : élève du directeur (hors institut).",
           rawSubject: subject || null,
         },
       })
