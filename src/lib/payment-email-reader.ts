@@ -153,6 +153,11 @@ function isOutgoingPaypal(subject: string, text: string) {
     && !/vous\s+a\s+envoy[ée]/i.test(text)
 }
 
+function isOutgoingWise(subject: string, text: string) {
+  return /transfert\s+envoy[ée]|sont\s+à\s+pr[ée]sent\s+sur\s+le\s+compte|votre\s+argent\s+est\s+arriv[ée]/i.test(`${subject}\n${text}`)
+    && !/argent\s+re[çc]u\s+de|vous\s+avez\s+re[çc]u|montant\s+re[çc]u/i.test(text)
+}
+
 function detectSource(text: string, fromHeader = "") {
   // On inclut l'en-tête « From » : certains mails Wise ne contiennent le mot
   // « Wise » que dans l'adresse expéditrice (noreply@wise.com), jamais dans le
@@ -523,15 +528,10 @@ function beforeDateQuery(date: Date) {
   return `before:${year}/${month}/${day}`
 }
 
-function paymentProviderQuery(manualImport: boolean, payerQuery: string) {
-  if (payerQuery) return "(paypal OR wise OR transferwise)"
-  if (manualImport) return ""
+function paymentProviderQuery() {
   return `(${[
     ...PAYPAL_PAYMENT_SENDERS.map((sender) => `from:${sender}`),
     ...WISE_PAYMENT_SENDERS.map((sender) => `from:${sender}`),
-    "paypal",
-    "wise",
-    "transferwise",
   ].join(" OR ")})`
 }
 
@@ -547,12 +547,10 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     select: { paymentScanEnabled: true, paymentScanStartedAt: true },
   })
   const payerQuery = sanitizeGmailPhrase(options.payerQuery ?? "")
-  // Une recherche par nom balaie toute la boîte (pas de borne de date) et ne
-  // garde que PayPal/Wise, comme l'import manuel.
-  const broadImport = (options.manualImport ?? false) || Boolean(payerQuery)
+  // Recherche alignée sur le connecteur Gmail : on liste uniquement les mails
+  // des expéditeurs officiels PayPal/Wise, puis on filtre après extraction.
   const startedAt = payerQuery ? null : (options.startedAt ?? scanSettings?.paymentScanStartedAt ?? null)
   const endedAt = payerQuery ? null : (options.endedAt ?? null)
-  const manualImport = broadImport
   if (requireEnabled && !scanSettings?.paymentScanEnabled) {
     return { ok: true, disabled: true, created: 0, updated: 0, skipped: 0, scanned: 0 }
   }
@@ -565,7 +563,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   const query = [
     startedAt ? afterDateQuery(startedAt) : (payerQuery ? "newer_than:365d" : "newer_than:45d"),
     endedAt ? beforeDateQuery(endedAt) : "",
-    paymentProviderQuery(manualImport, payerQuery),
+    paymentProviderQuery(),
     paymentEmail ? `-from:${paymentEmail}` : "",
     "-in:sent",
   ].filter(Boolean).join(" ")
@@ -655,6 +653,10 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     }
     if (source === "PAYPAL" && isOutgoingPaypal(subject, combined)) {
       ignore("PayPal sortant", sample)
+      continue
+    }
+    if (source === "WISE" && isOutgoingWise(subject, combined)) {
+      ignore("Wise sortant", sample)
       continue
     }
     const amount = extractAmount(combined)
