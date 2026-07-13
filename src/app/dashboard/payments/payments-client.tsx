@@ -333,12 +333,6 @@ export function PaymentsClient({
 
   const selectedPeriod = paymentPeriods.find((item) => item.id === periodFilter)
 
-  function matchesSelectedPeriod(date: number | null) {
-    if (periodFilter === "ALL") return true
-    if (!selectedPeriod || date == null) return false
-    return (!selectedPeriod.start || date > new Date(selectedPeriod.start).getTime()) && (!selectedPeriod.end || date <= new Date(selectedPeriod.end).getTime())
-  }
-
   function matchesPaymentSearchAndTeacher(p: Payment) {
     const name = paymentStudentLabel(p).toLowerCase()
     const teacherName = paymentTeacherName(p).toLowerCase()
@@ -385,20 +379,19 @@ export function PaymentsClient({
     return (paymentDateValue(a) - paymentDateValue(b)) * direction
   })
 
-  const validatedPaymentsForPeriod = payments.filter((p) => (
-    matchesPaymentSearchAndTeacher(p)
-    && paymentHasValidatedSession(p)
-    && (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)
-    && matchesSelectedPeriod(paymentValidationDateValue(p))
-  ))
   const selectedPeriodLabel = periodFilter === "CURRENT"
     ? "période en cours"
     : periodFilter === "ALL"
       ? "toutes les périodes"
       : selectedPeriod?.label.toLowerCase() ?? "la période sélectionnée"
+  const confirmedPaymentMatchTotal = confirmedPaymentMatches.reduce((sum, match) => {
+    const allocated = allocatedTotal(match)
+    const partial = allocated != null && match.receivedAmount - allocated > 0.01
+    return sum + Number(partial ? allocated : match.receivedAmount)
+  }, 0)
 
   const summary = {
-    paid: validatedPaymentsForPeriod.reduce((sum, p) => sum + paymentReceivedAmount(p), 0),
+    paid: confirmedPaymentMatchTotal,
     sentRequests: pendingPayments.length,
     toVerify: localPaymentMatches.filter((match) => match.status === "TO_VERIFY").length,
   }
@@ -769,7 +762,7 @@ export function PaymentsClient({
             <div className="min-w-0">
               <p className="text-xs text-gray-500">Paiements validés · {selectedPeriodLabel}</p>
               <p className="text-lg font-bold text-gray-900">{formatCurrency(summary.paid)}</p>
-              <p className="text-[11px] text-gray-400">{validatedPaymentsForPeriod.length} session{validatedPaymentsForPeriod.length > 1 ? "s" : ""} validée{validatedPaymentsForPeriod.length > 1 ? "s" : ""}</p>
+              <p className="text-[11px] text-gray-400">{confirmedPaymentMatches.length} paiement{confirmedPaymentMatches.length > 1 ? "s" : ""} validé{confirmedPaymentMatches.length > 1 ? "s" : ""}</p>
               {isDirector && (
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className="text-[11px] text-gray-400">
