@@ -594,7 +594,7 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
   const ignore = (reason: string, sample?: { from: string; subject: string; date: string | null }) => {
     ignored += 1
     ignoredReasons[reason] = (ignoredReasons[reason] ?? 0) + 1
-    if (sample && ignoredSamples.length < 5) ignoredSamples.push(sample)
+    if (sample && ignoredSamples.length < 5) ignoredSamples.push({ reason, ...sample })
   }
 
   for (const message of messages) {
