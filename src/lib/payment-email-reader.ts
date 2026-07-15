@@ -149,13 +149,22 @@ function cleanText(value: string | null | undefined) {
 // Paiement PayPal SORTANT (« Vous avez envoyé un paiement », « voici votre
 // reçu ») : à ne jamais compter comme un encaissement.
 function isOutgoingPaypal(subject: string, text: string) {
-  return /vous\s+avez\s+envoy[ée]|voici\s+votre\s+re[çc]u/i.test(`${subject}\n${text}`)
-    && !/vous\s+a\s+envoy[ée]/i.test(text)
+  const haystack = `${subject}\n${text}`
+  const hasIncomingSignal = /vous\s+a\s+envoy[ée]|vous\s+avez\s+re[çc]u|montant\s+re[çc]u/i.test(haystack)
+  if (hasIncomingSignal) return false
+
+  return /vous\s+avez\s+(?:envoy[ée]|pay[ée])|paiement\s+(?:envoy[ée]|effectu[ée]|automatique|r[ée]current)|(?:abonnement|paiement\s+r[ée]current)\s+paypal|voici\s+votre\s+re[çc]u|re[çc]u\s+(?:de|pour)\s+votre\s+paiement|votre\s+paiement\s+(?:à|a\s+[ée]t[ée])|you\s+(?:sent|paid)|payment\s+sent|automatic\s+payment|recurring\s+payment|subscription\s+payment|receipt\s+for\s+your\s+payment/i.test(haystack)
 }
 
 function isOutgoingWise(subject: string, text: string) {
   return /transfert\s+envoy[ée]|sont\s+à\s+pr[ée]sent\s+sur\s+le\s+compte|votre\s+argent\s+est\s+arriv[ée]/i.test(`${subject}\n${text}`)
     && !/argent\s+re[çc]u\s+de|vous\s+avez\s+re[çc]u|montant\s+re[çc]u/i.test(text)
+}
+
+function isInternalWiseTransfer(subject: string, text: string) {
+  return /argent\s+re[çc]u\s+de\s+paypal/i.test(subject)
+    || /\bde\s*:\s*paypal\b/i.test(text)
+    || /instant\s+transfer/i.test(text)
 }
 
 function detectSource(text: string, fromHeader = "") {
@@ -657,6 +666,10 @@ export async function scanPaymentEmails(tenantId: string, options: ScanPaymentEm
     }
     if (source === "WISE" && isOutgoingWise(subject, combined)) {
       ignore("Wise sortant", sample)
+      continue
+    }
+    if (source === "WISE" && isInternalWiseTransfer(subject, combined)) {
+      ignore("Transfert interne PayPal vers Wise", sample)
       continue
     }
     const amount = extractAmount(combined)
