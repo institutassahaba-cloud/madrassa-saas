@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import nodemailer from "nodemailer"
+import type { Attachment } from "nodemailer/lib/mailer"
 import { whatsappLink } from "@/lib/phone"
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY ?? ""
@@ -14,10 +15,15 @@ const EMAIL_LOGO_PATH = path.join(process.cwd(), "public", "logo-assahaba.png")
 const EMAIL_LOGO_URL = process.env.EMAIL_LOGO_URL ?? "https://madrassa-saas-umber.vercel.app/logo-assahaba.png"
 const EMAIL_TAGLINE = "Sur les traces des compagnons"
 
-function emailHeaderHtml() {
+// `useCid` = true pour les e-mails envoyés en SMTP (compta) : le logo est joint en
+// image inline (cid:) par sendComptaMail, ce qui garantit son affichage même lorsque le
+// client de messagerie bloque les images distantes. Les e-mails Brevo gardent l'URL
+// distante (Brevo ne gère pas le cid: de façon fiable).
+function emailHeaderHtml(useCid = false) {
+  const logoSrc = useCid ? `cid:${EMAIL_LOGO_CID}` : EMAIL_LOGO_URL
   return `
           <td align="center" bgcolor="#0C243C" style="background:#0C243C;padding:30px 20px 24px;">
-            <img src="${EMAIL_LOGO_URL}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
+            <img src="${logoSrc}" alt="Institut As-Sahaba" width="96" style="display:block;margin:0 auto 12px;width:96px;max-width:96px;height:auto;border:0;border-radius:10px;background:#ffffff;" />
             <div style="font-size:19px;letter-spacing:3px;color:#ffffff;font-weight:700;text-transform:uppercase;">Institut As-Sahaba</div>
             <div style="font-size:11px;letter-spacing:1.6px;color:#9CC0DD;margin-top:5px;">${EMAIL_TAGLINE}</div>
           </td>`
@@ -87,19 +93,24 @@ export async function sendComptaMail({ to, subject, html }: { to: string; subjec
     return { ok: false, reason: "no_compta_config" }
   }
   const transporter = getComptaTransporter()
+
+  // Logo joint en image inline (cid:) quand le template le référence. En local on lit le
+  // fichier public/ ; sur Vercel (où public/ n'est pas sur le disque de la fonction)
+  // nodemailer récupère l'URL côté serveur. Dans les deux cas l'image est embarquée dans
+  // l'e-mail, donc affichée même si le client de messagerie bloque les images distantes.
+  const logoAttachment: Attachment = {
+    filename: "logo-assahaba.png",
+    cid: EMAIL_LOGO_CID,
+    ...(existsSync(EMAIL_LOGO_PATH) ? { path: EMAIL_LOGO_PATH } : { href: EMAIL_LOGO_URL }),
+  }
+
   await transporter.sendMail({
     from: `"Institut As-Sahaba — Comptabilité" <${user}>`,
     to,
     cc: user,
     subject,
     html,
-    attachments: html.includes(`cid:${EMAIL_LOGO_CID}`) && existsSync(EMAIL_LOGO_PATH)
-      ? [{
-          filename: "logo-assahaba.png",
-          path: EMAIL_LOGO_PATH,
-          cid: EMAIL_LOGO_CID,
-        }]
-      : undefined,
+    attachments: html.includes(`cid:${EMAIL_LOGO_CID}`) ? [logoAttachment] : undefined,
   })
   return { ok: true }
 }
@@ -156,7 +167,7 @@ export function sessionEndEmailHtml({
 
         <!-- Bandeau / Logo -->
         <tr>
-${emailHeaderHtml()}
+${emailHeaderHtml(true)}
         </tr>
 
         <!-- Titre -->
@@ -300,7 +311,7 @@ export function paymentThanksEmailHtml({
         <tbody>
 
         <tr>
-${emailHeaderHtml()}
+${emailHeaderHtml(true)}
         </tr>
 
         <tr>
