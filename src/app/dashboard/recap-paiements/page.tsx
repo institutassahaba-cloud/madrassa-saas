@@ -1,18 +1,23 @@
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
+import { ensureTeacherPayrollSchema } from "@/lib/teacher-payroll-schema"
 import { RecapPaiementsClient } from "./recap-paiements-client"
 
 export default async function RecapPaiementsPage() {
   const user = await getEffectiveUser()
   if (!user) redirect("/login")
   if (user.role === "TEACHER") redirect("/dashboard")
+  await ensureTeacherPayrollSchema()
 
   const [salaries, teachers] = await Promise.all([
     prisma.teacherSalary.findMany({
       where: { tenantId: user.tenantId },
       orderBy: [{ year: "desc" }, { month: "desc" }],
-      include: { teacher: { select: { name: true } } },
+      include: {
+        teacher: { select: { name: true } },
+        lines: { orderBy: { label: "asc" } },
+      },
     }),
     prisma.user.findMany({
       where: { tenantId: user.tenantId, role: { in: ["TEACHER", "SECRETARY"] }, isActive: true },
@@ -21,8 +26,7 @@ export default async function RecapPaiementsPage() {
     }),
   ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = salaries.map((s: any) => ({
+  const data = salaries.map((s) => ({
     id: s.id,
     teacherId: s.teacherId,
     teacherName: s.teacher.name || "—",
@@ -38,6 +42,14 @@ export default async function RecapPaiementsPage() {
     periodStart: s.periodStart ? new Date(s.periodStart).toISOString() : null,
     periodEnd: s.periodEnd ? new Date(s.periodEnd).toISOString() : null,
     notes: s.notes,
+    lines: s.lines.map((line) => ({
+      id: line.id,
+      label: line.label,
+      lessonsCount: line.lessonsCount,
+      hoursWorked: Number(line.hoursWorked),
+      hourlyRate: Number(line.hourlyRate),
+      totalAmount: Number(line.totalAmount),
+    })),
   }))
 
   return <RecapPaiementsClient salaries={data} teachers={teachers} isDirector={user.role === "DIRECTOR"} />

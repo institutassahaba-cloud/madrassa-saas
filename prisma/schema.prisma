@@ -47,63 +47,63 @@ model Tenant {
 }
 
 model TenantSettings {
-  id                  String  @id @default(cuid())
-  tenantId            String  @unique
-  tenant              Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  wiseMerchantToken   String?
-  paypalClientId      String?
-  paypalClientSecret  String?
-  gmailRefreshToken   String?
-  paymentScanEnabled  Boolean @default(false)
-  paymentScanStartedAt DateTime?
-  paymentScanLastRunAt DateTime? // dernier passage du scan (cron)
-  paymentScanLastError String?   // dernière erreur (ex: Gmail invalid_grant), null si OK
-  paymentPeriodStartAt DateTime? // début manuel de la « période en cours » (override), null = calcul auto
+  id                         String    @id @default(cuid())
+  tenantId                   String    @unique
+  tenant                     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  wiseMerchantToken          String?
+  paypalClientId             String?
+  paypalClientSecret         String?
+  gmailRefreshToken          String?
+  paymentScanEnabled         Boolean   @default(false)
+  paymentScanStartedAt       DateTime?
+  paymentScanLastRunAt       DateTime? // dernier passage du scan (cron)
+  paymentScanLastError       String? // dernière erreur (ex: Gmail invalid_grant), null si OK
+  paymentPeriodStartAt       DateTime? // début manuel de la « période en cours » (override), null = calcul auto
   googleContactsRefreshToken String?
-  googleContactsEmail String?
-  whatsappApiKey      String?
-  whatsappPhoneNumber String?
-  smtpHost            String?
-  smtpPort            Int?
-  smtpUser            String?
-  smtpPassword        String?
-  smtpFrom            String?
+  googleContactsEmail        String?
+  whatsappApiKey             String?
+  whatsappPhoneNumber        String?
+  smtpHost                   String?
+  smtpPort                   Int?
+  smtpUser                   String?
+  smtpPassword               String?
+  smtpFrom                   String?
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  tenantId      String
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name          String
-  email         String
-  emailVerified DateTime?
-  password      String?
-  image         String?
-  role          String    @default("SECRETARY")
-  isActive      Boolean   @default(true)
-  phone         String?
-  timezone      String    @default("Europe/Paris")
-  mustChangePassword Boolean @default(false)
-  contactEmail  String?
-  hasOnboarded  Boolean   @default(false)
-  individualRate Float?
-  binomeRate     Float?
-  groupRate      Float?
-  paymentInfo    String?
-  meetingLink    String?
-  lastLoginAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  tenantId           String
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name               String
+  email              String
+  emailVerified      DateTime?
+  password           String?
+  image              String?
+  role               String    @default("SECRETARY")
+  isActive           Boolean   @default(true)
+  phone              String?
+  timezone           String    @default("Europe/Paris")
+  mustChangePassword Boolean   @default(false)
+  contactEmail       String?
+  hasOnboarded       Boolean   @default(false)
+  individualRate     Float?
+  binomeRate         Float?
+  groupRate          Float?
+  paymentInfo        String?
+  meetingLink        String?
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   accounts        Account[]
   sessions        Session[]
-  teacherGroups   Group[]         @relation("TeacherGroups")
-  attendances     Attendance[]    @relation("TeacherAttendances")
-  assessments     Assessment[]    @relation("TeacherAssessments")
+  teacherGroups   Group[]           @relation("TeacherGroups")
+  attendances     Attendance[]      @relation("TeacherAttendances")
+  assessments     Assessment[]      @relation("TeacherAssessments")
   salaries        TeacherSalary[]
-  teacherSessions LessonSession[] @relation("TeacherSessions")
+  teacherSessions LessonSession[]   @relation("TeacherSessions")
   timeSlots       TimeSlot[]
   contracts       TeacherContract[]
 
@@ -148,41 +148,41 @@ model VerificationToken {
 // ─── STUDENTS ────────────────────────────────────────────────────────────────
 
 model Student {
-  id             String    @id @default(cuid())
-  tenantId       String
-  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  firstName      String
-  lastName       String
-  displayName    String? // nom brut tel qu'écrit dans les Sheets (mononyme possible)
-  legacyId       String? // ancien ID Google (EL###) pour traçabilité migration
-  gender         String? // optionnel : les données Google n'ont pas de genre
-  dateOfBirth    DateTime?
-  phone          String?
-  email          String?
-  address        String?
-  city           String?
-  enrollmentDate DateTime  @default(now())
-  groupId        String?
-  group          Group?    @relation(fields: [groupId], references: [id])
-  level          String?
-  subject        String?
-  monthlyFee     Float     @default(0)
+  id                        String    @id @default(cuid())
+  tenantId                  String
+  tenant                    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  firstName                 String
+  lastName                  String
+  displayName               String? // nom brut tel qu'écrit dans les Sheets (mononyme possible)
+  legacyId                  String? // ancien ID Google (EL###) pour traçabilité migration
+  gender                    String? // optionnel : les données Google n'ont pas de genre
+  dateOfBirth               DateTime?
+  phone                     String?
+  email                     String?
+  address                   String?
+  city                      String?
+  enrollmentDate            DateTime  @default(now())
+  groupId                   String?
+  group                     Group?    @relation(fields: [groupId], references: [id])
+  level                     String?
+  subject                   String?
+  monthlyFee                Float     @default(0)
   // ── Facturation (col M des Sheets) ──
-  payerName      String? // nom du payeur attendu (parent/virement)
-  paymentType    String? // "PAYPAL" | "WISE"
-  paymentGraceAllowed Boolean @default(false) // cours autorisé malgré retard/absence de paiement
-  hourlyRate     Float? // tarif horaire
-  lessonsPerWeek Int? // nombre de cours par semaine
-  duration       String? // durée d'un cours ("30 min", "1h")
+  payerName                 String? // nom du payeur attendu (parent/virement)
+  paymentType               String? // "PAYPAL" | "WISE"
+  paymentGraceAllowed       Boolean   @default(false) // cours autorisé malgré retard/absence de paiement
+  hourlyRate                Float? // tarif horaire
+  lessonsPerWeek            Int? // nombre de cours par semaine
+  duration                  String? // durée d'un cours ("30 min", "1h")
   googleContactResourceName String?
-  status         String    @default("ACTIVE") // ACTIVE | PAUSED | STOPPED
-  recontactDate  DateTime?
-  notes          String?
-  parentName     String?
-  parentPhone    String?
-  parentEmail    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  status                    String    @default("ACTIVE") // ACTIVE | PAUSED | STOPPED
+  recontactDate             DateTime?
+  notes                     String?
+  parentName                String?
+  parentPhone               String?
+  parentEmail               String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
   payments       Payment[]
   attendances    Attendance[]
@@ -200,7 +200,7 @@ model PaymentAlias {
   tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   studentId  String
   student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  type       String   @default("ANY") // PAYPAL | WISE | ANY si mode non forcé
+  type       String    @default("ANY") // PAYPAL | WISE | ANY si mode non forcé
   alias      String
   normalized String
   source     String    @default("MANUAL") // TDB | MANUAL
@@ -293,21 +293,23 @@ model LessonSession {
 }
 
 model Lesson {
-  id        String        @id @default(cuid())
-  tenantId  String
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sessionId String
-  session   LessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  number    Int
-  date      DateTime?
-  status          String        @default("PENDING")
-  content         String?
-  duration        Int?          // durée réelle en minutes (null = durée prévue)
-  makeupMinutes   Int?          // minutes à rattraper sur un autre cours
-  makeupOnLessonId String?      // id du cours sur lequel rattraper
-  legacyPayrollBoundary Boolean @default(false) // dernier cours déjà comptabilisé dans l'ancien système
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id                    String        @id @default(cuid())
+  tenantId              String
+  tenant                Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessionId             String
+  session               LessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  number                Int
+  date                  DateTime?
+  status                String        @default("PENDING")
+  content               String?
+  duration              Int? // durée réelle en minutes (null = durée prévue)
+  makeupMinutes         Int? // minutes à rattraper sur un autre cours
+  makeupOnLessonId      String? // id du cours sur lequel rattraper
+  legacyPayrollBoundary Boolean       @default(false) // dernier cours déjà comptabilisé dans l'ancien système
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  salaryLessons TeacherSalaryLesson[]
 }
 
 // ─── GROUPS ──────────────────────────────────────────────────────────────────
@@ -446,37 +448,84 @@ model TeacherSalary {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  lines         TeacherSalaryLine[]
+  salaryLessons TeacherSalaryLesson[]
+
   @@unique([teacherId, month, year])
+}
+
+// Détail figé d'une fiche de paie : une ligne par élève, binôme ou classe.
+model TeacherSalaryLine {
+  id              String        @id @default(cuid())
+  tenantId        String
+  salaryId        String
+  salary          TeacherSalary @relation(fields: [salaryId], references: [id], onDelete: Cascade)
+  courseKey       String
+  label           String
+  studentNames    String
+  studentCount    Int
+  forfait         String?
+  courseType      String
+  lessonsCount    Int
+  durationMinutes Int
+  hourlyRate      Float
+  hoursWorked     Float
+  totalAmount     Float
+  firstLessonAt   DateTime
+  lastLessonAt    DateTime
+  createdAt       DateTime      @default(now())
+
+  salaryLessons TeacherSalaryLesson[]
+
+  @@unique([salaryId, courseKey])
+  @@index([tenantId, salaryId])
+}
+
+// Appartenance exacte d'un cours à une fiche de paie. Cette table est le verrou
+// anti-double comptage ; les doublons d'un même cours collectif sont tous liés.
+model TeacherSalaryLesson {
+  id        String            @id @default(cuid())
+  tenantId  String
+  salaryId  String
+  salary    TeacherSalary     @relation(fields: [salaryId], references: [id], onDelete: Cascade)
+  lineId    String
+  line      TeacherSalaryLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  lessonId  String
+  lesson    Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+
+  @@unique([tenantId, lessonId])
+  @@index([salaryId, lineId])
 }
 
 // ─── PAYMENT MATCHING (parsing email PayPal/Wise) ────────────────────────────
 // Un email de paiement détecté = un événement consommé UNE SEULE FOIS.
 model PaymentMatch {
-  id                String    @id @default(cuid())
-  tenantId          String
-  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  source            String // PAYPAL | WISE
-  gmailMessageId    String // verrou anti-doublon : ID Gmail réel du message (unique)
-  paymentReference  String? // référence lisible : n° transaction PayPal / n° transfert Wise (affichée + cherchable)
-  receivedAmount    Float
-  detectedPayerName String?
-  paymentLabel      String? // libellé / note du paiement, utile pour fratrie ou multi-profs
-  paymentDate       DateTime?
+  id                  String    @id @default(cuid())
+  tenantId            String
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  source              String // PAYPAL | WISE
+  gmailMessageId      String // verrou anti-doublon : ID Gmail réel du message (unique)
+  paymentReference    String? // référence lisible : n° transaction PayPal / n° transfert Wise (affichée + cherchable)
+  receivedAmount      Float
+  detectedPayerName   String?
+  paymentLabel        String? // libellé / note du paiement, utile pour fratrie ou multi-profs
+  paymentDate         DateTime?
   // Élève « pressenti » (facultatif, indicatif)
-  studentId         String?
-  student           Student?  @relation(fields: [studentId], references: [id])
+  studentId           String?
+  student             Student?  @relation(fields: [studentId], references: [id])
   // Session renseignée quand le directeur indique que le paiement avait déjà
   // été attribué auparavant. Simple identifiant de traçabilité : aucune ligne
   // Payment n'est créée et le montant n'est pas recompté.
   attributedSessionId String?
   // TO_VERIFY | CONFIRMED | REJECTED | AUTO_CONFIRMED
-  status            String    @default("TO_VERIFY")
-  score             Float?
-  reason            String? // pourquoi non auto-validé (montant ≠, nom faible, ambigu, groupé…)
-  rawSubject        String?
-  confirmedAt       DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  status              String    @default("TO_VERIFY")
+  score               Float?
+  reason              String? // pourquoi non auto-validé (montant ≠, nom faible, ambigu, groupé…)
+  rawSubject          String?
+  confirmedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   allocations PaymentAllocation[]
 
@@ -551,16 +600,16 @@ model TeacherContract {
 
 // ─── CONTRÔLES (fichiers uploadés, classés par niveau) ───────────────────────
 model ExamFile {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  title     String
-  level     String
-  fileName  String
-  fileUrl   String
-  fileSize  Int?
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title      String
+  level      String
+  fileName   String
+  fileUrl    String
+  fileSize   Int?
   uploadedBy String?
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   @@index([tenantId, level])
 }

@@ -1,8 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useMemo } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Banknote, Calculator, Gift, ChevronDown, ChevronUp, Loader2, CreditCard, Save, Pencil, X } from "lucide-react"
+import { ArrowRight, Banknote, ChevronDown, ChevronUp, CreditCard, Save, Pencil, X } from "lucide-react"
 
 const MONTHS = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
 
@@ -22,6 +23,7 @@ interface Salary {
   periodStart: string | null
   periodEnd: string | null
   notes: string | null
+  lines: Array<{ id: string; label: string; lessonsCount: number; hoursWorked: number; hourlyRate: number; totalAmount: number }>
 }
 
 interface StaffMember {
@@ -29,27 +31,6 @@ interface StaffMember {
   name: string
   role: string
   paymentInfo: string | null
-}
-
-interface CalcDetail {
-  type: string
-  count: number
-  hours: number
-  rate: number
-  subtotal: number
-}
-
-interface CalcResult {
-  teacherId: string
-  teacherName: string
-  lessonsCount: number
-  details: CalcDetail[]
-  totalHours: number
-  totalAmount: number
-  bonus: number
-  grandTotal: number
-  periodStart: string
-  periodEnd: string
 }
 
 function formatCurrency(v: number) {
@@ -110,38 +91,7 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
 
   const [selectedYear, setSelectedYear] = useState(String(years[0] || new Date().getFullYear()))
 
-  // ── Calcul de paie profs ──
-  const [showCalc, setShowCalc] = useState(false)
-  const [calculating, setCalculating] = useState(false)
-  const [calcResults, setCalcResults] = useState<CalcResult[] | null>(null)
-  const [bonusTeachers, setBonusTeachers] = useState<Record<string, boolean>>({})
-  const [bonusAmounts, setBonusAmounts] = useState<Record<string, string>>({})
-  const [confirmed, setConfirmed] = useState(false)
-
   const teacherStaff = staff.filter((s) => s.role === "TEACHER")
-
-  async function handleCalculate() {
-    setCalculating(true)
-    setConfirmed(false)
-    const bonuses: Record<string, number> = {}
-    for (const t of teacherStaff) {
-      if (bonusTeachers[t.id] && bonusAmounts[t.id]) bonuses[t.id] = Number(bonusAmounts[t.id])
-    }
-    const res = await fetch("/api/salaries/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bonuses }) })
-    setCalcResults(await res.json())
-    setCalculating(false)
-  }
-
-  async function handleConfirm() {
-    setCalculating(true)
-    const bonuses: Record<string, number> = {}
-    for (const t of teacherStaff) {
-      if (bonusTeachers[t.id] && bonusAmounts[t.id]) bonuses[t.id] = Number(bonusAmounts[t.id])
-    }
-    await fetch("/api/salaries/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bonuses, confirm: true }) })
-    setConfirmed(true)
-    setCalculating(false)
-  }
 
   async function handleSavePaymentInfo(userId: string, info: string) {
     await fetch("/api/teachers", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ teacherId: userId, paymentInfo: info }) })
@@ -172,110 +122,38 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
         <p className="text-sm text-gray-500 mt-0.5">Historique des salaires versés aux professeurs et secrétaires</p>
       </div>
 
-      {/* Bouton Calculer la paie (directeur uniquement) */}
+      {/* Un calcul séparé par professeur évite les validations globales opaques. */}
       {isDirector && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-5 space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <Calculator className="h-5 w-5 text-blue-600" />
-              <span className="font-semibold text-blue-900">Calculer la paie des professeurs</span>
-            </div>
-            <button onClick={() => setShowCalc(!showCalc)} className="text-blue-600 hover:text-blue-800">
-              {showCalc ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
+        <section className="rounded-xl border border-blue-100 bg-blue-50 p-5">
+          <div className="mb-4">
+            <h2 className="font-semibold text-blue-950">Calculer les paies</h2>
+            <p className="mt-1 text-sm text-blue-700">Ouvre la fiche d’un professeur pour choisir précisément les cours à payer.</p>
           </div>
-
-          {showCalc && (
-            <div className="space-y-4">
-              {/* Option prime */}
-              <div className="rounded-lg border border-blue-200 bg-white p-4">
-                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2">
-                    <Gift className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm font-medium text-gray-700">Ajouter une prime (optionnel)</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const allSelected = teacherStaff.every((t) => bonusTeachers[t.id])
-                      const next: Record<string, boolean> = {}
-                      for (const t of teacherStaff) next[t.id] = !allSelected
-                      setBonusTeachers(next)
-                    }}
-                    className="text-left text-xs text-blue-600 hover:underline sm:text-right"
-                  >
-                    {teacherStaff.every((t) => bonusTeachers[t.id]) ? "Tout désélectionner" : "Sélectionner tout"}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {teacherStaff.map((t) => (
-                    <div key={t.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                      <label className="flex items-center gap-2 sm:min-w-[180px]">
-                        <input type="checkbox" checked={!!bonusTeachers[t.id]} onChange={(e) => setBonusTeachers((prev) => ({ ...prev, [t.id]: e.target.checked }))} className="rounded border-gray-300" />
-                        <span className="text-sm text-gray-700">{t.name}</span>
-                      </label>
-                      {bonusTeachers[t.id] && (
-                        <div className="flex items-center gap-1">
-                          <input type="number" min="0" step="1" placeholder="Montant" value={bonusAmounts[t.id] || ""} onChange={(e) => setBonusAmounts((prev) => ({ ...prev, [t.id]: e.target.value }))} className="w-full rounded border border-gray-200 px-2 py-1 text-sm sm:w-24" />
-                          <span className="text-xs text-gray-500">€</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button onClick={handleCalculate} disabled={calculating} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                {calculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-                Calculer la paie
-              </button>
-
-              {calcResults && (
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-gray-700">Résultat du calcul</p>
-                  {calcResults.map((r) => (
-                    <div key={r.teacherId} className="rounded-lg border border-gray-200 bg-white p-4">
-                      <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <span className="font-medium text-gray-900">{r.teacherName}</span>
-                        <span className="text-lg font-bold text-gray-900">{formatCurrency(r.grandTotal)}</span>
-                      </div>
-                      <p className="text-xs text-gray-400 mb-2">
-                        Période : {new Date(r.periodStart).toLocaleDateString("fr-FR")} → {new Date(r.periodEnd).toLocaleDateString("fr-FR")}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {teacherStaff.map((teacher) => {
+              const latest = salaries
+                .filter((salary) => salary.teacherId === teacher.id)
+                .sort((a, b) => (b.periodEnd ? new Date(b.periodEnd).getTime() : 0) - (a.periodEnd ? new Date(a.periodEnd).getTime() : 0))[0]
+              return (
+                <Link key={teacher.id} href={`/dashboard/recap-paiements/${teacher.id}`} className="group rounded-lg border border-blue-100 bg-white p-4 transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-gray-900">{teacher.name}</p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        {latest ? `Dernière fiche : ${formatCurrency(latest.totalAmount)}` : "Aucune fiche enregistrée"}
                       </p>
-                      {r.details.length > 0 ? (
-                        <div className="mb-2 overflow-x-auto">
-                        <table className="w-full min-w-[520px] text-xs">
-                          <thead><tr className="text-gray-500"><th className="text-left py-1">Type</th><th className="text-right py-1">Cours</th><th className="text-right py-1">Heures</th><th className="text-right py-1">Taux</th><th className="text-right py-1">Sous-total</th></tr></thead>
-                          <tbody>
-                            {r.details.map((d) => (
-                              <tr key={d.type} className="text-gray-700"><td className="py-1">{d.type}</td><td className="text-right py-1">{d.count}</td><td className="text-right py-1">{d.hours}h</td><td className="text-right py-1">{formatCurrency(d.rate)}/h</td><td className="text-right py-1 font-medium">{formatCurrency(d.subtotal)}</td></tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-400 mb-2">Aucun cours donné sur cette période</p>
-                      )}
-                      {r.bonus > 0 && <p className="text-xs text-amber-600 font-medium">+ Prime : {formatCurrency(r.bonus)}</p>}
                     </div>
-                  ))}
-                  <div className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <span className="font-semibold text-gray-700">Total général</span>
-                    <span className="text-xl font-bold text-gray-900">{formatCurrency(calcResults.reduce((s, r) => s + r.grandTotal, 0))}</span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-blue-400 transition group-hover:translate-x-1" />
                   </div>
-                  {!confirmed ? (
-                    <button onClick={handleConfirm} disabled={calculating} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 sm:w-auto">
-                      {calculating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      Confirmer et enregistrer les fiches de paie
-                    </button>
-                  ) : (
-                    <p className="text-sm text-emerald-600 font-medium">✓ Fiches de paie enregistrées</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                  <span className={`mt-3 inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${latest?.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                    {latest?.status === "CONFIRMED" ? "Fiche validée · modifiable" : "À calculer"}
+                  </span>
+                </Link>
+              )
+            })}
+            {teacherStaff.length === 0 && <p className="text-sm text-blue-700">Aucun professeur actif.</p>}
+          </div>
+        </section>
       )}
 
       {/* Filtre année + total */}
@@ -395,7 +273,20 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
                     {isDirector ? <SalaryAmountEditor salary={s} onUpdated={onSalaryUpdated} /> : formatCurrency(s.totalAmount)}
                   </td>
                   <td className="max-w-[280px] px-3 py-2 text-left text-xs text-gray-500">
-                    {s.notes ? <details><summary className="cursor-pointer text-blue-600">Voir le détail</summary><pre className="mt-2 whitespace-pre-wrap font-sans">{s.notes}</pre></details> : "—"}
+                    {s.lines.length > 0 || s.notes ? (
+                      <details>
+                        <summary className="cursor-pointer text-blue-600">Voir le détail</summary>
+                        <div className="mt-2 space-y-2">
+                          {s.lines.map((line) => (
+                            <div key={line.id} className="rounded border border-gray-100 bg-gray-50 p-2">
+                              <p className="font-medium text-gray-700">{line.label}</p>
+                              <p>{line.lessonsCount} cours · {line.hoursWorked} h · {formatCurrency(line.hourlyRate)}/h · <strong>{formatCurrency(line.totalAmount)}</strong></p>
+                            </div>
+                          ))}
+                          {s.notes && <pre className="whitespace-pre-wrap font-sans text-gray-400">{s.notes}</pre>}
+                        </div>
+                      </details>
+                    ) : "—"}
                   </td>
                   <td className="px-4 py-2 text-right">
                     {s.status === "PAID" ? (
