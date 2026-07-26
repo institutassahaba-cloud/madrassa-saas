@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
-import { ensurePaymentMatchLabelColumn, ensurePaymentMatchReferenceColumn } from "@/lib/payment-match-schema"
+import { ensurePaymentMatchAttributedSessionColumn, ensurePaymentMatchLabelColumn, ensurePaymentMatchReferenceColumn } from "@/lib/payment-match-schema"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { getEffectiveUser } from "@/lib/view-as"
@@ -14,6 +14,7 @@ export default async function PaymentsPage() {
   if (user.role === "TEACHER") redirect("/dashboard")
   await ensurePaymentMatchLabelColumn()
   await ensurePaymentMatchReferenceColumn()
+  await ensurePaymentMatchAttributedSessionColumn()
   await ensurePaymentScanSettingsColumns()
   await ensureStudentPaymentColumns()
 
@@ -67,7 +68,7 @@ export default async function PaymentsPage() {
       select: { studentId: true, sessionNumber: true, paidDate: true },
     }),
     prisma.paymentMatch.findMany({
-      where: { tenantId: user.tenantId, status: { in: ["TO_VERIFY", "CONFIRMED", "AUTO_CONFIRMED", "DIRECTOR", "TRASHED"] } },
+      where: { tenantId: user.tenantId, status: { in: ["TO_VERIFY", "CONFIRMED", "AUTO_CONFIRMED", "DIRECTOR", "TRASHED", "ALREADY_ATTRIBUTED"] } },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
         allocations: {

@@ -132,6 +132,14 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
           frequency: existing.frequency,
           duration: existing.duration,
           paymentRequestedAt: closingAt,
+          // La session suivante doit être pré-remplie avec le forfait de l'élève
+          // (cours/semaine × 4), sinon elle s'ouvre à 0 cours. Repli sur 8.
+          lessons: {
+            create: Array.from(
+              { length: student.lessonsPerWeek && student.lessonsPerWeek > 0 ? student.lessonsPerWeek * 4 : 8 },
+              (_, i) => ({ tenantId: existing.tenantId, number: i + 1, status: "PENDING" as const }),
+            ),
+          },
         },
         update: { paymentRequestedAt: closingAt },
         include: {

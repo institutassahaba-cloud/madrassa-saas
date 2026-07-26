@@ -465,6 +465,10 @@ model PaymentMatch {
   // Élève « pressenti » (facultatif, indicatif)
   studentId         String?
   student           Student?  @relation(fields: [studentId], references: [id])
+  // Session renseignée quand le directeur indique que le paiement avait déjà
+  // été attribué auparavant. Simple identifiant de traçabilité : aucune ligne
+  // Payment n'est créée et le montant n'est pas recompté.
+  attributedSessionId String?
   // TO_VERIFY | CONFIRMED | REJECTED | AUTO_CONFIRMED
   status            String    @default("TO_VERIFY")
   score             Float?

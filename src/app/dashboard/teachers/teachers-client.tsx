@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import type React from "react"
+import { useRouter } from "next/navigation"
 import {
   Users, BookOpen, UserCheck, ChevronDown, ChevronUp, Mail, Phone,
   MessageCircle, Plus, Check, Clock, X, CheckCircle2,
@@ -38,7 +39,7 @@ interface LessonSession {
   isComplete: boolean
   paymentRequestedAt?: string | null
   notes: string | null
-  student: { id: string; firstName: string; lastName: string }
+  student: { id: string; firstName: string; lastName: string; legacyId?: string | null; status?: string | null }
   teacher: { id: string; name: string }
   lessons: Lesson[]
 }
@@ -48,6 +49,7 @@ interface Student {
   firstName: string
   lastName: string
   displayName: string | null
+  legacyId: string | null
   subject: string | null
   phone: string | null
   parentPhone: string | null
@@ -195,6 +197,73 @@ function latestSessionsOnly(sessions: LessonSession[]): LessonSession[] {
 
 function latestSessionsWithoutPaymentDate(sessions: LessonSession[], paidBySession: Record<string, string>): LessonSession[] {
   return latestSessionsOnly(sessions).filter((session) => !paidBySession[paymentKey(session)])
+}
+
+type LegacyBoundaryTodo = {
+  key: string
+  studentName: string
+  teacherName: string
+  subject: string
+  legacyId: string
+  status: string
+  sessionNumber: number
+  lessonNumber: number | null
+}
+
+function legacyBoundaryTodos(sessions: LessonSession[], students: Student[]): LegacyBoundaryTodo[] {
+  const studentById = new Map(students.map((student) => [student.id, student]))
+  const latestByTracking = new Map<string, LessonSession>()
+  const trackingWithBoundary = new Set<string>()
+
+  for (const session of sessions) {
+    const student = studentById.get(session.student.id)
+    const legacyId = student?.legacyId || session.student.legacyId
+    if (!legacyId) continue
+
+    const key = trackingKey(session)
+    if (session.lessons.some((lesson) => lesson.legacyPayrollBoundary)) {
+      trackingWithBoundary.add(key)
+    }
+    const current = latestByTracking.get(key)
+    if (!current || session.number > current.number) latestByTracking.set(key, session)
+  }
+
+  return Array.from(latestByTracking.values())
+    .filter((session) => !trackingWithBoundary.has(trackingKey(session)))
+    .map((session) => {
+      const student = studentById.get(session.student.id)
+      const lastLesson = [...session.lessons].sort((a, b) => b.number - a.number)[0]
+      return {
+        key: trackingKey(session),
+        studentName: studentSortKey(student ?? {
+          id: session.student.id,
+          firstName: session.student.firstName,
+          lastName: session.student.lastName,
+          displayName: null,
+          legacyId: session.student.legacyId ?? null,
+          subject: session.subject,
+          phone: null,
+          parentPhone: null,
+          groupId: null,
+          lessonsPerWeek: null,
+          duration: null,
+          monthlyFee: 0,
+          status: session.student.status ?? "ACTIVE",
+          group: null,
+        }),
+        teacherName: session.teacher.name,
+        subject: session.subject || NO_SUBJECT,
+        legacyId: student?.legacyId || session.student.legacyId || "",
+        status: student?.status || session.student.status || "ACTIVE",
+        sessionNumber: session.number,
+        lessonNumber: lastLesson?.number ?? null,
+      }
+    })
+    .sort((a, b) =>
+      collator.compare(a.teacherName, b.teacherName) ||
+      collator.compare(a.studentName, b.studentName) ||
+      compareSubjects(a.subject, b.subject)
+    )
 }
 
 function formatForfait(lessonsPerWeek: number | null, duration: string | null): string | null {
@@ -697,6 +766,7 @@ function SessionCard({
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
+  const router = useRouter()
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
@@ -730,7 +800,7 @@ function SessionCard({
     if (!confirm(`Supprimer définitivement la Session ${session.number} et tous ses cours ? Les paiements liés sont conservés mais dissociés.${payrollWarning}\n\nAction irréversible.`)) return
     setDeletingSession(true)
     const res = await fetch(`/api/sessions/${session.id}`, { method: "DELETE" })
-    if (res.ok) window.location.reload()
+    if (res.ok) router.refresh()
     else {
       const data = await res.json().catch(() => ({}))
       alert(data.error || `Suppression impossible (erreur ${res.status}). Réessayez ou contactez le support.`)
@@ -749,7 +819,7 @@ function SessionCard({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Réinitialisation impossible.")
-      window.location.reload()
+      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Réinitialisation impossible.")
       setResettingPayment(false)
@@ -846,7 +916,7 @@ function SessionCard({
                 currentNumber={session.number}
                 onSave={async (n) => {
                   const err = await onRenumberSession(session.id, n)
-                  if (!err) window.location.reload()
+                  if (!err) router.refresh()
                   return err
                 }}
               />
@@ -1171,6 +1241,7 @@ function MergedGroupCahier({
   onEnsureLesson: (studentId: string, subject: string, teacherId: string, sessionNumber: number, lessonNumber: number, frequency: number | null, duration: string | null, lessonCount: number) => Promise<string | null>
   onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
+  const router = useRouter()
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
   const [creatingSession, setCreatingSession] = useState(false)
 
@@ -1242,7 +1313,7 @@ function MergedGroupCahier({
       const err = await onRenumberSession(s.id, newNumber)
       if (err) return err
     }
-    window.location.reload()
+    router.refresh()
     return null
   }
 
@@ -1257,8 +1328,8 @@ function MergedGroupCahier({
     if (!confirm(`Supprimer définitivement la Session ${selNum} pour toute la classe (${students.map(shortName).join(", ")}) et tous ses cours ? Les paiements liés sont conservés mais dissociés.${payrollWarning}\n\nAction irréversible.`)) return
     setDeletingSession(true)
     const results = await Promise.all(sessList.map((s) => fetch(`/api/sessions/${s.id}`, { method: "DELETE" })))
-    if (results.every((r) => r.ok)) window.location.reload()
-    else setDeletingSession(false)
+    if (results.every((r) => r.ok)) router.refresh()
+    setDeletingSession(false)
   }
 
   // Nouvelle session pour toute la classe : réplique le modèle de la dernière session.
@@ -1822,6 +1893,7 @@ function GroupCard({
   currentTeacherId: string
   canEditGroup: boolean
 }) {
+  const router = useRouter()
   const [removing, setRemoving] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
   const [archivingClass, setArchivingClass] = useState(false)
@@ -1867,7 +1939,7 @@ function GroupCard({
         }),
       })
     ))
-    window.location.reload()
+    router.refresh()
   }
 
   async function handleRemoveStudent(studentId: string) {
@@ -1878,7 +1950,7 @@ function GroupCard({
       body: JSON.stringify({ removeStudentIds: [studentId] }),
     })
     if (res.ok) {
-      window.location.reload()
+      router.refresh()
     }
     setRemoving(null)
   }
@@ -1891,16 +1963,18 @@ function GroupCard({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "ARCHIVED" }),
     })
-    if (res.ok) window.location.reload()
-    else setArchiving(null)
+    // Rafraîchissement « doux » : re-rend les Server Components (l'élève passe
+    // dans « Anciens ») sans recharger la page ni perdre la position de scroll.
+    if (res.ok) router.refresh()
+    setArchiving(null)
   }
 
   async function handleArchiveClass() {
     if (!confirm(`Fin de la classe « ${group.name} » ? Les ${activeStudents.length} élève(s) actif(s) seront archivés dans « Anciens élèves ». Réversible depuis Fiches élèves.`)) return
     setArchivingClass(true)
     const res = await fetch(`/api/groups/${group.id}/archive-students`, { method: "POST" })
-    if (res.ok) window.location.reload()
-    else setArchivingClass(false)
+    if (res.ok) router.refresh()
+    setArchivingClass(false)
   }
 
   async function handleDeleteClass() {
@@ -1910,7 +1984,7 @@ function GroupCard({
     )) return
     setDeletingClass(true)
     const res = await fetch(`/api/groups/${group.id}`, { method: "DELETE" })
-    if (res.ok) window.location.reload()
+    if (res.ok) router.refresh()
     else {
       const err = await res.json().catch(() => null)
       alert(`Suppression impossible : ${err?.error ?? res.status}`)
@@ -2547,6 +2621,7 @@ export function TeachersClient({
   const [paidBySession, setPaidBySession] = useState(initialPaidBySession)
   const [undatedPaymentBySession, setUndatedPaymentBySession] = useState(initialUndatedPaymentBySession)
   const [showSessionsWithoutPaymentDate, setShowSessionsWithoutPaymentDate] = useState(false)
+  const [showLegacyTodos, setShowLegacyTodos] = useState(false)
   const [search, setSearch] = useState("")
   const [sortMode, setSortMode] = useState<"name" | "subject">("name")
 
@@ -2554,6 +2629,7 @@ export function TeachersClient({
     (sum, t) => sum + t.teacherGroups.reduce((s, g) => s + g.students.filter(st => st.status === "ACTIVE").length, 0), 0
   )
   const sessionsWithoutPaymentDate = latestSessionsWithoutPaymentDate(sessions, paidBySession).length
+  const legacyTodos = legacyBoundaryTodos(sessions, students)
 
   async function reload() {
     const res = await fetch("/api/teachers")
@@ -2748,6 +2824,54 @@ export function TeachersClient({
           <p className="text-2xl font-bold text-gray-900">{totalStudents}</p>
         </div>
       </div>
+
+      {["DIRECTOR", "SECRETARY"].includes(currentRole) && (
+        <div className={`mb-4 rounded-xl border px-4 py-3 shadow-sm ${legacyTodos.length > 0 ? "border-indigo-200 bg-indigo-50" : "border-emerald-200 bg-emerald-50"}`}>
+          <button
+            type="button"
+            onClick={() => setShowLegacyTodos((open) => !open)}
+            className="flex w-full items-start justify-between gap-3 text-left"
+          >
+            <span>
+              <span className={`block text-sm font-semibold ${legacyTodos.length > 0 ? "text-indigo-900" : "text-emerald-900"}`}>
+                Ancien système : {legacyTodos.length} case{legacyTodos.length > 1 ? "s" : ""} à cocher
+              </span>
+              <span className={`mt-0.5 block text-xs ${legacyTodos.length > 0 ? "text-indigo-700" : "text-emerald-700"}`}>
+                Élèves migrés qui n&apos;ont pas encore de dernier cours comptabilisé pour la paie.
+              </span>
+            </span>
+            {showLegacyTodos ? <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" /> : <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />}
+          </button>
+
+          {showLegacyTodos && (
+            legacyTodos.length === 0 ? (
+              <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs font-medium text-emerald-700">
+                Toutes les limites ancien système sont renseignées pour les élèves migrés.
+              </p>
+            ) : (
+              <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-indigo-100 bg-white">
+                {legacyTodos.map((item) => (
+                  <div key={item.key} className="flex flex-col gap-1 border-b border-indigo-50 px-3 py-2 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900">{item.studentName}</p>
+                      <p className="text-xs text-gray-500">
+                        {item.teacherName} · {item.subject} · Session {item.sessionNumber}
+                        {item.lessonNumber ? ` · cocher le cours ${item.lessonNumber}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{item.legacyId}</span>
+                      {item.status !== "ACTIVE" && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">{item.status}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      )}
 
       {/* Add member */}
       <div className="mb-4">

@@ -29,6 +29,12 @@ function nextDateForDay(dayOfWeek: number) {
   return date.toISOString().slice(0, 10)
 }
 
+function lessonCountFromLessonsPerWeek(value: unknown) {
+  const lessonsPerWeek = Number(value)
+  if (!Number.isFinite(lessonsPerWeek) || lessonsPerWeek <= 0) return 8
+  return Math.min(Math.max(Math.round(lessonsPerWeek * 4), 1), 24)
+}
+
 function normalizeScheduleSlots(value: unknown): { dayOfWeek: number; startTime: string }[] {
   if (!Array.isArray(value)) return []
   return value.flatMap((slot) => {
@@ -144,6 +150,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
     })
     if (group?.teacherId) {
       const sessionSubject = subject || "Coran"
+      const lessonCount = lessonCountFromLessonsPerWeek(body.lessonsPerWeek)
       await prisma.lessonSession.upsert({
         where: { studentId_subject_number: { studentId: id, subject: sessionSubject, number: 1 } },
         update: {
@@ -160,7 +167,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
           frequency: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
           duration: body.duration || null,
           lessons: {
-            create: Array.from({ length: 8 }, (_, i) => ({
+            create: Array.from({ length: lessonCount }, (_, i) => ({
               tenantId: user.tenantId,
               number: i + 1,
               status: "PENDING",

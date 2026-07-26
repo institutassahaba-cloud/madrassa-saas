@@ -48,6 +48,7 @@ export default async function TeachersPage() {
         firstName: true,
         lastName: true,
         displayName: true,
+        legacyId: true,
         subject: true,
         phone: true,
         parentPhone: true,
@@ -63,7 +64,7 @@ export default async function TeachersPage() {
     prisma.lessonSession.findMany({
       where: { tenantId: user.tenantId },
       include: {
-        student: { select: { id: true, firstName: true, lastName: true } },
+        student: { select: { id: true, firstName: true, lastName: true, legacyId: true, status: true } },
         teacher: { select: { id: true, name: true } },
       },
       orderBy: [{ studentId: "asc" }, { subject: "asc" }, { number: "asc" }],

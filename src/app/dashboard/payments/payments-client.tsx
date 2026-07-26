@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight } from "lucide-react"
+import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -96,6 +96,7 @@ interface PaymentMatch {
   status: string
   reason: string | null
   rawSubject: string | null
+  attributedSessionId: string | null
   createdAt: Date | string
   student: {
     id: string
@@ -147,7 +148,8 @@ function matchStatusConfig(status: string): { label: string; variant: "default" 
   if (status === "CONFIRMED") return { label: "Validé", variant: "info" }
   if (status === "AUTO_CONFIRMED") return { label: "Auto-validé", variant: "success" }
   if (status === "DIRECTOR") return { label: "Élève directeur", variant: "secondary" }
-  if (status === "TRASHED") return { label: "Ignoré", variant: "secondary" }
+  if (status === "TRASHED" || status === "NOT_INSTITUTE") return { label: "Hors institut", variant: "secondary" }
+  if (status === "ALREADY_ATTRIBUTED") return { label: "Déjà attribué", variant: "info" }
   return { label: status, variant: "outline" }
 }
 
@@ -250,6 +252,10 @@ export function PaymentsClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [selectedMatch, setSelectedMatch] = useState<PaymentMatch | null>(null)
+  const [alreadyAttributedMatch, setAlreadyAttributedMatch] = useState<PaymentMatch | null>(null)
+  const [alreadyAttributedStudentId, setAlreadyAttributedStudentId] = useState("")
+  const [alreadyAttributedSessionId, setAlreadyAttributedSessionId] = useState("")
+  const [alreadyAttributedLoading, setAlreadyAttributedLoading] = useState(false)
   const [newStudentOpen, setNewStudentOpen] = useState(false)
   // Paiement d'où l'on a cliqué « nouvel élève » : pré-rempli pour l'élève 1 du formulaire.
   const [newStudentPaymentId, setNewStudentPaymentId] = useState("")
@@ -257,6 +263,7 @@ export function PaymentsClient({
   const [unprocessedOpen, setUnprocessedOpen] = useState(true)
   const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
   const [confirmedOpen, setConfirmedOpen] = useState(true)
+  const [alreadyAttributedOpen, setAlreadyAttributedOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
   const [directorOpen, setDirectorOpen] = useState(false)
   const [pendingOpen, setPendingOpen] = useState(true)
@@ -275,6 +282,23 @@ export function PaymentsClient({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalPaymentMatches(paymentMatches)
   }, [paymentMatches])
+  // Le scan Gmail tourne en arrière-plan. Rafraîchir les données serveur tant que
+  // l'onglet Paiements est visible évite de laisser l'écran figé sur le snapshot
+  // chargé à l'ouverture alors que de nouveaux paiements PayPal/Wise ont été créés.
+  useEffect(() => {
+    if (!scanControl.enabled) return
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") router.refresh()
+    }
+    const interval = window.setInterval(refreshIfVisible, 60_000)
+    document.addEventListener("visibilitychange", refreshIfVisible)
+
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener("visibilitychange", refreshIfVisible)
+    }
+  }, [router, scanControl.enabled])
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [selectedConfirmedMatchIds, setSelectedConfirmedMatchIds] = useState<Set<string>>(new Set())
   const [selectedTrashedIds, setSelectedTrashedIds] = useState<Set<string>>(new Set())
@@ -356,6 +380,7 @@ export function PaymentsClient({
     return afterStart && beforeEnd && matchText
   })
   const toVerifyMatches = filteredPaymentMatches.filter((match) => match.status === "TO_VERIFY")
+  const alreadyAttributedMatches = filteredPaymentMatches.filter((match) => match.status === "ALREADY_ATTRIBUTED")
 
   const selectedPeriod = paymentPeriods.find((item) => item.id === periodFilter)
 
@@ -518,9 +543,13 @@ export function PaymentsClient({
     }
   }
 
-  async function updatePaymentMatch(matchId: string, action: "trash" | "restore" | "director") {
-    const confirmed = action === "trash"
-      ? window.confirm("Ignorer ce paiement ? Il quittera les paiements à associer, mais vous pourrez le restaurer ensuite.")
+  async function updatePaymentMatch(matchId: string, action: "delete" | "not_institute" | "already_attributed" | "restore" | "director") {
+    const confirmed = action === "delete"
+      ? window.confirm("Supprimer ce paiement ? Il disparaîtra de l'interface et ne sera pas recréé lors d'un prochain scan Gmail.")
+      : action === "not_institute"
+        ? window.confirm("Marquer ce paiement comme hors institut ? Il ne sera ni affiché dans les paiements à associer, ni comptabilisé.")
+        : action === "already_attributed"
+          ? window.confirm("Marquer ce paiement comme déjà attribué ? Il restera visible dans la rubrique dédiée sans être compté une seconde fois.")
       : action === "director"
         ? window.confirm("Classer ce paiement dans les élèves du directeur ? Il ne sera plus compté ni proposé dans les paiements à associer. Le même payeur sera reconnu automatiquement la prochaine fois.")
         : true
@@ -534,20 +563,30 @@ export function PaymentsClient({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Action impossible.")
-      const nextStatus = action === "trash" ? "TRASHED" : action === "director" ? "DIRECTOR" : "TO_VERIFY"
-      setLocalPaymentMatches((current) => current.map((match) => (
-        match.id === matchId
-          ? {
-              ...match,
-              status: nextStatus,
-              reason: action === "director"
-                ? "Payeur connu : élève du directeur (hors institut)."
-                : action === "trash"
-                  ? "Paiement ignoré : hors institut."
-                  : "Paiement restauré, à associer.",
-            }
-          : match
-      )))
+      const nextStatus = action === "delete"
+        ? "DELETED"
+        : action === "not_institute"
+          ? "NOT_INSTITUTE"
+          : action === "already_attributed"
+            ? "ALREADY_ATTRIBUTED"
+            : action === "director" ? "DIRECTOR" : "TO_VERIFY"
+      setLocalPaymentMatches((current) => action === "delete"
+        ? current.filter((match) => match.id !== matchId)
+        : current.map((match) => (
+          match.id === matchId
+            ? {
+                ...match,
+                status: nextStatus,
+                reason: action === "director"
+                  ? "Payeur connu : élève du directeur (hors institut)."
+                  : action === "not_institute"
+                    ? "Ce paiement ne concerne pas l'institut."
+                    : action === "already_attributed"
+                      ? "Paiement déjà attribué et comptabilisé auparavant."
+                      : "Paiement restauré, à associer.",
+              }
+            : match
+        )))
       setSelectedMatchIds((current) => {
         const next = new Set(current)
         next.delete(matchId)
@@ -557,6 +596,42 @@ export function PaymentsClient({
       alert(error instanceof Error ? error.message : "Action impossible.")
     } finally {
       setMatchActionLoading(null)
+    }
+  }
+
+  function openAlreadyAttributedDialog(match: PaymentMatch) {
+    const studentId = match.student?.id ?? ""
+    setAlreadyAttributedMatch(match)
+    setAlreadyAttributedStudentId(studentId)
+    setAlreadyAttributedSessionId("")
+  }
+
+  async function saveAlreadyAttributed() {
+    if (!alreadyAttributedMatch || !alreadyAttributedStudentId || !alreadyAttributedSessionId) return
+    setAlreadyAttributedLoading(true)
+    try {
+      const res = await fetch(`/api/payment-matches/${alreadyAttributedMatch.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "already_attributed",
+          studentId: alreadyAttributedStudentId,
+          sessionId: alreadyAttributedSessionId,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Attribution impossible.")
+      setAlreadyAttributedMatch(null)
+      setSelectedMatchIds((current) => {
+        const next = new Set(current)
+        next.delete(alreadyAttributedMatch.id)
+        return next
+      })
+      router.refresh()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Attribution impossible.")
+    } finally {
+      setAlreadyAttributedLoading(false)
     }
   }
 
@@ -592,28 +667,26 @@ export function PaymentsClient({
     }
   }
 
-  async function trashSelectedMatches() {
+  async function updateSelectedMatches(action: "delete" | "not_institute") {
     const visibleIds = toVerifyMatches.map((match) => match.id).filter((id) => selectedMatchIds.has(id))
     if (visibleIds.length === 0) return
-    const confirmed = window.confirm(`Ignorer ${visibleIds.length} paiement(s) ? Ils quitteront les paiements à associer, mais vous pourrez les restaurer ensuite.`)
+    const message = action === "delete"
+      ? `Supprimer ${visibleIds.length} paiement(s) ? Ils disparaîtront de l'interface sans être recréés par le scan Gmail.`
+      : `Classer ${visibleIds.length} paiement(s) comme hors institut ? Ils ne seront pas comptabilisés.`
+    const confirmed = window.confirm(message)
     if (!confirmed) return
-    setMatchActionLoading("bulk-trash")
+    setMatchActionLoading(`bulk-${action}`)
     try {
       for (const matchId of visibleIds) {
         const res = await fetch(`/api/payment-matches/${matchId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "trash" }),
+          body: JSON.stringify({ action }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || "Action impossible.")
       }
-      const ids = new Set(visibleIds)
-      setLocalPaymentMatches((current) => current.map((match) => (
-        ids.has(match.id)
-          ? { ...match, status: "TRASHED", reason: "Paiement ignoré : hors institut." }
-          : match
-      )))
+      router.refresh()
       setSelectedMatchIds(new Set())
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
@@ -900,8 +973,8 @@ export function PaymentsClient({
 
       {isDirector && (
         <Card className={scanControl.lastError ? "border-red-300 bg-red-50" : scanControl.enabled ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"}>
-          <CardContent className="p-4">
-            <div>
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h3 className="font-semibold text-gray-900">Scan automatique des paiements</h3>
               <p className="text-sm text-gray-600">
                 {scanControl.enabled
@@ -923,6 +996,10 @@ export function PaymentsClient({
                 </div>
               )}
             </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => router.refresh()} className="shrink-0 bg-white">
+              <RefreshCw className="h-4 w-4" />
+              Actualiser
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -1029,15 +1106,21 @@ export function PaymentsClient({
                     {matchActionLoading === "bulk-director" ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}
                     Élèves du directeur
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={trashSelectedMatches}
-                    disabled={!toVerifyMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-trash"}
-                    className="border-amber-300 text-amber-900 hover:bg-amber-100"
+                  <Button size="sm" variant="outline"
+                    onClick={() => updateSelectedMatches("not_institute")}
+                    disabled={!toVerifyMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-not_institute"}
+                    className="border-gray-300 text-gray-800 hover:bg-gray-100"
                   >
-                    {matchActionLoading === "bulk-trash" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    Ignorer
+                    {matchActionLoading === "bulk-not_institute" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                    Hors institut
+                  </Button>
+                  <Button size="sm" variant="outline"
+                    onClick={() => updateSelectedMatches("delete")}
+                    disabled={!toVerifyMatches.some((match) => selectedMatchIds.has(match.id)) || matchActionLoading === "bulk-delete"}
+                    className="border-red-300 text-red-700 hover:bg-red-50"
+                  >
+                    {matchActionLoading === "bulk-delete" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Supprimer
                   </Button>
                 </div>
               </div>
@@ -1051,7 +1134,7 @@ export function PaymentsClient({
                     const status = matchStatusConfig(match.status)
                     const allocations = match.allocations?.filter((allocation) => allocation.payment) ?? []
                     const canAssociate = match.status === "TO_VERIFY" || match.status === "AUTO_CONFIRMED"
-                    const canTrash = match.status === "TO_VERIFY"
+                    const canManage = match.status === "TO_VERIFY"
                     const canDirector = match.status === "TO_VERIFY"
                     const canRestore = match.status === "TRASHED" || match.status === "DIRECTOR"
                     const canCancel = match.status === "CONFIRMED" || match.status === "AUTO_CONFIRMED"
@@ -1059,7 +1142,7 @@ export function PaymentsClient({
                     return (
                       <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-amber-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 gap-3">
-                          {canTrash && (
+                          {canManage && (
                             <input
                               type="checkbox"
                               className="mt-1 h-4 w-4 shrink-0 rounded border-amber-300"
@@ -1138,20 +1221,26 @@ export function PaymentsClient({
                               Élève directeur
                             </Button>
                           )}
+                          {canManage && (
+                            <Button size="sm" variant="outline" onClick={() => openAlreadyAttributedDialog(match)} disabled={matchActionLoading === match.id} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                              <Check className="h-4 w-4" />
+                              Déjà attribué
+                            </Button>
+                          )}
                           {canRestore && (
                             <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
                               {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                               Restaurer
                             </Button>
                           )}
-                          {canTrash && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => updatePaymentMatch(match.id, "trash")}
-                              disabled={matchActionLoading === match.id}
-                              title="Ignorer ce paiement hors institut"
-                            >
+                          {canManage && (
+                            <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "not_institute")} disabled={matchActionLoading === match.id} title="Ce paiement ne concerne pas l'institut">
+                              {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                              Hors institut
+                            </Button>
+                          )}
+                          {canManage && (
+                            <Button size="icon" variant="ghost" onClick={() => updatePaymentMatch(match.id, "delete")} disabled={matchActionLoading === match.id} title="Supprimer ce paiement">
                               {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
                             </Button>
                           )}
@@ -1204,6 +1293,49 @@ export function PaymentsClient({
                   </Button>
                 </div>
               ))}
+            </div>}
+          </CardContent>
+        </Card>
+      )}
+
+      {alreadyAttributedMatches.length > 0 && (
+        <Card className="border-cyan-200 bg-cyan-50/60">
+          <CardContent className="space-y-3 p-4">
+            <button type="button" onClick={() => setAlreadyAttributedOpen((value) => !value)} className="flex w-full flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-semibold text-cyan-900">Paiements déjà attribués</h3>
+                <p className="text-sm text-cyan-700">Rattachés à un élève et une session, conservés comme trace sans être comptés une seconde fois.</p>
+              </div>
+              <span className="flex items-center gap-2">
+                <Badge variant="info">{alreadyAttributedMatches.length}</Badge>
+                {alreadyAttributedOpen ? <ChevronUp className="h-4 w-4 text-cyan-700" /> : <ChevronDown className="h-4 w-4 text-cyan-700" />}
+              </span>
+            </button>
+            {alreadyAttributedOpen && <div className="space-y-2">
+              {alreadyAttributedMatches.map((match) => {
+                const session = lessonSessions.find((item) => item.id === match.attributedSessionId)
+                return (
+                  <div key={match.id} className="flex flex-col gap-3 rounded-xl border border-cyan-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {sourceBadge(match)}
+                        <p className="font-semibold text-gray-900">{formatCurrency(match.receivedAmount)}</p>
+                        <p className="text-sm text-gray-600">{match.detectedPayerName || "Payeur non détecté"}</p>
+                        <Badge variant="info">Déjà attribué</Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-cyan-900">
+                        {match.student ? `${match.student.firstName} ${match.student.lastName}` : "Élève non renseigné"}
+                        {session ? ` · ${session.subject} · Session ${session.number}` : " · Session non renseignée"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-400">Référence : {displayReference(match)}</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => updatePaymentMatch(match.id, "restore")} disabled={matchActionLoading === match.id}>
+                      {matchActionLoading === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                      Remettre dans « à associer »
+                    </Button>
+                  </div>
+                )
+              })}
             </div>}
           </CardContent>
         </Card>
@@ -1617,6 +1749,56 @@ export function PaymentsClient({
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(alreadyAttributedMatch)} onOpenChange={(open) => { if (!open && !alreadyAttributedLoading) setAlreadyAttributedMatch(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Paiement déjà attribué</DialogTitle>
+            <DialogDescription>
+              Indiquez à quel élève et à quelle session ce paiement avait déjà été attribué. Il sera conservé comme trace, sans être compté une seconde fois.
+            </DialogDescription>
+          </DialogHeader>
+          {alreadyAttributedMatch && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-sm text-cyan-950">
+                <strong>{formatCurrency(alreadyAttributedMatch.receivedAmount)}</strong> · {alreadyAttributedMatch.detectedPayerName || "Payeur non détecté"}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Élève</Label>
+                <select
+                  value={alreadyAttributedStudentId}
+                  onChange={(event) => { setAlreadyAttributedStudentId(event.target.value); setAlreadyAttributedSessionId("") }}
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                >
+                  <option value="">Choisir un élève…</option>
+                  {students.map((student) => <option key={student.id} value={student.id}>{student.firstName} {student.lastName}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Session déjà payée</Label>
+                <select
+                  value={alreadyAttributedSessionId}
+                  onChange={(event) => setAlreadyAttributedSessionId(event.target.value)}
+                  disabled={!alreadyAttributedStudentId}
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm disabled:bg-gray-100"
+                >
+                  <option value="">Choisir une session…</option>
+                  {lessonSessions.filter((session) => session.studentId === alreadyAttributedStudentId).map((session) => (
+                    <option key={session.id} value={session.id}>{session.subject} · Session {session.number}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setAlreadyAttributedMatch(null)} disabled={alreadyAttributedLoading}>Annuler</Button>
+                <Button onClick={saveAlreadyAttributed} disabled={!alreadyAttributedStudentId || !alreadyAttributedSessionId || alreadyAttributedLoading}>
+                  {alreadyAttributedLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Marquer comme déjà attribué
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <PaymentDialog
         open={dialogOpen}

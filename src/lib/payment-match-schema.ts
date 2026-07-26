@@ -29,3 +29,18 @@ export function ensurePaymentMatchLabelColumn() {
 
   return paymentLabelColumnReady
 }
+
+let attributedSessionColumnReady: Promise<void> | null = null
+
+export function ensurePaymentMatchAttributedSessionColumn() {
+  attributedSessionColumnReady ??= prisma
+    .$executeRawUnsafe('ALTER TABLE "PaymentMatch" ADD COLUMN "attributedSessionId" TEXT')
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error)
+      if (/duplicate column|already exists/i.test(message)) return
+      throw error
+    })
+
+  return attributedSessionColumnReady
+}
