@@ -70,7 +70,7 @@ export const POST = wrap(async (req: Request) => {
       return `${date} · ${student} · ${validatedPaymentAmount(payment).toFixed(2)} €${method}${ref} · validé le ${closedAt.toLocaleString("fr-FR")}`
     })
     const notes = [
-      `Commission secrétaire 10% sur ${collectedTotal.toFixed(2)} € encaissés.`,
+      `Commission secrétaire 10% sur ${collectedTotal.toFixed(2)} € de paiements validés pendant la période.`,
       `Période clôturée du ${since.toLocaleString("fr-FR")} au ${now.toLocaleString("fr-FR")}.`,
       `${payments.length} paiement${payments.length > 1 ? "s" : ""} inclus.`,
       paymentLines.length > 0 ? `Détail :\n${paymentLines.join("\n")}` : "Aucun paiement inclus.",

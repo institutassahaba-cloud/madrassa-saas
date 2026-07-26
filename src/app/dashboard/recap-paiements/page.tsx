@@ -35,6 +35,8 @@ export default async function RecapPaiementsPage() {
     totalAmount: Number(s.totalAmount),
     status: s.status,
     paidDate: s.paidDate ? new Date(s.paidDate).toISOString() : null,
+    periodStart: s.periodStart ? new Date(s.periodStart).toISOString() : null,
+    periodEnd: s.periodEnd ? new Date(s.periodEnd).toISOString() : null,
     notes: s.notes,
   }))
 

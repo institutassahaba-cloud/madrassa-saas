@@ -19,6 +19,9 @@ interface Salary {
   totalAmount: number
   status: string
   paidDate: string | null
+  periodStart: string | null
+  periodEnd: string | null
+  notes: string | null
 }
 
 interface StaffMember {
@@ -96,7 +99,7 @@ function PaymentInfoEditor({ member, onSave }: { member: StaffMember; onSave: (i
 }
 
 export function RecapPaiementsClient({ salaries: initialSalaries, teachers: initialStaff, isDirector }: { salaries: Salary[]; teachers: StaffMember[]; isDirector: boolean }) {
-  const [salaries] = useState(initialSalaries)
+  const [salaries, setSalaries] = useState(initialSalaries)
   const [staff, setStaff] = useState(initialStaff)
 
   const years = useMemo(() => {
@@ -310,6 +313,8 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
                 salaries={personSalaries}
                 total={personTotal}
                 onSavePaymentInfo={handleSavePaymentInfo}
+                isDirector={isDirector}
+                onSalaryUpdated={(updated) => setSalaries((current) => current.map((salary) => salary.id === updated.id ? { ...salary, ...updated } : salary))}
               />
             )
           })}
@@ -319,18 +324,24 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
   )
 }
 
-function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentInfo }: {
+function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentInfo, isDirector, onSalaryUpdated }: {
   name: string
   role: string
   member: StaffMember | undefined
   salaries: Salary[]
   total: number
   onSavePaymentInfo: (id: string, info: string) => void
+  isDirector: boolean
+  onSalaryUpdated: (salary: Salary) => void
 }) {
   const [expanded, setExpanded] = useState(true)
   const roleLabel = role === "SECRETARY" ? "Secrétaire" : "Professeur"
   const roleColor = role === "SECRETARY" ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-700"
-  const sorted = [...salaries].sort((a, b) => b.month - a.month)
+  const sorted = [...salaries].sort((a, b) => {
+    const aDate = a.periodEnd ? new Date(a.periodEnd).getTime() : new Date(a.year, a.month - 1).getTime()
+    const bDate = b.periodEnd ? new Date(b.periodEnd).getTime() : new Date(b.year, b.month - 1).getTime()
+    return bDate - aDate
+  })
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -366,19 +377,26 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
                 <th className="px-3 py-2 text-right text-xs font-medium">Heures</th>
                 <th className="px-3 py-2 text-right text-xs font-medium">Cours</th>
                 <th className="px-3 py-2 text-right text-xs font-medium">Montant</th>
-                <th className="px-3 py-2 text-right text-xs font-medium">Notes</th>
+                <th className="px-3 py-2 text-left text-xs font-medium">Détail</th>
                 <th className="px-4 py-2 text-right text-xs font-medium">Statut</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((s) => (
                 <tr key={s.id} className="border-t border-gray-50 hover:bg-gray-50">
-                  <td className="py-2 pl-4 text-gray-700">{MONTHS[s.month]} {s.year}</td>
+                  <td className="py-2 pl-4 text-gray-700">
+                    {s.periodStart && s.periodEnd
+                      ? `${new Date(s.periodStart).toLocaleDateString("fr-FR")} → ${new Date(s.periodEnd).toLocaleDateString("fr-FR")}`
+                      : `${MONTHS[s.month]} ${s.year}`}
+                  </td>
                   <td className="px-3 py-2 text-right text-gray-600">{s.hoursWorked != null ? `${s.hoursWorked}h` : "—"}</td>
                   <td className="px-3 py-2 text-right text-gray-600">{s.lessonsCount ?? "—"}</td>
-                  <td className="px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(s.totalAmount)}</td>
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <td className="px-3 py-2 text-right text-xs text-gray-400 max-w-[200px] truncate">{(s as any).notes ?? "—"}</td>
+                  <td className="px-3 py-2 text-right font-semibold text-gray-900">
+                    {isDirector ? <SalaryAmountEditor salary={s} onUpdated={onSalaryUpdated} /> : formatCurrency(s.totalAmount)}
+                  </td>
+                  <td className="max-w-[280px] px-3 py-2 text-left text-xs text-gray-500">
+                    {s.notes ? <details><summary className="cursor-pointer text-blue-600">Voir le détail</summary><pre className="mt-2 whitespace-pre-wrap font-sans">{s.notes}</pre></details> : "—"}
+                  </td>
                   <td className="px-4 py-2 text-right">
                     {s.status === "PAID" ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -398,5 +416,43 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
         </div>
       )}
     </div>
+  )
+}
+
+function SalaryAmountEditor({ salary, onUpdated }: { salary: Salary; onUpdated: (salary: Salary) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(String(salary.totalAmount))
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    const totalAmount = Number(value.replace(",", "."))
+    if (!Number.isFinite(totalAmount) || totalAmount < 0) return alert("Montant invalide.")
+    setSaving(true)
+    const res = await fetch(`/api/salaries/${salary.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ totalAmount }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setSaving(false)
+    if (!res.ok) return alert(data.error || "Modification impossible.")
+    onUpdated({ ...salary, totalAmount: Number(data.totalAmount), notes: data.notes ?? salary.notes })
+    setEditing(false)
+  }
+
+  if (!editing) {
+    return (
+      <button type="button" onClick={() => { setValue(String(salary.totalAmount)); setEditing(true) }} className="inline-flex items-center gap-1 hover:text-blue-600" title="Modifier cette fiche de paie">
+        {formatCurrency(salary.totalAmount)} <Pencil className="h-3 w-3" />
+      </button>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center justify-end gap-1">
+      <input className="w-20 rounded border border-gray-200 px-1.5 py-1 text-right text-sm" value={value} onChange={(event) => setValue(event.target.value)} inputMode="decimal" autoFocus />
+      <button type="button" onClick={save} disabled={saving} className="text-emerald-600"><Save className="h-3.5 w-3.5" /></button>
+      <button type="button" onClick={() => setEditing(false)} disabled={saving} className="text-gray-400"><X className="h-3.5 w-3.5" /></button>
+    </span>
   )
 }

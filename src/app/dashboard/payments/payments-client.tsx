@@ -2444,7 +2444,7 @@ function SecretaryPayBlock() {
               {result.paymentCount} paiement{result.paymentCount > 1 ? "s" : ""} inclus dans cette clôture.
             </p>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Total encaissé</span>
+              <span className="text-sm text-gray-600">Paiements validés sur la période en cours</span>
               <span className="font-medium">{formatCurrency(result.collectedTotal)}</span>
             </div>
             <div className="flex items-center justify-between">
