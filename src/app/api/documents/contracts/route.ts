@@ -4,13 +4,18 @@ import { uploadToDrive } from "@/lib/google-drive"
 import { NextResponse } from "next/server"
 import { wrap } from "@/lib/api"
 
+const MAX_PDF_SIZE = 4 * 1024 * 1024
+
 export const GET = wrap(async () => {
   const session = await auth()
   if (!session?.user) return NextResponse.json([], { status: 401 })
   const user = session.user
 
   const contracts = await prisma.teacherContract.findMany({
-    where: { tenantId: user.tenantId },
+    where: {
+      tenantId: user.tenantId,
+      ...(user.role === "TEACHER" ? { teacherId: user.id } : {}),
+    },
     select: { id: true, teacherId: true, title: true, driveUrl: true, uploadedAt: true },
     orderBy: { uploadedAt: "desc" },
   })
@@ -34,6 +39,9 @@ export const POST = wrap(async (req: Request) => {
   }
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
     return NextResponse.json({ error: "Le document doit être un PDF." }, { status: 400 })
+  }
+  if (file.size > MAX_PDF_SIZE) {
+    return NextResponse.json({ error: "Le PDF dépasse la limite de 4 Mo." }, { status: 413 })
   }
 
   const teacher = await prisma.user.findFirst({

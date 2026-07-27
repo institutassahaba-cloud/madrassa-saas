@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { CheckCircle2, Loader2, Pencil } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -87,6 +88,7 @@ export function PaymentDialog({
   currentMonth,
   currentYear,
 }: PaymentDialogProps) {
+  const router = useRouter()
   const [form, setForm] = useState(EMPTY)
   const [amountEditable, setAmountEditable] = useState(false)
   const [rows, setRows] = useState<ManualPaymentRow[]>(() => [newManualPaymentRow()])
@@ -233,7 +235,7 @@ export function PaymentDialog({
         throw new Error(data?.error || "Erreur lors de l'enregistrement.")
       }
       onClose()
-      window.location.reload()
+      router.refresh()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setError(e.message || "Erreur")

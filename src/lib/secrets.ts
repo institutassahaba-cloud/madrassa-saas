@@ -4,8 +4,9 @@ import crypto from "crypto"
 // AES-256-GCM. La clé vient de l'env SECRETS_ENCRYPTION_KEY (n'importe quelle
 // passphrase : elle est dérivée en 32 octets via SHA-256).
 //
-// Conçu pour être SÛR PAR DÉFAUT et sans migration :
-//  - encryptSecret sans clé → renvoie la valeur en clair (comportement legacy).
+// Conçu pour préserver la lecture des anciennes valeurs tout en empêchant
+// toute nouvelle écriture en clair en production :
+//  - encryptSecret sans clé → erreur en production, avertissement en local.
 //  - decryptSecret sur une valeur non préfixée « enc:v1: » → legacy clair,
 //    renvoyée telle quelle. Les anciens secrets se rechiffrent au prochain
 //    enregistrement, une fois la clé définie.
@@ -32,6 +33,9 @@ export function encryptSecret(value: string | null | undefined): string | null |
   if (value.startsWith(PREFIX)) return value
   const key = getKey()
   if (!key) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SECRETS_ENCRYPTION_KEY absente : enregistrement d'un secret refusé.")
+    }
     warnOnce()
     return value
   }

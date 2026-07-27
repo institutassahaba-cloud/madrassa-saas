@@ -3,8 +3,6 @@ import path from "path"
 import bcrypt from "bcryptjs"
 import { createClient } from "@libsql/client"
 
-const DEFAULT_PASSWORD = "admin1234"
-
 function parseArgs(argv) {
   const args = {}
   for (let i = 0; i < argv.length; i++) {
@@ -75,7 +73,8 @@ const args = parseArgs(process.argv.slice(2))
 const env = resolveEnv(args)
 const databaseUrl = env.DATABASE_URL
 const authToken = env.TURSO_AUTH_TOKEN
-const password = String(args.password || DEFAULT_PASSWORD)
+if (!args.password) die("Ajoutez --password avec un mot de passe provisoire unique.")
+const password = String(args.password)
 const contactEmail = args["contact-email"] ? String(args["contact-email"]).trim().toLowerCase() : null
 const allowLocal = Boolean(args.local)
 

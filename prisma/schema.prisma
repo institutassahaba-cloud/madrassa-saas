@@ -290,6 +290,8 @@ model LessonSession {
   payments Payment[]
 
   @@unique([studentId, subject, number])
+  @@index([tenantId, teacherId, isComplete])
+  @@index([tenantId, studentId])
 }
 
 model Lesson {
@@ -310,6 +312,9 @@ model Lesson {
   updatedAt             DateTime      @updatedAt
 
   salaryLessons TeacherSalaryLesson[]
+
+  @@index([tenantId, sessionId, date])
+  @@index([tenantId, status, date])
 }
 
 // ─── GROUPS ──────────────────────────────────────────────────────────────────
@@ -369,6 +374,10 @@ model Payment {
   updatedAt         DateTime       @updatedAt
 
   allocations PaymentAllocation[]
+
+  @@index([tenantId, status, confirmedAt])
+  @@index([tenantId, status, paidDate])
+  @@index([tenantId, studentId, status])
 }
 
 // ─── ATTENDANCE ──────────────────────────────────────────────────────────────
@@ -450,8 +459,35 @@ model TeacherSalary {
 
   lines         TeacherSalaryLine[]
   salaryLessons TeacherSalaryLesson[]
+  revisions     TeacherSalaryRevision[]
 
   @@unique([teacherId, month, year])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, teacherId, periodEnd])
+}
+
+// Copie immuable de la fiche avant chaque recalcul ou correction. La fiche
+// courante reste modifiable, mais aucune version antérieure n'est perdue.
+model TeacherSalaryRevision {
+  id            String        @id @default(cuid())
+  tenantId      String
+  salaryId      String
+  salary        TeacherSalary @relation(fields: [salaryId], references: [id], onDelete: Cascade)
+  revision      Int
+  totalAmount   Float
+  status        String
+  paidDate      DateTime?
+  hoursWorked   Float?
+  lessonsCount  Int?
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  notes         String?
+  snapshotJson  String
+  createdById   String?
+  createdAt     DateTime      @default(now())
+
+  @@unique([salaryId, revision])
+  @@index([tenantId, createdAt])
 }
 
 // Détail figé d'une fiche de paie : une ligne par élève, binôme ou classe.
@@ -531,6 +567,8 @@ model PaymentMatch {
 
   @@unique([tenantId, gmailMessageId])
   @@index([tenantId, status])
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, status, confirmedAt])
 }
 
 // Allocation N-N : un email (PaymentMatch) peut couvrir plusieurs Payment
@@ -566,6 +604,7 @@ model SecretaryCommission {
   updatedAt      DateTime  @updatedAt
 
   @@unique([secretaryId, month, year])
+  @@index([tenantId, createdAt])
 }
 
 // ─── LIVRES DE L'INSTITUT ────────────────────────────────────────────────────

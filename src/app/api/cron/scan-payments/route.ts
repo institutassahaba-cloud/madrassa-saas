@@ -10,8 +10,7 @@ function isAuthorized(req: Request) {
   if (!secret) return false
 
   const authHeader = req.headers.get("authorization")
-  const url = new URL(req.url)
-  return authHeader === `Bearer ${secret}` || url.searchParams.get("secret") === secret
+  return authHeader === `Bearer ${secret}`
 }
 
 export const GET = wrap(async (req: Request) => {
@@ -28,15 +27,25 @@ export const GET = wrap(async (req: Request) => {
       paymentScanEnabled: true,
       paymentScanStartedAt: { not: null },
     },
-    select: { tenantId: true, paymentScanStartedAt: true },
+    select: { tenantId: true, paymentScanStartedAt: true, paymentScanLastRunAt: true },
   })
 
   const results = []
   for (const setting of settings) {
     let lastError: string | null = null
+    let succeeded = false
     try {
-      const result = await scanPaymentEmails(setting.tenantId, { startedAt: setting.paymentScanStartedAt })
+      // Chevauchement de 10 minutes pour ne rater aucun mail en cas de retard
+      // Gmail, sans rescanner toute la période à chaque passage du cron.
+      const overlapStart = setting.paymentScanLastRunAt
+        ? new Date(setting.paymentScanLastRunAt.getTime() - 10 * 60 * 1000)
+        : setting.paymentScanStartedAt
+      const startedAt = overlapStart && setting.paymentScanStartedAt && overlapStart < setting.paymentScanStartedAt
+        ? setting.paymentScanStartedAt
+        : overlapStart
+      const result = await scanPaymentEmails(setting.tenantId, { startedAt })
       results.push({ tenantId: setting.tenantId, ...result })
+      succeeded = true
     } catch (error) {
       lastError = error instanceof Error ? error.message : "Lecture Gmail impossible."
       results.push({ tenantId: setting.tenantId, ok: false, error: lastError })
@@ -45,7 +54,10 @@ export const GET = wrap(async (req: Request) => {
     // (ex: jeton Gmail expiré → « invalid_grant » alors que le cron répond 200 à l'Apps Script).
     await prisma.tenantSettings.update({
       where: { tenantId: setting.tenantId },
-      data: { paymentScanLastRunAt: new Date(), paymentScanLastError: lastError },
+      data: {
+        ...(succeeded ? { paymentScanLastRunAt: new Date() } : {}),
+        paymentScanLastError: lastError,
+      },
     }).catch(() => {})
   }
 

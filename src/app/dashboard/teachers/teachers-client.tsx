@@ -1355,7 +1355,7 @@ function MergedGroupCahier({
 
 function StudentCahier({
   student, sessions, paidBySession, undatedPaymentBySession, schedule, teachers, currentUserId,
-  canSetLegacyBoundary, canMarkPaymentDate,
+  canSetLegacyBoundary, canMarkPaymentDate, canArchive = false,
   onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
 }: {
   student: Student
@@ -1367,6 +1367,7 @@ function StudentCahier({
   currentUserId: string
   canSetLegacyBoundary: boolean
   canMarkPaymentDate: boolean
+  canArchive?: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -1376,7 +1377,9 @@ function StudentCahier({
   onMarkPaymentDate: (session: LessonSession, paidDate: string) => Promise<boolean>
   onRenumberSession: (sessionId: string, newNumber: number) => Promise<string | null>
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [archiving, setArchiving] = useState(false)
   const [newSubject, setNewSubject] = useState("")
   const [newTeacher, setNewTeacher] = useState(currentUserId)
   const [newLessonCount, setNewLessonCount] = useState(String(DEFAULT_LESSON_COUNT))
@@ -1393,6 +1396,19 @@ function StudentCahier({
   const name = shortName(student)
   const forfait = formatForfait(student.lessonsPerWeek, student.duration)
   const planning = schedule && schedule.length > 0
+
+  async function handleArchive() {
+    if (!confirm(`Marquer ${name} comme arrêté ? L'élève quitte les listes actives et rejoint « Anciens élèves » (fiche conservée).`)) return
+    setArchiving(true)
+    const res = await fetch(`/api/students/${student.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ARCHIVED" }),
+    })
+    // Refresh doux : l'élève disparaît des actifs sans recharger la page.
+    if (res.ok) router.refresh()
+    setArchiving(false)
+  }
 
   return (
     <div className="rounded-xl border border-gray-100 bg-gray-50/50">
@@ -1429,6 +1445,21 @@ function StudentCahier({
           <span className="text-xs text-gray-400">{sessions.length} session{sessions.length > 1 ? "s" : ""}</span>
         )}
         {sessions.length === 0 && <span className="text-xs text-gray-300 italic">Aucun cours</span>}
+        {canArchive && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleArchive()
+            }}
+            disabled={archiving}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-amber-50 hover:text-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"
+            title="Arrêter cet élève (→ Anciens élèves)"
+            aria-label={`Arrêter ${name} (Anciens élèves)`}
+          >
+            {archiving ? "…" : <Archive className="h-4 w-4" />}
+          </button>
+        )}
         <button
           type="button"
           onClick={(e) => {
@@ -2120,6 +2151,7 @@ function TeacherCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [classesOpen, setClassesOpen] = useState(false)
+  const [individualsOpen, setIndividualsOpen] = useState(false)
   const [salaryOpen, setSalaryOpen] = useState(false)
   const [editingRates, setEditingRates] = useState(false)
   const [meetingLink, setMeetingLink] = useState(teacher.meetingLink)
@@ -2157,9 +2189,18 @@ function TeacherCard({
     }))
     .filter((entry) => !searchActive || entry.activeInGroup.length > 0)
     .sort((a, b) => collator.compare(a.group.name, b.group.name))
+  // Un élève seul dans son groupe n'est pas une « classe » : on l'affiche comme
+  // élève individuel (fiche directe), sans la carte classe qui ne sert à rien.
+  // Les vraies classes (2 élèves et +) gardent leur carte.
+  const individualStudents = visibleGroupEntries
+    .filter((entry) => entry.activeInGroup.length === 1)
+    .map((entry) => entry.activeInGroup[0])
+    .sort((a, b) => collator.compare(shortName(a), shortName(b)))
+  const classEntries = visibleGroupEntries.filter((entry) => entry.activeInGroup.length >= 2)
   // Déplie automatiquement la fiche quand une recherche est active.
   const isOpen = expanded || searchActive
   const areClassesOpen = classesOpen || searchActive
+  const areIndividualsOpen = individualsOpen || searchActive
 
   function getStudentSessions(studentId: string) {
     return visibleSessions.filter(s => s.student.id === studentId)
@@ -2326,6 +2367,7 @@ function TeacherCard({
                   currentUserId={currentUserId}
                   canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                   canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
+                  canArchive={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                   onUpdateLesson={onUpdateLesson}
                   onAddLesson={onAddLesson}
                   onCloseSession={onCloseSession}
@@ -2338,8 +2380,51 @@ function TeacherCard({
             </div>
           )}
 
-          {/* Classes et élèves actifs */}
-          {!searchActive && visibleGroupEntries.length > 0 && (
+          {/* Élèves individuels (seuls dans leur groupe) */}
+          {!searchActive && individualStudents.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setIndividualsOpen((open) => !open)}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-gray-50"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <UserCheck className="h-4 w-4 text-blue-600" />
+                  Élèves individuels ({individualStudents.length})
+                </span>
+                {areIndividualsOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+              </button>
+              {areIndividualsOpen && (
+                <div className="space-y-3">
+                  {individualStudents.map((student) => (
+                    <StudentCahier
+                      key={student.id}
+                      student={student}
+                      sessions={getStudentSessions(student.id)}
+                      paidBySession={paidBySession}
+                      undatedPaymentBySession={undatedPaymentBySession}
+                      schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
+                      teachers={teachers}
+                      currentUserId={currentUserId}
+                      canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                      canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
+                      canArchive={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                      onUpdateLesson={onUpdateLesson}
+                      onAddLesson={onAddLesson}
+                      onCloseSession={onCloseSession}
+                      onNewSession={onNewSession}
+                      onDeleteLesson={onDeleteLesson}
+                      onMarkPaymentDate={onMarkPaymentDate}
+                      onRenumberSession={onRenumberSession}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Classes (2 élèves et +) */}
+          {!searchActive && classEntries.length > 0 && (
             <div className="space-y-2">
               <button
                 type="button"
@@ -2348,13 +2433,13 @@ function TeacherCard({
               >
                 <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                   <Users className="h-4 w-4 text-blue-600" />
-                  Classes ({visibleGroupEntries.length})
+                  Classes ({classEntries.length})
                 </span>
                 {areClassesOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
               </button>
               {areClassesOpen && (
                 <div className="space-y-2">
-                  {visibleGroupEntries.map(({ group, activeInGroup }) => {
+                  {classEntries.map(({ group, activeInGroup }) => {
                     const groupType = activeInGroup.length <= 1 ? "Solo" : activeInGroup.length === 2 ? "Binôme" : `Groupe (${activeInGroup.length})`
                     const rate = rateForSize(activeInGroup.length)
                     return (

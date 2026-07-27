@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
 import { getTeacherPayrollData, type PayrollCourseRow, type PayrollLessonEvent } from "@/lib/teacher-payroll"
+import { snapshotTeacherSalary } from "@/lib/salary-history"
 
 type Selection = { courseKey: string; firstLessonKey: string; lastLessonKey: string }
 type CalculatedLine = {
@@ -64,6 +65,7 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ te
     const existing = await tx.teacherSalary.findUnique({ where: { teacherId_month_year: { teacherId, month, year } } })
     const revision = existing ? `Recalcul validé le ${now.toLocaleString("fr-FR")}.` : `Calcul validé le ${now.toLocaleString("fr-FR")}.`
     const notes = [bonus > 0 ? `Prime : ${bonus.toFixed(2)} €` : null, revision].filter(Boolean).join("\n")
+    if (existing) await snapshotTeacherSalary(tx, existing.id, session.user.id)
     const salary = existing
       ? await tx.teacherSalary.update({
           where: { id: existing.id },

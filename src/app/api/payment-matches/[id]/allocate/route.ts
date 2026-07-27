@@ -5,7 +5,7 @@ import { sendPaymentThanks } from "@/lib/payment-thanks"
 import { learnPaymentAliasFromConfirmation } from "@/lib/student-payment-aliases"
 import { DIRECTOR_REMAINDER_SUFFIX } from "@/lib/director-payer-alias"
 import { paymentProviderReference } from "@/lib/payment-reference"
-import { wrap } from "@/lib/api"
+import { ApiError, wrap } from "@/lib/api"
 
 type AllocationInput = {
   studentId: string
@@ -25,16 +25,41 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
   const allocations = Array.isArray(body.allocations) ? body.allocations as AllocationInput[] : []
   if (allocations.length === 0) return NextResponse.json({ error: "Ajoutez au moins une session à valider." }, { status: 400 })
 
+  const duplicateSession = new Set(allocations.map((item) => item.lessonSessionId)).size !== allocations.length
+  if (duplicateSession) return NextResponse.json({ error: "Une même session ne peut être validée qu'une fois." }, { status: 400 })
+
+  for (const item of allocations) {
+    const amount = Number(item.amount)
+    if (!item.studentId || !item.teacherId || !item.lessonSessionId || !Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: "Chaque ligne doit contenir professeur, élève, session et montant." }, { status: 400 })
+    }
+  }
+
   const match = await prisma.paymentMatch.findFirst({
     where: { id, tenantId: user.tenantId, status: { in: ["TO_VERIFY", "AUTO_CONFIRMED"] } },
     include: { allocations: { include: { payment: true } } },
   })
   if (!match) return NextResponse.json({ error: "Paiement à vérifier introuvable." }, { status: 404 })
 
-  const totalAllocated = allocations.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  const totalAllocated = +allocations.reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)
   if (totalAllocated <= 0) return NextResponse.json({ error: "Montant alloué invalide." }, { status: 400 })
   if (totalAllocated - match.receivedAmount > 0.01) {
     return NextResponse.json({ error: "Le total validé dépasse le montant reçu." }, { status: 400 })
+  }
+
+  const sessionRows = await prisma.lessonSession.findMany({
+    where: { id: { in: allocations.map((item) => item.lessonSessionId) }, tenantId: user.tenantId },
+    include: {
+      teacher: { select: { name: true } },
+      student: { select: { id: true, firstName: true, lastName: true, email: true, monthlyFee: true, payerName: true, paymentType: true } },
+    },
+  })
+  const sessionsById = new Map(sessionRows.map((row) => [row.id, row]))
+  for (const item of allocations) {
+    const lessonSession = sessionsById.get(item.lessonSessionId)
+    if (!lessonSession || lessonSession.studentId !== item.studentId || lessonSession.teacherId !== item.teacherId) {
+      return NextResponse.json({ error: "Une session sélectionnée est introuvable." }, { status: 404 })
+    }
   }
 
   const paymentDate = match.paymentDate ?? new Date()
@@ -42,165 +67,143 @@ export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id
   const paymentYear = paymentDate.getFullYear()
   const method = match.source === "PAYPAL" ? "PayPal" : "Virement"
   const providerReference = paymentProviderReference(match)
-  const createdPayments = []
-  const methodChangeNotifications: Array<{ studentName: string; previous: string | null; next: string }> = []
+  const confirmedAt = new Date()
 
-  if (match.status === "AUTO_CONFIRMED" && match.allocations.length > 0) {
-    for (const allocation of match.allocations) {
-      await prisma.payment.update({
-        where: { id: allocation.paymentId },
+  const transactionResult = await prisma.$transaction(async (tx) => {
+    // Verrou optimiste : une seule requête peut faire passer ce match en cours
+    // de traitement. Toute erreur suivante annule aussi ce verrou.
+    const claimed = await tx.paymentMatch.updateMany({
+      where: { id: match.id, tenantId: user.tenantId, status: { in: ["TO_VERIFY", "AUTO_CONFIRMED"] } },
+      data: { status: "PROCESSING" },
+    })
+    if (claimed.count !== 1) throw new ApiError(409, "Ce paiement vient déjà d'être traité. Actualisez la liste.")
+
+    if (match.status === "AUTO_CONFIRMED" && match.allocations.length > 0) {
+      for (const allocation of match.allocations) {
+        await tx.payment.update({
+          where: { id: allocation.paymentId },
+          data: {
+            status: allocation.payment.emailSentAt ? "EMAIL_SENT" : "EXPECTED",
+            paidDate: null,
+            method: null,
+            reference: null,
+            source: "MANUAL",
+            receivedAmount: null,
+            detectedPayerName: null,
+            confirmedAt: null,
+            notes: "Validation automatique annulée puis corrigée manuellement.",
+          },
+        })
+      }
+      await tx.paymentAllocation.deleteMany({ where: { paymentMatchId: match.id } })
+    }
+
+    const thanks: Array<{
+      studentEmail: string | null
+      studentName: string
+      teacherName: string
+      subject: string
+      amount: number
+      paidDate: Date | null
+      method: string | null
+    }> = []
+    const aliasStudentIds = new Set<string>()
+
+    for (const item of allocations) {
+      const lessonSession = sessionsById.get(item.lessonSessionId)!
+      const amount = Number(item.amount)
+      const invoiceNumber = `FAC-${confirmedAt.getFullYear()}${String(confirmedAt.getMonth() + 1).padStart(2, "0")}-${crypto.randomUUID().slice(0, 5).toUpperCase()}`
+      const payment = await tx.payment.create({
         data: {
-          status: allocation.payment.emailSentAt ? "EMAIL_SENT" : "EXPECTED",
-          paidDate: null,
-          method: null,
-          reference: null,
-          source: "MANUAL",
-          receivedAmount: null,
-          detectedPayerName: null,
-          confirmedAt: null,
-          notes: "Validation automatique annulée puis corrigée manuellement.",
+          tenantId: user.tenantId,
+          studentId: item.studentId,
+          amount,
+          dueDate: new Date(paymentYear, paymentMonth - 1, 5),
+          paidDate: paymentDate,
+          status: "CONFIRMED",
+          method,
+          reference: providerReference,
+          month: paymentMonth,
+          year: paymentYear,
+          invoiceNumber,
+          source: match.source,
+          lessonSessionId: lessonSession.id,
+          sessionNumber: lessonSession.number,
+          expectedAmount: lessonSession.student.monthlyFee,
+          receivedAmount: amount,
+          expectedPayerName: lessonSession.student.payerName,
+          detectedPayerName: match.detectedPayerName,
+          confirmedAt,
+          notes: body.note || null,
         },
       })
-    }
-    await prisma.paymentAllocation.deleteMany({ where: { paymentMatchId: match.id } })
-  }
 
-  for (const item of allocations) {
-    const amount = Number(item.amount)
-    if (!item.studentId || !item.teacherId || !item.lessonSessionId || Number.isNaN(amount) || amount <= 0) {
-      return NextResponse.json({ error: "Chaque ligne doit contenir professeur, élève, session et montant." }, { status: 400 })
-    }
+      await tx.paymentAllocation.create({
+        data: { paymentMatchId: match.id, paymentId: payment.id, amount },
+      })
 
-    const lessonSession = await prisma.lessonSession.findFirst({
-      where: {
-        id: item.lessonSessionId,
-        tenantId: user.tenantId,
-        studentId: item.studentId,
-        teacherId: item.teacherId,
-      },
-      include: {
-        teacher: { select: { name: true } },
-        student: { select: { firstName: true, lastName: true, email: true, monthlyFee: true, payerName: true, paymentType: true } },
-      },
-    })
-    if (!lessonSession) return NextResponse.json({ error: "Une session sélectionnée est introuvable." }, { status: 404 })
+      if (lessonSession.student.paymentType && lessonSession.student.paymentType !== match.source) {
+        await tx.notification.create({
+          data: {
+            tenantId: user.tenantId,
+            type: "PAYMENT_METHOD_CHANGED",
+            title: "Mode de paiement modifié",
+            body: `${lessonSession.student.firstName} ${lessonSession.student.lastName} a payé par ${match.source}, alors que le mode attendu était ${lessonSession.student.paymentType}.`,
+            recipient: null,
+            channel: "APP",
+          },
+        })
+      }
+      if (lessonSession.student.paymentType !== match.source) {
+        await tx.student.update({ where: { id: item.studentId }, data: { paymentType: match.source } })
+      }
 
-    const now = new Date()
-    const invoiceNumber = `FAC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
-    const payment = await prisma.payment.create({
-      data: {
-        tenantId: user.tenantId,
-        studentId: item.studentId,
-        amount,
-        dueDate: new Date(paymentYear, paymentMonth - 1, 5),
-        paidDate: paymentDate,
-        status: "CONFIRMED",
-        method,
-        reference: providerReference,
-        month: paymentMonth,
-        year: paymentYear,
-        invoiceNumber,
-        source: match.source,
-        lessonSessionId: lessonSession.id,
-        sessionNumber: lessonSession.number,
-        expectedAmount: lessonSession.student.monthlyFee,
-        receivedAmount: amount,
-        expectedPayerName: lessonSession.student.payerName,
-        detectedPayerName: match.detectedPayerName,
-        confirmedAt: new Date(),
-        notes: body.note || null,
-      },
-    })
-    createdPayments.push(payment)
-    sendPaymentThanks({
-      studentEmail: lessonSession.student.email,
-      studentName: `${lessonSession.student.firstName} ${lessonSession.student.lastName}`,
-      teacherName: lessonSession.teacher.name,
-      subject: lessonSession.subject,
-      amount: payment.amount,
-      paidDate: payment.paidDate,
-      method: payment.method,
-    }).catch((err) => console.error("[mail] Erreur envoi remerciement paiement:", err))
-
-    await prisma.paymentAllocation.create({
-      data: {
-        paymentMatchId: match.id,
-        paymentId: payment.id,
-        amount,
-      },
-    })
-
-    if (lessonSession.student.paymentType && lessonSession.student.paymentType !== match.source) {
-      methodChangeNotifications.push({
+      aliasStudentIds.add(item.studentId)
+      thanks.push({
+        studentEmail: lessonSession.student.email,
         studentName: `${lessonSession.student.firstName} ${lessonSession.student.lastName}`,
-        previous: lessonSession.student.paymentType,
-        next: match.source,
-      })
-    }
-    if (lessonSession.student.paymentType !== match.source) {
-      await prisma.student.update({
-        where: { id: item.studentId },
-        data: { paymentType: match.source },
+        teacherName: lessonSession.teacher.name,
+        subject: lessonSession.subject,
+        amount: payment.amount,
+        paidDate: payment.paidDate,
+        method: payment.method,
       })
     }
 
-    // Apprentissage : mémorise le payeur → alias de l'élève pour que le
-    // prochain paiement du même payeur soit suggéré à 100 %.
-    await learnPaymentAliasFromConfirmation(
-      user.tenantId,
-      item.studentId,
-      match.detectedPayerName,
-      match.source,
-    ).catch((err) => console.error("[alias] apprentissage échoué:", err))
-  }
+    const remainder = +(match.receivedAmount - totalAllocated).toFixed(2)
+    if (body.remainderForDirector === true && remainder > 0.01) {
+      const reason = `Part élèves du directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`
+      await tx.paymentMatch.upsert({
+        where: { tenantId_gmailMessageId: { tenantId: user.tenantId, gmailMessageId: `${match.gmailMessageId}${DIRECTOR_REMAINDER_SUFFIX}` } },
+        create: {
+          tenantId: user.tenantId,
+          source: match.source,
+          gmailMessageId: `${match.gmailMessageId}${DIRECTOR_REMAINDER_SUFFIX}`,
+          paymentReference: match.paymentReference,
+          receivedAmount: remainder,
+          detectedPayerName: match.detectedPayerName,
+          paymentLabel: match.paymentLabel,
+          paymentDate: match.paymentDate,
+          status: "DIRECTOR",
+          reason,
+          rawSubject: match.rawSubject,
+        },
+        update: { receivedAmount: remainder, paymentReference: match.paymentReference, status: "DIRECTOR", reason },
+      })
+    }
 
-  // Part « élèves du directeur » : le reste non alloué du virement est tracé
-  // comme un PaymentMatch DIRECTOR séparé (trouvable, jamais compté dans les revenus).
-  // Le nom du payeur n'est PAS appris comme payeur directeur : il paie aussi
-  // des sessions d'élèves.
-  const remainder = +(match.receivedAmount - totalAllocated).toFixed(2)
-  if (body.remainderForDirector === true && remainder > 0.01) {
-    await prisma.paymentMatch.upsert({
-      where: { tenantId_gmailMessageId: { tenantId: user.tenantId, gmailMessageId: `${match.gmailMessageId}${DIRECTOR_REMAINDER_SUFFIX}` } },
-      create: {
-        tenantId: user.tenantId,
-        source: match.source,
-        gmailMessageId: `${match.gmailMessageId}${DIRECTOR_REMAINDER_SUFFIX}`,
-        paymentReference: match.paymentReference,
-        receivedAmount: remainder,
-        detectedPayerName: match.detectedPayerName,
-        paymentLabel: match.paymentLabel,
-        paymentDate: match.paymentDate,
-        status: "DIRECTOR",
-        reason: `Part élèves du directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
-        rawSubject: match.rawSubject,
-      },
-      update: {
-        receivedAmount: remainder,
-        paymentReference: match.paymentReference,
-        status: "DIRECTOR",
-        reason: `Part élèves du directeur du virement ${providerReference} (${match.receivedAmount.toFixed(2)} € reçus, ${totalAllocated.toFixed(2)} € validés pour les sessions).`,
-      },
-    })
-  }
-
-  await prisma.paymentMatch.update({
-    where: { id: match.id },
-    data: { status: "CONFIRMED", confirmedAt: new Date() },
+    await tx.paymentMatch.update({ where: { id: match.id }, data: { status: "CONFIRMED", confirmedAt } })
+    return { paymentCount: allocations.length, thanks, aliasStudentIds: [...aliasStudentIds] }
   })
 
-  for (const change of methodChangeNotifications) {
-    await prisma.notification.create({
-      data: {
-        tenantId: user.tenantId,
-        type: "PAYMENT_METHOD_CHANGED",
-        title: "Mode de paiement modifié",
-        body: `${change.studentName} a payé par ${change.next}, alors que le mode attendu était ${change.previous}.`,
-        recipient: null,
-        channel: "APP",
-      },
-    }).catch(() => {})
+  // Ces effets externes ne doivent ni ralentir ni annuler l'écriture financière.
+  for (const studentId of transactionResult.aliasStudentIds) {
+    learnPaymentAliasFromConfirmation(user.tenantId, studentId, match.detectedPayerName, match.source)
+      .catch((error) => console.error("[alias] apprentissage échoué:", error))
+  }
+  for (const message of transactionResult.thanks) {
+    sendPaymentThanks(message).catch((error) => console.error("[mail] Erreur envoi remerciement paiement:", error))
   }
 
-  return NextResponse.json({ ok: true, paymentCount: createdPayments.length })
+  return NextResponse.json({ ok: true, paymentCount: transactionResult.paymentCount })
 })

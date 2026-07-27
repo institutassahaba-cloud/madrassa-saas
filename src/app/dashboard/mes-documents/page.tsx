@@ -23,5 +23,5 @@ export default async function MesDocumentsPage() {
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <MesDocumentsClient salaries={salaries as any} teacherName={user.name ?? ""} />
+  return <MesDocumentsClient salaries={salaries as any} />
 }

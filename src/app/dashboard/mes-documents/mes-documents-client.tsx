@@ -1,6 +1,6 @@
 "use client"
 
-import { FileText, Download, ScrollText } from "lucide-react"
+import { FileText, ScrollText } from "lucide-react"
 
 const MONTHS = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
 
@@ -18,7 +18,7 @@ function formatCurrency(v: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(v)
 }
 
-export function MesDocumentsClient({ salaries, teacherName }: { salaries: Salary[]; teacherName: string }) {
+export function MesDocumentsClient({ salaries }: { salaries: Salary[] }) {
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
       <div>

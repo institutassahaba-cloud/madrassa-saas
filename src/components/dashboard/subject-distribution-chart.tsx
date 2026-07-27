@@ -40,8 +40,14 @@ export function SubjectDistributionChart({ data }: { data: SubjectStat[] }) {
           <p className="py-10 text-center text-sm text-gray-400">Aucune matière renseignée</p>
         ) : (
           <div className="grid gap-5 lg:grid-cols-[minmax(14rem,18rem)_1fr] lg:items-center">
-            <div className="relative h-60">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="relative h-60 min-w-0">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                minHeight={240}
+                initialDimension={{ width: 288, height: 240 }}
+              >
                 <PieChart>
                   <Pie
                     data={chartData}

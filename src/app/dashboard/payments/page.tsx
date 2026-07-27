@@ -5,7 +5,7 @@ import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-sc
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { getEffectiveUser } from "@/lib/view-as"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
-import { getValidatedPaymentPeriodStart } from "@/lib/payment-period"
+import { getValidatedPaymentPeriodStart, getValidatedPaymentSummary } from "@/lib/payment-period"
 import { PaymentsClient } from "./payments-client"
 
 export default async function PaymentsPage() {
@@ -23,7 +23,7 @@ export default async function PaymentsPage() {
   const year = now.getFullYear()
   const currentPaymentPeriodStart = await getValidatedPaymentPeriodStart(user.tenantId, now)
 
-  const [payments, students, teachers, groups, lessonSessions, sessionPayments, paymentMatches, autoPaymentMatches, confirmedPaymentMatches, trashedPaymentMatches, directorPaymentMatches, pendingPayments, scanSettings, salaryPeriods] = await Promise.all([
+  const [payments, students, teachers, groups, lessonSessions, sessionPayments, paymentMatches, pendingPayments, scanSettings, salaryPeriods, validatedPaymentSummary] = await Promise.all([
     prisma.payment.findMany({
       where: { tenantId: user.tenantId },
       include: {
@@ -68,7 +68,7 @@ export default async function PaymentsPage() {
       select: { studentId: true, sessionNumber: true, paidDate: true },
     }),
     prisma.paymentMatch.findMany({
-      where: { tenantId: user.tenantId, status: { in: ["TO_VERIFY", "CONFIRMED", "AUTO_CONFIRMED", "DIRECTOR", "TRASHED", "ALREADY_ATTRIBUTED"] } },
+      where: { tenantId: user.tenantId, status: { in: ["TO_VERIFY", "CONFIRMED", "AUTO_CONFIRMED", "DIRECTOR", "TRASHED", "NOT_INSTITUTE", "ALREADY_ATTRIBUTED"] } },
       include: {
         student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
         allocations: {
@@ -88,47 +88,6 @@ export default async function PaymentsPage() {
       },
       orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
       take: 1000,
-    }),
-    prisma.paymentMatch.findMany({
-      where: { tenantId: user.tenantId, status: "AUTO_CONFIRMED" },
-      include: {
-        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
-        allocations: { select: { amount: true } },
-      },
-      orderBy: { confirmedAt: "desc" },
-      take: 30,
-    }),
-    prisma.paymentMatch.findMany({
-      where: {
-        tenantId: user.tenantId,
-        status: "CONFIRMED",
-        OR: [
-          { confirmedAt: { gt: currentPaymentPeriodStart, lte: now } },
-          { confirmedAt: null, paymentDate: { gt: currentPaymentPeriodStart, lte: now } },
-        ],
-      },
-      include: {
-        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
-        allocations: { select: { amount: true } },
-      },
-      orderBy: { confirmedAt: "desc" },
-      take: 200,
-    }),
-    prisma.paymentMatch.findMany({
-      where: { tenantId: user.tenantId, status: "TRASHED" },
-      include: {
-        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 50,
-    }),
-    prisma.paymentMatch.findMany({
-      where: { tenantId: user.tenantId, status: "DIRECTOR" },
-      include: {
-        student: { select: { id: true, firstName: true, lastName: true, monthlyFee: true, payerName: true, paymentType: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 50,
     }),
     prisma.payment.findMany({
       where: { tenantId: user.tenantId, status: { in: [...PAYMENT_AWAITING_STATUSES] } },
@@ -153,7 +112,32 @@ export default async function PaymentsPage() {
       select: { periodStart: true, periodEnd: true, createdAt: true },
       orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
     }),
+    getValidatedPaymentSummary(user.tenantId, currentPaymentPeriodStart, now),
   ])
+
+  // Une seule lecture des correspondances suffit pour toutes les rubriques.
+  // L'ancien écran relançait quatre requêtes presque identiques à chaque rendu.
+  const timestamp = (value: Date | null | undefined) => value?.getTime() ?? 0
+  const autoPaymentMatches = paymentMatches
+    .filter((match) => match.status === "AUTO_CONFIRMED")
+    .sort((a, b) => timestamp(b.confirmedAt) - timestamp(a.confirmedAt))
+    .slice(0, 30)
+  const confirmedPaymentMatches = paymentMatches
+    .filter((match) => {
+      if (match.status !== "CONFIRMED") return false
+      const date = match.confirmedAt ?? match.paymentDate
+      return Boolean(date && date > currentPaymentPeriodStart && date <= now)
+    })
+    .sort((a, b) => timestamp(b.confirmedAt ?? b.paymentDate) - timestamp(a.confirmedAt ?? a.paymentDate))
+    .slice(0, 200)
+  const trashedPaymentMatches = paymentMatches
+    .filter((match) => match.status === "TRASHED" || match.status === "NOT_INSTITUTE")
+    .sort((a, b) => timestamp(b.updatedAt) - timestamp(a.updatedAt))
+    .slice(0, 50)
+  const directorPaymentMatches = paymentMatches
+    .filter((match) => match.status === "DIRECTOR")
+    .sort((a, b) => timestamp(b.updatedAt) - timestamp(a.updatedAt))
+    .slice(0, 50)
 
   // Clé "studentId:sessionNumber" -> date du paiement le plus récent.
   const paidBySession: Record<string, string> = {}
@@ -212,6 +196,7 @@ export default async function PaymentsPage() {
       directorPaymentMatches={directorPaymentMatches as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pendingPayments={pendingPayments as any}
+      validatedPaymentSummary={validatedPaymentSummary}
       paymentPeriods={paymentPeriods}
       currentMonth={month}
       currentYear={year}
@@ -224,7 +209,7 @@ export default async function PaymentsPage() {
       }}
       periodControl={{
         currentStart: currentPaymentPeriodStart.toISOString(),
-        isManual: Boolean(scanSettings?.paymentPeriodStartAt),
+        isManual: scanSettings?.paymentPeriodStartAt?.getTime() === currentPaymentPeriodStart.getTime(),
       }}
     />
   )

@@ -35,7 +35,7 @@ async function main() {
   }
 
   // Create users
-  const director = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: "directeur@assahaba.fr" } },
     update: {},
     create: { tenantId: tenant.id, name: "Ahmad Directeur", email: "directeur@assahaba.fr", password: hashed, role: "DIRECTOR" },

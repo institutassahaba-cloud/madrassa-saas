@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Plus, Loader2 } from "lucide-react"
+import { Plus, Loader2, Pencil, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,8 +27,24 @@ interface Salary {
   hourlyRate: number | null
   hoursWorked: number | null
   fixedSalary: number | null
-  paidDate: Date | null
+  paidDate: Date | string | null
+  periodStart?: Date | string | null
+  periodEnd?: Date | string | null
   teacher: { id: string; name: string }
+  revisions: SalaryRevision[]
+}
+
+interface SalaryRevision {
+  id: string
+  revision: number
+  totalAmount: number
+  status: string
+  paidDate: Date | string | null
+  hoursWorked: number | null
+  lessonsCount: number | null
+  periodStart: Date | string | null
+  periodEnd: Date | string | null
+  createdAt: Date | string
 }
 
 const EMPTY = {
@@ -36,15 +52,22 @@ const EMPTY = {
   hoursWorked: "", fixedSalary: "", notes: "", status: "PENDING",
 }
 
-export function SalariesClient({ teachers, salaries, currentMonth, currentYear }: {
+export function SalariesClient({ teachers, salaries, currentMonth, currentYear, canEdit }: {
   teachers: Teacher[]
   salaries: Salary[]
   currentMonth: number
   currentYear: number
+  canEdit: boolean
 }) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({ ...EMPTY, month: String(currentMonth), year: String(currentYear) })
   const [loading, setLoading] = useState(false)
+  const [salaryRows, setSalaryRows] = useState(salaries)
+  const [editSalary, setEditSalary] = useState<Salary | null>(null)
+  const [historySalary, setHistorySalary] = useState<Salary | null>(null)
+  const [editAmount, setEditAmount] = useState("")
+  const [editStatus, setEditStatus] = useState("PENDING")
+  const [error, setError] = useState<string | null>(null)
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -59,29 +82,77 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setError(null)
     try {
-      await fetch("/api/salaries", {
+      const response = await fetch("/api/salaries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, totalAmount: computeTotal() }),
       })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Impossible de générer la fiche de paie.")
+      setSalaryRows((current) => [data, ...current])
       setDialogOpen(false)
-      window.location.reload()
+      setForm({ ...EMPTY, month: String(currentMonth), year: String(currentYear) })
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Impossible de générer la fiche de paie.")
     } finally {
       setLoading(false)
     }
   }
 
   async function markPaid(id: string) {
-    await fetch(`/api/salaries/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "PAID", paidDate: new Date().toISOString() }),
-    })
-    window.location.reload()
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/salaries/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PAID", paidDate: new Date().toISOString() }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Impossible de modifier la fiche.")
+      setSalaryRows((current) => current.map((salary) => salary.id === id ? data : salary))
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Impossible de modifier la fiche.")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const totalPending = salaries.filter((s) => s.status === "PENDING").reduce((sum, s) => sum + s.totalAmount, 0)
+  function openEdit(salary: Salary) {
+    setEditSalary(salary)
+    setEditAmount(String(salary.totalAmount))
+    setEditStatus(salary.status)
+    setError(null)
+  }
+
+  async function saveEdit() {
+    if (!editSalary) return
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/salaries/${editSalary.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          totalAmount: Number(editAmount),
+          status: editStatus,
+          paidDate: editStatus === "PAID" ? editSalary.paidDate ?? new Date().toISOString() : null,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Impossible de modifier la fiche.")
+      setSalaryRows((current) => current.map((salary) => salary.id === data.id ? data : salary))
+      setEditSalary(null)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Impossible de modifier la fiche.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const totalPending = salaryRows.filter((s) => s.status === "PENDING").reduce((sum, s) => sum + s.totalAmount, 0)
 
   return (
     <div className="space-y-4">
@@ -92,11 +163,15 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
             Total à payer : <span className="font-semibold text-red-600">{formatCurrency(totalPending)}</span>
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Générer un salaire
-        </Button>
+        {canEdit && (
+          <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Générer un salaire
+          </Button>
+        )}
       </div>
+
+      {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <Card>
         <CardContent className="p-0">
@@ -115,12 +190,12 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
               </TableRow>
             </TableHeader>
             <TableBody>
-              {salaries.length === 0 ? (
+              {salaryRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="py-10 text-center text-gray-400">Aucun salaire généré</TableCell>
                 </TableRow>
               ) : (
-                salaries.map((s) => (
+                salaryRows.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.teacher.name}</TableCell>
                     <TableCell>{getMonthName(s.month)} {s.year}</TableCell>
@@ -135,11 +210,25 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
                     </TableCell>
                     <TableCell className="text-sm">{s.paidDate ? formatDate(s.paidDate) : "—"}</TableCell>
                     <TableCell>
-                      {s.status !== "PAID" && (
-                        <Button variant="outline" size="sm" onClick={() => markPaid(s.id)}>
-                          Marquer payé
-                        </Button>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {canEdit && (
+                          <Button variant="outline" size="sm" onClick={() => openEdit(s)} aria-label={`Modifier la fiche de ${s.teacher.name}`}>
+                            <Pencil className="h-3.5 w-3.5" />
+                            Modifier
+                          </Button>
+                        )}
+                        {s.revisions.length > 0 && (
+                          <Button variant="ghost" size="sm" onClick={() => setHistorySalary(s)} aria-label={`Voir l'historique de ${s.teacher.name}`}>
+                            <History className="h-3.5 w-3.5" />
+                            {s.revisions.length}
+                          </Button>
+                        )}
+                        {canEdit && s.status !== "PAID" && (
+                          <Button variant="outline" size="sm" onClick={() => markPaid(s.id)} disabled={loading}>
+                            Marquer payé
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -214,6 +303,60 @@ export function SalariesClient({ teachers, salaries, currentMonth, currentYear }
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editSalary)} onOpenChange={(open) => { if (!open) setEditSalary(null) }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Modifier la fiche de paie</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">{editSalary?.teacher.name} · Toute modification est conservée dans l&apos;historique.</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="salary-edit-amount">Montant (€)</Label>
+              <Input id="salary-edit-amount" type="number" min="0" step="0.01" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Statut</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">En attente</SelectItem>
+                  <SelectItem value="PARTIAL">Partiel</SelectItem>
+                  <SelectItem value="CONFIRMED">Validé</SelectItem>
+                  <SelectItem value="PAID">Payé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditSalary(null)}>Annuler</Button>
+              <Button onClick={saveEdit} disabled={loading || !Number.isFinite(Number(editAmount)) || Number(editAmount) < 0}>
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Enregistrer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(historySalary)} onOpenChange={(open) => { if (!open) setHistorySalary(null) }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Historique — {historySalary?.teacher.name}</DialogTitle></DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {historySalary?.revisions.map((revision) => (
+              <div key={revision.id} className="rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">Version {revision.revision} · {formatCurrency(revision.totalAmount)}</span>
+                  <span className="text-xs text-gray-400">modifiée le {formatDate(revision.createdAt)}</span>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {revision.periodStart && revision.periodEnd
+                    ? `Période du ${formatDate(revision.periodStart)} au ${formatDate(revision.periodEnd)}`
+                    : `${revision.lessonsCount ?? 0} cours · ${revision.hoursWorked ?? 0} h`}
+                  {` · statut ${revision.status}`}
+                </p>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

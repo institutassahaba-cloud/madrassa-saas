@@ -96,6 +96,7 @@ export const GET = wrap(async (req: Request) => {
       tenantId: user.tenantId,
       ...(groupId ? { groupId } : {}),
       ...(date ? { date: new Date(date) } : {}),
+      ...(user.role === "TEACHER" ? { group: { teacherId: user.id } } : {}),
     },
     include: {
       student: { select: { firstName: true, lastName: true } },

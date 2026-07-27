@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   BookOpen, Plus, ChevronDown, ChevronUp, Check, Clock,
   X, CheckCircle2, Search, Bell, MessageCircle, AlertTriangle,
@@ -377,6 +378,7 @@ function SessionCard({
   onDeleteLesson: (lessonId: string) => void
   onDeleteSession: (sessionId: string) => Promise<boolean>
 }) {
+  const router = useRouter()
   const [notes, setNotes] = useState(session.notes ?? "")
   const [editingNotes, setEditingNotes] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
@@ -407,7 +409,7 @@ function SessionCard({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Réinitialisation impossible.")
-      window.location.reload()
+      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Réinitialisation impossible.")
       setResettingPayment(false)
@@ -428,7 +430,7 @@ function SessionCard({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Modification impossible.")
-      window.location.reload()
+      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Modification impossible.")
       setSavingPaidDate(false)

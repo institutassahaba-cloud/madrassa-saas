@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Institut Assahaba — Gestion d'Institut",
@@ -18,7 +15,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className="h-full">
-      <body className={`${inter.className} h-full bg-gray-50 antialiased`}>
+      <body className="h-full bg-gray-50 antialiased">
         {children}
       </body>
     </html>

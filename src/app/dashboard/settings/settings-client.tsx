@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { SessionProvider, useSession } from "next-auth/react"
 import { CheckCircle2, ChevronDown, Loader2, Mail, Phone, Plus, ShieldCheck, UserCog } from "lucide-react"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -80,6 +81,7 @@ function SettingsClientInner({
   currentUserId,
   pseudoRequests,
 }: SettingsClientProps) {
+  const router = useRouter()
   const { update } = useSession()
   const isDirector = currentUser.role === "DIRECTOR"
   const isTeacher = currentUser.role === "TEACHER"
@@ -88,6 +90,7 @@ function SettingsClientInner({
   const [loading, setLoading] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null)
   const [requests, setRequests] = useState(pseudoRequests)
+  const [userRows, setUserRows] = useState(users)
   const [openSection, setOpenSection] = useState<string | null>(currentUser.mustChangePassword ? "password" : null)
   const [accountInfo, setAccountInfo] = useState({
     name: currentUser.name,
@@ -195,7 +198,7 @@ function SettingsClientInner({
         // Rafraîchit le jeton (mustChangePassword → false) pour lever la
         // redirection forcée du proxy, puis recharge pour ôter le bandeau.
         await update()
-        window.location.reload()
+        router.refresh()
       }
     } catch (err) {
       setMessage({ type: "err", text: err instanceof Error ? err.message : "Erreur" })
@@ -217,21 +220,32 @@ function SettingsClientInner({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userForm),
       })
-      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Création impossible.")
+      setUserRows((items) => [...items, {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        contactEmail: null,
+        role: userForm.role,
+        isActive: true,
+        phone: userForm.phone || null,
+        createdAt: new Date(),
+      }])
       setUserDialog(false)
-      window.location.reload()
     } finally {
       setLoading(null)
     }
   }
 
   async function toggleUser(id: string, isActive: boolean) {
-    await fetch(`/api/users/${id}`, {
+    const response = await fetch(`/api/users/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !isActive }),
     })
-    window.location.reload()
+    if (!response.ok) return
+    setUserRows((items) => items.map((item) => item.id === id ? { ...item, isActive: !isActive } : item))
   }
 
   async function handlePseudoRequest(id: string, action: "APPROVE" | "REJECT") {
@@ -244,7 +258,7 @@ function SettingsClientInner({
     setLoading(null)
     if (res.ok) {
       setRequests((items) => items.filter((item) => item.id !== id))
-      if (action === "APPROVE") window.location.reload()
+      if (action === "APPROVE") router.refresh()
     }
   }
 
@@ -411,7 +425,7 @@ function SettingsClientInner({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((u) => (
+                  {userRows.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.name}</TableCell>
                       <TableCell className="text-sm text-gray-600">{u.email}</TableCell>

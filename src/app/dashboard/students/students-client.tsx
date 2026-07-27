@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
 import { Plus, Search, Upload, Edit, Archive, ArchiveRestore, Trash2, X, MessageCircle, Clock } from "lucide-react"
 import { gmailComposeLink } from "@/lib/contact-links"
@@ -175,6 +176,7 @@ function parseCSV(text: string): ImportRow[] {
 }
 
 export function StudentsClient({ students, groups, teachers, role, paymentMatches }: { students: Student[]; groups: Group[]; teachers: Teacher[]; role: string; paymentMatches?: { id: string; source: string; receivedAmount: number; detectedPayerName: string | null; paymentDate: string | null }[] }) {
+  const router = useRouter()
   const [search, setSearch]         = useState("")
   const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["ACTIVE"]))
   const [teacherFilter, setTeacherFilter] = useState("ALL")
@@ -183,10 +185,11 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
   const [editStudent, setEdit]      = useState<Student | null>(null)
   const [importing, setImporting]   = useState(false)
   const [importResult, setImportResult] = useState<string | null>(null)
+  const [studentRows, setStudentRows] = useState(students)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Collect unique subjects from existing students
-  const subjects = Array.from(new Set(students.map((s) => s.subject).filter(Boolean))) as string[]
+  const subjects = Array.from(new Set(studentRows.map((s) => s.subject).filter(Boolean))) as string[]
 
   function toggleFilter(set: Set<string>, value: string, setter: (s: Set<string>) => void) {
     const next = new Set(set)
@@ -195,7 +198,7 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
     setter(next)
   }
 
-  const filtered = students.filter((s) => {
+  const filtered = studentRows.filter((s) => {
     const matchSearch  = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
                          (s.phone ?? "").includes(search)
     const matchStatus  = statusFilters.size === 0 || statusFilters.has(s.status)
@@ -204,10 +207,10 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
     return matchSearch && matchStatus && matchTeacher && matchSubject
   })
 
-  const activeCount   = students.filter((s) => s.status === "ACTIVE").length
-  const archivedCount = students.filter((s) => s.status === "ARCHIVED").length
+  const activeCount   = studentRows.filter((s) => s.status === "ACTIVE").length
+  const archivedCount = studentRows.filter((s) => s.status === "ARCHIVED").length
   const subjectCounts = Array.from(
-    students
+    studentRows
       .filter((s) => s.status === "ACTIVE")
       .reduce((map, student) => {
         const label = subjectLabel(student.subject?.trim() || "Sans matière")
@@ -224,21 +227,23 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
 
   async function handleArchive(id: string, name: string) {
     if (!confirm(`Archiver ${name} ? L'élève sortira des listes actives mais son dossier sera conservé (consultable dans « Anciens »).`)) return
-    await fetch(`/api/students/${id}`, {
+    const response = await fetch(`/api/students/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "ARCHIVED" }),
     })
-    window.location.reload()
+    if (!response.ok) return alert("Archivage impossible.")
+    setStudentRows((current) => current.map((student) => student.id === id ? { ...student, status: "ARCHIVED" } : student))
   }
 
   async function handleUnarchive(id: string) {
-    await fetch(`/api/students/${id}`, {
+    const response = await fetch(`/api/students/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "ACTIVE" }),
     })
-    window.location.reload()
+    if (!response.ok) return alert("Restauration impossible.")
+    setStudentRows((current) => current.map((student) => student.id === id ? { ...student, status: "ACTIVE" } : student))
   }
 
   async function handleDelete(id: string, name: string) {
@@ -254,16 +259,17 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
       alert(`Échec de l'effacement : ${err?.error ?? res.status}`)
       return
     }
-    window.location.reload()
+    setStudentRows((current) => current.filter((student) => student.id !== id))
   }
 
   async function togglePaymentGrace(student: Student, checked: boolean) {
-    await fetch(`/api/students/${student.id}`, {
+    const response = await fetch(`/api/students/${student.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paymentGraceAllowed: checked }),
     })
-    window.location.reload()
+    if (!response.ok) return alert("Modification impossible.")
+    setStudentRows((current) => current.map((item) => item.id === student.id ? { ...item, paymentGraceAllowed: checked } : item))
   }
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -294,7 +300,7 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
         else fail++
       }
       setImportResult(`${ok} élève(s) importé(s)${fail ? `, ${fail} erreur(s)` : ""}.`)
-      if (ok > 0) setTimeout(() => window.location.reload(), 1500)
+      if (ok > 0) router.refresh()
     } catch {
       setImportResult("Erreur lors de la lecture du fichier.")
     } finally {
@@ -309,9 +315,9 @@ export function StudentsClient({ students, groups, teachers, role, paymentMatche
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Élèves</h2>
           <p className="text-sm text-gray-500">
-            {filtered.length !== students.length
-              ? <><span className="font-medium text-emerald-600">{filtered.length}</span>/{students.length} élèves</>
-              : <>{students.length} élève{students.length > 1 ? "s" : ""}</>
+            {filtered.length !== studentRows.length
+              ? <><span className="font-medium text-emerald-600">{filtered.length}</span>/{studentRows.length} élèves</>
+              : <>{studentRows.length} élève{studentRows.length > 1 ? "s" : ""}</>
             }
             {` · ${activeCount} actif${activeCount > 1 ? "s" : ""}`}
             {archivedCount > 0 && ` · ${archivedCount} ancien${archivedCount > 1 ? "s" : ""}`}

@@ -1,5 +1,4 @@
 import { google } from "googleapis"
-import path from "path"
 import { Readable } from "stream"
 
 function getGoogleServiceAccountAuth(scopes: string[]) {
@@ -23,9 +22,8 @@ function getGoogleServiceAccountAuth(scopes: string[]) {
     )
   }
 
-  const credPath = path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "./google-drive-credentials.json")
   return new google.auth.GoogleAuth({
-    keyFile: credPath,
+    keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "./google-drive-credentials.json",
     scopes,
   })
 }

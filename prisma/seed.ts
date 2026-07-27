@@ -21,7 +21,7 @@ async function main() {
     },
   })
 
-  const director = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: "directeur@assahaba.fr" } },
     update: {},
     create: {

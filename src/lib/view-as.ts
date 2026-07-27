@@ -1,4 +1,5 @@
 import { cookies } from "next/headers"
+import { cache } from "react"
 import { auth } from "./auth"
 import { prisma } from "./prisma"
 
@@ -23,8 +24,10 @@ export type EffectiveUser = {
  * tout en conservant le rôle réel (realRole) pour l'affichage du bandeau.
  * Renvoie null si non connecté.
  */
-export async function getEffectiveUser(): Promise<EffectiveUser | null> {
-  const session = await auth()
+export const getCurrentSession = cache(async () => auth())
+
+export const getEffectiveUser = cache(async (): Promise<EffectiveUser | null> => {
+  const session = await getCurrentSession()
   if (!session?.user) return null
   const u = session.user
 
@@ -61,4 +64,4 @@ export async function getEffectiveUser(): Promise<EffectiveUser | null> {
     email: target.email,
     impersonating: true,
   }
-}
+})

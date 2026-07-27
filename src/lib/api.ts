@@ -1,6 +1,6 @@
 import { appendFile, mkdir } from "node:fs/promises"
 import path from "node:path"
-import { NextResponse } from "next/server"
+import { after, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 
 /**
@@ -63,8 +63,18 @@ async function logSecretaryAction(req: Request, reqForBody: Request | null, stat
     body: reqForBody ? await requestBodySnapshot(reqForBody) : null,
   }
 
+  if (process.env.VERCEL) {
+    console.info("[audit:secretary]", JSON.stringify(entry))
+    return
+  }
   await mkdir(SECRETARY_ACTIONS_DIR, { recursive: true })
   await appendFile(SECRETARY_ACTIONS_FILE, `${JSON.stringify(entry)}\n`, "utf8")
+}
+
+function scheduleSecretaryActionLog(req: Request, reqForBody: Request | null, status: number) {
+  after(() => logSecretaryAction(req, reqForBody, status).catch((error) => {
+    console.error("[audit] Impossible d'écrire l'action secrétaire:", error)
+  }))
 }
 
 /**
@@ -81,14 +91,10 @@ export function wrap<C = unknown>(handler: RouteHandler<C>): RouteHandler<C> {
     const auditReq = MUTATING_METHODS.has(req.method) ? req.clone() : null
     try {
       const response = await handler(req, ctx)
-      await logSecretaryAction(req, auditReq, response.status).catch((error) => {
-        console.error("[audit] Impossible d'écrire l'action secrétaire:", error)
-      })
+      scheduleSecretaryActionLog(req, auditReq, response.status)
       return response
     } catch (err) {
-      await logSecretaryAction(req, auditReq, err instanceof ApiError ? err.status : 500).catch((error) => {
-        console.error("[audit] Impossible d'écrire l'action secrétaire:", error)
-      })
+      scheduleSecretaryActionLog(req, auditReq, err instanceof ApiError ? err.status : 500)
       if (err instanceof ApiError) {
         return NextResponse.json({ error: err.message }, { status: err.status })
       }

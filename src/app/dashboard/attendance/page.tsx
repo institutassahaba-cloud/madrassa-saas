@@ -24,5 +24,5 @@ export default async function AttendancePage() {
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <AttendanceClient groups={groups as any} userId={user.id} />
+  return <AttendanceClient groups={groups as any} />
 }
