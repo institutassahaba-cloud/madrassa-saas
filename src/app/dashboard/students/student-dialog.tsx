@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Loader2, ChevronUp, ChevronDown, Plus, Trash2 } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -179,6 +180,7 @@ function toSchedulePayload(slots: CourseSlotDraft[]) {
 }
 
 export function StudentDialog({ open, onClose, student, groups, teachers, paymentMatches, preselectedPaymentMatchId }: StudentDialogProps) {
+  const router = useRouter()
   const [studentCount, setStudentCount] = useState(1)
   const [identities, setIdentities] = useState([{ ...EMPTY_IDENTITY }])
   const [shared, setShared] = useState({ ...EMPTY_SHARED })
@@ -667,7 +669,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
         }
       }
       onClose()
-      window.location.reload()
+      router.refresh()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setError(e.message || "Une erreur est survenue")

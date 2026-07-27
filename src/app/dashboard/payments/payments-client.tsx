@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useState } from "react"
+import { type FormEvent, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Search, AlertTriangle, CheckCircle2, Clock, Ban, Calculator, Loader2, SplitSquareHorizontal, X, ChevronDown, ChevronUp, Trash2, RotateCcw, ArrowUpDown, UserCog, Check, Mail, ArrowUpRight, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -98,6 +98,8 @@ interface PaymentMatch {
   rawSubject: string | null
   attributedSessionId: string | null
   createdAt: Date | string
+  updatedAt?: Date | string
+  confirmedAt?: Date | string | null
   student: {
     id: string
     firstName: string
@@ -199,6 +201,14 @@ function formatPaymentMonthLabel(monthKey: string) {
   return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
 }
 
+function dateInputValue(time: number) {
+  const date = new Date(time)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 export function PaymentsClient({
   payments,
   students,
@@ -207,11 +217,9 @@ export function PaymentsClient({
   lessonSessions,
   paidBySession,
   paymentMatches,
-  autoPaymentMatches,
-  confirmedPaymentMatches,
-  trashedPaymentMatches,
-  directorPaymentMatches,
+  autoPaymentMatches: initialAutoPaymentMatches,
   pendingPayments,
+  validatedPaymentSummary,
   paymentPeriods,
   currentMonth,
   currentYear,
@@ -231,6 +239,7 @@ export function PaymentsClient({
   trashedPaymentMatches: PaymentMatch[]
   directorPaymentMatches: PaymentMatch[]
   pendingPayments: Payment[]
+  validatedPaymentSummary: { count: number; total: number }
   paymentPeriods: PaymentPeriod[]
   currentMonth: number
   currentYear: number
@@ -261,7 +270,7 @@ export function PaymentsClient({
   const [newStudentPaymentId, setNewStudentPaymentId] = useState("")
   const [importLoading, setImportLoading] = useState(false)
   const [unprocessedOpen, setUnprocessedOpen] = useState(true)
-  const [autoOpen, setAutoOpen] = useState(autoPaymentMatches.length > 0)
+  const [autoOpen, setAutoOpen] = useState(initialAutoPaymentMatches.length > 0)
   const [confirmedOpen, setConfirmedOpen] = useState(true)
   const [alreadyAttributedOpen, setAlreadyAttributedOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
@@ -274,6 +283,12 @@ export function PaymentsClient({
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [paymentDeleteLoading, setPaymentDeleteLoading] = useState<string | null>(null)
   const [localPaymentMatches, setLocalPaymentMatches] = useState(paymentMatches)
+  const [localPayments, setLocalPayments] = useState(payments)
+  const [localValidatedSummary, setLocalValidatedSummary] = useState(validatedPaymentSummary)
+  const [localPeriodControl, setLocalPeriodControl] = useState(periodControl)
+  // Les bornes manuelles sont enregistrées 1 ms avant l'instant sélectionné
+  // pour conserver un filtre strict « > » tout en incluant cet instant.
+  const [periodDate, setPeriodDate] = useState(() => dateInputValue(new Date(periodControl.currentStart).getTime() + 1))
   // Resynchro indispensable : après une association, le dialog appelle
   // router.refresh() qui renvoie des `paymentMatches` frais côté serveur. Sans
   // ce useEffect, la liste restait figée sur le 1er snapshot (le paiement associé
@@ -282,23 +297,37 @@ export function PaymentsClient({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalPaymentMatches(paymentMatches)
   }, [paymentMatches])
-  // Le scan Gmail tourne en arrière-plan. Rafraîchir les données serveur tant que
-  // l'onglet Paiements est visible évite de laisser l'écran figé sur le snapshot
-  // chargé à l'ouverture alors que de nouveaux paiements PayPal/Wise ont été créés.
   useEffect(() => {
-    if (!scanControl.enabled) return
-
-    const refreshIfVisible = () => {
-      if (document.visibilityState === "visible") router.refresh()
-    }
-    const interval = window.setInterval(refreshIfVisible, 60_000)
-    document.addEventListener("visibilitychange", refreshIfVisible)
-
-    return () => {
-      window.clearInterval(interval)
-      document.removeEventListener("visibilitychange", refreshIfVisible)
-    }
-  }, [router, scanControl.enabled])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalPayments(payments)
+    setLocalValidatedSummary(validatedPaymentSummary)
+  }, [payments, validatedPaymentSummary])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalPeriodControl(periodControl)
+    setPeriodDate(dateInputValue(new Date(periodControl.currentStart).getTime() + 1))
+  }, [periodControl])
+  const currentPeriodStartTime = new Date(localPeriodControl.currentStart).getTime()
+  const autoPaymentMatches = useMemo(() => localPaymentMatches
+    .filter((match) => match.status === "AUTO_CONFIRMED")
+    .sort((a, b) => new Date(b.confirmedAt ?? b.createdAt).getTime() - new Date(a.confirmedAt ?? a.createdAt).getTime())
+    .slice(0, 30), [localPaymentMatches])
+  const confirmedPaymentMatches = useMemo(() => localPaymentMatches
+    .filter((match) => {
+      if (match.status !== "CONFIRMED") return false
+      const time = new Date(match.confirmedAt ?? match.paymentDate ?? match.createdAt).getTime()
+      return time > currentPeriodStartTime
+    })
+    .sort((a, b) => new Date(b.confirmedAt ?? b.createdAt).getTime() - new Date(a.confirmedAt ?? a.createdAt).getTime())
+    .slice(0, 200), [currentPeriodStartTime, localPaymentMatches])
+  const trashedPaymentMatches = useMemo(() => localPaymentMatches
+    .filter((match) => match.status === "TRASHED" || match.status === "NOT_INSTITUTE")
+    .sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())
+    .slice(0, 50), [localPaymentMatches])
+  const directorPaymentMatches = useMemo(() => localPaymentMatches
+    .filter((match) => match.status === "DIRECTOR")
+    .sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())
+    .slice(0, 50), [localPaymentMatches])
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [selectedConfirmedMatchIds, setSelectedConfirmedMatchIds] = useState<Set<string>>(new Set())
   const [selectedTrashedIds, setSelectedTrashedIds] = useState<Set<string>>(new Set())
@@ -343,15 +372,13 @@ export function PaymentsClient({
   }
 
   function dayStart(value: string) {
-    const date = new Date(value)
-    date.setHours(0, 0, 0, 0)
-    return date.getTime()
+    const [year, month, day] = value.split("-").map(Number)
+    return new Date(year, month - 1, day, 0, 0, 0, 0).getTime()
   }
 
   function dayEnd(value: string) {
-    const date = new Date(value)
-    date.setHours(23, 59, 59, 999)
-    return date.getTime()
+    const [year, month, day] = value.split("-").map(Number)
+    return new Date(year, month - 1, day, 23, 59, 59, 999).getTime()
   }
 
   const filteredPaymentMatches = localPaymentMatches.filter((match) => {
@@ -394,14 +421,14 @@ export function PaymentsClient({
 
   const paymentHistoryMonths = useMemo(() => {
     const months = new Map<string, number>()
-    for (const payment of payments) {
+    for (const payment of localPayments) {
       const key = paymentMonthKeyFromTime(paymentDateValue(payment))
       months.set(key, (months.get(key) ?? 0) + 1)
     }
     return Array.from(months.entries())
       .map(([key, count]) => ({ key, count, label: formatPaymentMonthLabel(key) }))
       .sort((a, b) => b.key.localeCompare(a.key))
-  }, [payments])
+  }, [localPayments])
   const activeHistoryMonthKey = historyMonthKey === "LATEST"
     ? paymentHistoryMonths[0]?.key ?? "ALL"
     : historyMonthKey
@@ -412,7 +439,7 @@ export function PaymentsClient({
     return paymentMonthKeyFromTime(paymentDateValue(payment)) === activeHistoryMonthKey
   }
 
-  const filtered = payments.filter((p) => {
+  const filtered = localPayments.filter((p) => {
     const matchStatus =
       statusFilter === "ALL" ? true
       : statusFilter === "PAID" ? (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status)
@@ -435,14 +462,8 @@ export function PaymentsClient({
     : periodFilter === "ALL"
       ? "toutes les périodes"
       : selectedPeriod?.label.toLowerCase() ?? "la période sélectionnée"
-  const confirmedPaymentMatchTotal = confirmedPaymentMatches.reduce((sum, match) => {
-    const allocated = allocatedTotal(match)
-    const partial = allocated != null && match.receivedAmount - allocated > 0.01
-    return sum + Number(partial ? allocated : match.receivedAmount)
-  }, 0)
-
   const summary = {
-    paid: confirmedPaymentMatchTotal,
+    paid: localValidatedSummary.total,
     sentRequests: pendingPayments.length,
     toVerify: localPaymentMatches.filter((match) => match.status === "TO_VERIFY").length,
   }
@@ -511,7 +532,7 @@ export function PaymentsClient({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Import des paiements impossible.")
       alert(`${data.created ?? 0} paiement(s) importé(s).\n${data.updated ?? 0} paiement(s) complété(s).\n${data.skipped ?? 0} paiement(s) ignoré(s) car déjà connus ou déjà attribués.\n${data.ignored ?? 0} email(s) scanné(s) mais non exploitables.\n${data.scanned ?? 0} email(s) scanné(s) au total.${formatScanDiagnostics(data)}`)
-      window.location.reload()
+      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Import des paiements impossible.")
     } finally {
@@ -535,7 +556,7 @@ export function PaymentsClient({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Recherche Gmail impossible.")
       alert(`Recherche « ${name} » :\n${data.created ?? 0} nouveau(x) paiement(s) importé(s).\n${data.updated ?? 0} complété(s).\n${data.skipped ?? 0} déjà connu(s).\n${data.ignored ?? 0} non exploitable(s).\n${data.scanned ?? 0} email(s) scanné(s).${formatScanDiagnostics(data)}`)
-      window.location.reload()
+      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Recherche Gmail impossible.")
     } finally {
@@ -621,13 +642,16 @@ export function PaymentsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Attribution impossible.")
+      const updatedMatchId = alreadyAttributedMatch.id
       setAlreadyAttributedMatch(null)
+      setLocalPaymentMatches((current) => current.map((match) => match.id === updatedMatchId
+        ? { ...match, status: "ALREADY_ATTRIBUTED", attributedSessionId: alreadyAttributedSessionId, reason: "Paiement déjà attribué et comptabilisé auparavant." }
+        : match))
       setSelectedMatchIds((current) => {
         const next = new Set(current)
-        next.delete(alreadyAttributedMatch.id)
+        next.delete(updatedMatchId)
         return next
       })
-      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Attribution impossible.")
     } finally {
@@ -643,7 +667,14 @@ export function PaymentsClient({
       const res = await fetch(`/api/payments/${payment.id}`, { method: "DELETE" })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Suppression impossible.")
-      window.location.reload()
+      setLocalPayments((current) => current.filter((item) => item.id !== payment.id))
+      const validationTime = paymentValidationDateValue(payment)
+      if ((PAYMENT_PAID_STATUSES as readonly string[]).includes(payment.status) && validationTime && validationTime > currentPeriodStartTime) {
+        setLocalValidatedSummary((current) => ({
+          count: Math.max(0, current.count - 1),
+          total: +Math.max(0, current.total - paymentReceivedAmount(payment)).toFixed(2),
+        }))
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : "Suppression impossible.")
       setPaymentDeleteLoading(null)
@@ -656,10 +687,22 @@ export function PaymentsClient({
     )) return
     setMatchActionLoading(matchId)
     try {
+      const canceledMatch = localPaymentMatches.find((match) => match.id === matchId)
+      const canceledPaymentIds = new Set(canceledMatch?.allocations?.map((allocation) => allocation.payment?.id).filter(Boolean) as string[] | undefined)
+      const canceledTotal = canceledMatch?.allocations?.reduce((sum, allocation) => sum + Number(allocation.amount), 0) ?? 0
       const res = await fetch(`/api/payment-matches/${matchId}/cancel`, { method: "POST" })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Annulation impossible.")
-      window.location.reload()
+      setLocalPaymentMatches((current) => current.map((match) => match.id === matchId
+        ? { ...match, status: "TO_VERIFY", confirmedAt: null, allocations: [] }
+        : match))
+      setLocalPayments((current) => current.filter((payment) => !canceledPaymentIds.has(payment.id)))
+      if (canceledTotal > 0) {
+        setLocalValidatedSummary((current) => ({
+          count: Math.max(0, current.count - canceledPaymentIds.size),
+          total: +Math.max(0, current.total - canceledTotal).toFixed(2),
+        }))
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : "Annulation impossible.")
     } finally {
@@ -686,7 +729,10 @@ export function PaymentsClient({
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || "Action impossible.")
       }
-      router.refresh()
+      const nextStatus = action === "delete" ? "DELETED" : "NOT_INSTITUTE"
+      setLocalPaymentMatches((current) => current
+        .map((match) => visibleIds.includes(match.id) ? { ...match, status: nextStatus } : match)
+        .filter((match) => match.status !== "DELETED"))
       setSelectedMatchIds(new Set())
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
@@ -697,7 +743,7 @@ export function PaymentsClient({
 
   // Boucle une action (trash/director/restore/delete) sur plusieurs paiements.
   async function runBulkMatchAction(ids: string[], action: string) {
-    for (const matchId of ids) {
+    await Promise.all(ids.map(async (matchId) => {
       const res = await fetch(`/api/payment-matches/${matchId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -705,7 +751,7 @@ export function PaymentsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Action impossible.")
-    }
+    }))
   }
 
   // « à associer » → élèves du directeur, en lot.
@@ -717,7 +763,7 @@ export function PaymentsClient({
     try {
       await runBulkMatchAction(ids, "director")
       setSelectedMatchIds(new Set())
-      router.refresh()
+      setLocalPaymentMatches((current) => current.map((match) => ids.includes(match.id) ? { ...match, status: "DIRECTOR" } : match))
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
     } finally {
@@ -737,7 +783,9 @@ export function PaymentsClient({
     try {
       await runBulkMatchAction(ids, action)
       setSelectedTrashedIds(new Set())
-      router.refresh()
+      setLocalPaymentMatches((current) => current
+        .map((match) => ids.includes(match.id) ? { ...match, status: action === "restore" ? "TO_VERIFY" : "DELETED" } : match)
+        .filter((match) => match.status !== "DELETED"))
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
     } finally {
@@ -754,7 +802,7 @@ export function PaymentsClient({
     try {
       await runBulkMatchAction(ids, "restore")
       setSelectedDirectorIds(new Set())
-      router.refresh()
+      setLocalPaymentMatches((current) => current.map((match) => ids.includes(match.id) ? { ...match, status: "TO_VERIFY" } : match))
     } catch (error) {
       alert(error instanceof Error ? error.message : "Action impossible.")
     } finally {
@@ -777,11 +825,63 @@ export function PaymentsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Reclassement impossible.")
-      window.location.reload()
+      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Reclassement impossible.")
       setMatchActionLoading(null)
     }
+  }
+
+  function applyPeriodStart(startAt: string, isManual: boolean) {
+    const startTime = new Date(startAt).getTime()
+    const included = localPayments.filter((payment) => {
+      const validationTime = paymentValidationDateValue(payment)
+      return validationTime != null
+        && validationTime > startTime
+        && validationTime <= nowTime
+        && paymentHasValidatedSession(payment)
+        && (PAYMENT_PAID_STATUSES as readonly string[]).includes(payment.status)
+    })
+    setLocalPeriodControl({ currentStart: startAt, isManual })
+    setPeriodDate(dateInputValue(startTime + 1))
+    setLocalValidatedSummary({
+      count: included.length,
+      total: +included.reduce((sum, payment) => sum + paymentReceivedAmount(payment), 0).toFixed(2),
+    })
+    setPeriodDialogOpen(false)
+    setPeriodLoading(false)
+  }
+
+  async function savePeriodStart(startAt: Date) {
+    setPeriodLoading(true)
+    try {
+      const res = await fetch("/api/payments/period", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startAt: startAt.toISOString() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Impossible de fixer la période.")
+      applyPeriodStart(data.paymentPeriodStartAt, Boolean(data.isManual))
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Impossible de fixer la période.")
+      setPeriodLoading(false)
+    }
+  }
+
+  async function setPeriodStartFromDate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const submittedDate = String(new FormData(event.currentTarget).get("periodStart") ?? "")
+    if (!submittedDate) {
+      alert("Choisissez une date de début.")
+      return
+    }
+    const when = dayStart(submittedDate)
+    if (!Number.isFinite(when) || when > Date.now()) {
+      alert("La date de début doit être valide et ne peut pas être dans le futur.")
+      return
+    }
+    await savePeriodStart(new Date(when))
   }
 
   // Fixe le début de la « période en cours » sur un paiement précis : ce
@@ -794,24 +894,9 @@ export function PaymentsClient({
     }
     const label = paymentStudentLabel(payment)
     const confirmed = window.confirm(
-      `Démarrer la « période en cours » à partir de ce paiement ?\n\n${formatCurrency(paymentReceivedAmount(payment))} · ${label} · ${formatDate(new Date(when).toISOString())}\n\nSeuls ce paiement et les suivants seront comptés dans le total.`
+      `Démarrer la « période en cours » à partir de ce paiement ?\n\n${formatCurrency(paymentReceivedAmount(payment))} · ${label} · ${formatDate(new Date(when).toISOString())}\n\nCe paiement et tous les suivants seront comptés dans le total.`
     )
-    if (!confirmed) return
-    setPeriodLoading(true)
-    try {
-      const res = await fetch("/api/payments/period", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startAt: new Date(when).toISOString() }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "Impossible de fixer la période.")
-      setPeriodDialogOpen(false)
-      window.location.reload()
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Impossible de fixer la période.")
-      setPeriodLoading(false)
-    }
+    if (confirmed) await savePeriodStart(new Date(when))
   }
 
   async function resetPeriodStart() {
@@ -827,7 +912,7 @@ export function PaymentsClient({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Réinitialisation impossible.")
       setPeriodDialogOpen(false)
-      window.location.reload()
+      router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Réinitialisation impossible.")
       setPeriodLoading(false)
@@ -836,8 +921,14 @@ export function PaymentsClient({
 
   // Paiements validés (payés + session validée), triés du plus récent au plus
   // ancien : c'est la liste dans laquelle le directeur pointe le départ de période.
-  const validatedPaymentsForPicker = payments
-    .filter((p) => paymentHasValidatedSession(p) && (PAYMENT_PAID_STATUSES as readonly string[]).includes(p.status) && paymentValidationDateValue(p) != null)
+  const validatedPaymentsForPicker = localPayments
+    .filter((payment) => {
+      const validationTime = paymentValidationDateValue(payment)
+      return paymentHasValidatedSession(payment)
+        && (PAYMENT_PAID_STATUSES as readonly string[]).includes(payment.status)
+        && validationTime != null
+        && validationTime <= nowTime
+    })
     .sort((a, b) => (paymentValidationDateValue(b) ?? 0) - (paymentValidationDateValue(a) ?? 0))
 
   return (
@@ -845,7 +936,7 @@ export function PaymentsClient({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Paiements</h2>
-          <p className="text-sm text-gray-500">{payments.length} paiements enregistrés</p>
+          <p className="text-sm text-gray-500">{localPayments.length} paiements enregistrés</p>
         </div>
         <Button className="w-full sm:w-auto" onClick={() => { setEditPayment(null); setDialogOpen(true) }}>
           <Plus className="h-4 w-4" />
@@ -861,21 +952,22 @@ export function PaymentsClient({
             <div className="min-w-0">
               <p className="text-xs text-gray-500">Paiements validés · {selectedPeriodLabel}</p>
               <p className="text-lg font-bold text-gray-900">{formatCurrency(summary.paid)}</p>
-              <p className="text-[11px] text-gray-400">{confirmedPaymentMatches.length} paiement{confirmedPaymentMatches.length > 1 ? "s" : ""} validé{confirmedPaymentMatches.length > 1 ? "s" : ""}</p>
+              <p className="text-[11px] text-gray-400">{localValidatedSummary.count} paiement{localValidatedSummary.count > 1 ? "s" : ""} validé{localValidatedSummary.count > 1 ? "s" : ""}</p>
               {isDirector && (
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className="text-[11px] text-gray-400">
-                    Période en cours depuis le {formatDate(periodControl.currentStart)}
-                    {periodControl.isManual ? " (manuel)" : ""}
+                    Période en cours depuis le {formatDate(new Date(new Date(localPeriodControl.currentStart).getTime() + 1))}
+                    {localPeriodControl.isManual ? " (manuel)" : ""}
                   </span>
                   <button
                     type="button"
                     onClick={() => setPeriodDialogOpen(true)}
+                    aria-label="Modifier la période en cours"
                     className="text-[11px] font-medium text-emerald-700 hover:underline"
                   >
                     Modifier
                   </button>
-                  {periodControl.isManual && (
+                  {localPeriodControl.isManual && (
                     <button
                       type="button"
                       onClick={resetPeriodStart}
@@ -1841,16 +1933,36 @@ export function PaymentsClient({
           <DialogHeader>
             <DialogTitle>Modifier la période en cours</DialogTitle>
             <DialogDescription>
-              Choisissez le paiement à partir duquel démarre la période. Ce paiement et tous les suivants seront comptés dans le total « Paiements validés ». Les précédents en sortent.
+              Choisissez une date de départ, ou sélectionnez directement le premier paiement à compter. Les paiements précédents resteront dans l&apos;historique.
             </DialogDescription>
           </DialogHeader>
+          <form onSubmit={setPeriodStartFromDate} className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50/60 p-3">
+            <Label htmlFor="payment-period-start">Date de début de la nouvelle période</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="payment-period-start"
+                name="periodStart"
+                type="date"
+                value={periodDate}
+                max={dateInputValue(nowTime)}
+                onChange={(event) => setPeriodDate(event.target.value)}
+                disabled={periodLoading}
+              />
+              <Button type="submit" disabled={periodLoading || !periodDate} className="shrink-0">
+                {periodLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Démarrer à cette date
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500">Exemple : choisissez le 26 juillet pour compter tous les paiements validés à partir du 26.</p>
+          </form>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Ou choisir le premier paiement à compter</p>
           <div className="max-h-[55vh] overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100">
             {validatedPaymentsForPicker.length === 0 ? (
               <p className="p-4 text-sm text-gray-500">Aucun paiement validé à afficher.</p>
             ) : (
               validatedPaymentsForPicker.map((payment) => {
                 const when = paymentValidationDateValue(payment)
-                const isCurrentStart = when != null && Math.abs(when - 1 - new Date(periodControl.currentStart).getTime()) < 1000
+                const isCurrentStart = when != null && Math.abs(when - 1 - new Date(localPeriodControl.currentStart).getTime()) < 1000
                 return (
                   <button
                     key={payment.id}
@@ -1869,7 +1981,7 @@ export function PaymentsClient({
               })
             )}
           </div>
-          {periodControl.isManual && (
+          {localPeriodControl.isManual && (
             <Button variant="outline" onClick={resetPeriodStart} disabled={periodLoading} className="w-full">
               {periodLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RotateCcw className="h-4 w-4 mr-1" />}
               Réinitialiser (calcul automatique le 25)
@@ -2398,26 +2510,46 @@ function StudentCombobox({
 }
 
 function SecretaryPayBlock() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ secretaryName: string; collectedTotal: number; amount: number; paymentCount: number; periodStart: string; periodEnd: string } | null>(null)
+  const [results, setResults] = useState<Array<{ secretaryId: string; secretaryName: string; collectedTotal: number; amount: number; paymentCount: number; periodStart: string; periodEnd: string }>>([])
   const [confirmed, setConfirmed] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function calculate() {
     setLoading(true)
     setConfirmed(false)
-    const res = await fetch("/api/salaries/secretary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
-    const data = await res.json()
-    if (Array.isArray(data) && data.length > 0) setResult(data[0])
-    setLoading(false)
+    setError(null)
+    try {
+      const res = await fetch("/api/salaries/secretary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Impossible de calculer la paie.")
+      setResults(Array.isArray(data) ? data : [])
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Impossible de calculer la paie.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function confirm() {
+    if (results.length === 0) return
     setLoading(true)
-    await fetch("/api/salaries/secretary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: true }) })
-    setConfirmed(true)
-    setLoading(false)
-    router.refresh()
+    setError(null)
+    try {
+      const res = await fetch("/api/salaries/secretary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true, periodStart: results[0].periodStart }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Impossible de clôturer la période.")
+      setResults(Array.isArray(data) ? data : results)
+      setConfirmed(true)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Impossible de clôturer la période.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -2434,33 +2566,34 @@ function SecretaryPayBlock() {
           </Button>
         </div>
 
-        {result && (
-          <div className="rounded-lg border border-violet-200 bg-white p-4 space-y-2">
-            <p className="font-medium text-gray-900">{result.secretaryName}</p>
-            <p className="text-xs text-gray-400">
-              Période : {new Date(result.periodStart).toLocaleDateString("fr-FR")} → {new Date(result.periodEnd).toLocaleDateString("fr-FR")}
-            </p>
-            <p className="text-xs text-gray-400">
-              {result.paymentCount} paiement{result.paymentCount > 1 ? "s" : ""} inclus dans cette clôture.
-            </p>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Paiements validés sur la période en cours</span>
-              <span className="font-medium">{formatCurrency(result.collectedTotal)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Commission 10%</span>
-              <span className="text-lg font-bold text-violet-700">{formatCurrency(result.amount)}</span>
-            </div>
-            {!confirmed ? (
-              <Button size="sm" onClick={confirm} disabled={loading} className="bg-violet-600 hover:bg-violet-700 text-white mt-2">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                Confirmer et clôturer cette période
-              </Button>
-            ) : (
-              <p className="text-sm text-emerald-600 font-medium mt-2">✓ Période clôturée et fiche de paie enregistrée</p>
-            )}
+        {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {results.map((result) => (
+          <div key={result.secretaryId} className="rounded-lg border border-violet-200 bg-white p-4 space-y-2">
+              <p className="font-medium text-gray-900">{result.secretaryName}</p>
+              <p className="text-xs text-gray-400">
+                Période : {new Date(result.periodStart).toLocaleDateString("fr-FR")} → {new Date(result.periodEnd).toLocaleDateString("fr-FR")}
+              </p>
+              <p className="text-xs text-gray-400">
+                {result.paymentCount} paiement{result.paymentCount > 1 ? "s" : ""} inclus dans cette clôture.
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Paiements validés sur la période en cours</span>
+                <span className="font-medium">{formatCurrency(result.collectedTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Commission 10%</span>
+                <span className="text-lg font-bold text-violet-700">{formatCurrency(result.amount)}</span>
+              </div>
           </div>
-        )}
+        ))}
+        {results.length > 0 && (!confirmed ? (
+          <Button size="sm" onClick={confirm} disabled={loading || results[0].paymentCount === 0} className="bg-violet-600 hover:bg-violet-700 text-white">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+            Confirmer et clôturer cette période
+          </Button>
+        ) : (
+          <p aria-live="polite" className="text-sm text-emerald-600 font-medium">✓ Période clôturée et nouvelle période démarrée</p>
+        ))}
       </CardContent>
     </Card>
   )

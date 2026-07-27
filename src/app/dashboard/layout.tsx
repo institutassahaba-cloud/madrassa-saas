@@ -1,50 +1,57 @@
 import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { after } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getEffectiveUser } from "@/lib/view-as"
+import { getCurrentSession, getEffectiveUser } from "@/lib/view-as"
 import { notificationVisibilityWhere } from "@/lib/notifications"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { touchUserActivity } from "@/lib/user-activity"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
+  const session = await getCurrentSession()
   if (!session?.user) redirect("/login")
 
-  await touchUserActivity(session.user.id)
+  // La mise à jour d'activité n'est pas nécessaire au rendu : elle s'exécute
+  // après l'envoi de la page et ne bloque plus chaque navigation.
+  after(() => touchUserActivity(session.user.id).catch(() => null))
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { hasOnboarded: true },
-  })
+  const [dbUser, user] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { hasOnboarded: true },
+    }),
+    getEffectiveUser(),
+  ])
 
   if (!dbUser?.hasOnboarded) redirect("/bienvenue")
 
   // Utilisateur effectif : si le directeur a activé "Voir comme", le menu et
   // l'entête reflètent l'espace du professeur consulté.
-  const user = (await getEffectiveUser())!
-  const unreadNotifications = await prisma.notification.count({
-    where: {
-      ...notificationVisibilityWhere(user),
-      status: { not: "READ" },
-    },
-  })
-  const viewAsOptions = session.user.role === "DIRECTOR"
-    ? await prisma.user.findMany({
+  const effectiveUser = user!
+  const [unreadNotifications, viewAsOptions] = await Promise.all([
+    prisma.notification.count({
+      where: {
+        ...notificationVisibilityWhere(effectiveUser),
+        status: { not: "READ" },
+      },
+    }),
+    session.user.role === "DIRECTOR"
+      ? prisma.user.findMany({
         where: { tenantId: session.user.tenantId, role: { in: ["SECRETARY", "TEACHER"] }, isActive: true },
         select: { id: true, name: true, role: true },
         orderBy: [{ role: "asc" }, { name: "asc" }],
       })
-    : []
+      : Promise.resolve([]),
+  ])
 
   return (
     <DashboardShell
-      role={user.role}
-      tenantName={user.tenantName}
-      userName={user.name}
-      userEmail={user.email}
+      role={effectiveUser.role}
+      tenantName={effectiveUser.tenantName}
+      userName={effectiveUser.name}
+      userEmail={effectiveUser.email}
       unreadNotifications={unreadNotifications}
-      impersonating={user.impersonating}
-      currentViewAsId={user.impersonating ? user.id : "DIRECTOR"}
+      impersonating={effectiveUser.impersonating}
+      currentViewAsId={effectiveUser.impersonating ? effectiveUser.id : "DIRECTOR"}
       viewAsOptions={viewAsOptions.map((option) => ({
         id: option.id,
         label: option.name,

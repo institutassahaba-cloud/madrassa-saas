@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma"
 import { uploadToDrive } from "@/lib/google-drive"
 import { wrap } from "@/lib/api"
 
-const MAX_PDF_SIZE = 25 * 1024 * 1024
+// Les fonctions serverless chargent le FormData en mémoire et limitent le corps
+// HTTP. Une borne explicite évite une erreur tardive ou un dépassement mémoire.
+const MAX_PDF_SIZE = 4 * 1024 * 1024
 
 function isGoogleDriveUrl(value: string) {
   try {
@@ -70,7 +72,7 @@ export const POST = wrap(async (req: Request) => {
     return NextResponse.json({ error: "Seuls les fichiers PDF sont acceptés" }, { status: 400 })
   }
   if (file.size > MAX_PDF_SIZE) {
-    return NextResponse.json({ error: "Le PDF ne doit pas dépasser 25 Mo." }, { status: 400 })
+    return NextResponse.json({ error: "Le PDF ne doit pas dépasser 4 Mo." }, { status: 413 })
   }
 
   const bytes = await file.arrayBuffer()

@@ -3,18 +3,13 @@ import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
 import { formatCurrency } from "@/lib/utils"
 import { PAYMENT_PAID_STATUSES, PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
-import { getValidatedPaymentPeriodStart } from "@/lib/payment-period"
+import { getValidatedPaymentPeriodStart, getValidatedPaymentSummary } from "@/lib/payment-period"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, UserCheck, AlertCircle, TrendingUp, BookOpen, UserX } from "lucide-react"
 import { RecentPayments } from "@/components/dashboard/recent-payments"
 import { SubjectDistributionChart } from "@/components/dashboard/subject-distribution-chart"
 import { TeacherHome } from "./teacher-home"
 import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
-
-function validatedMatchAmount(match: { receivedAmount: number; allocations: { amount: number }[] }) {
-  const allocated = match.allocations.reduce((sum, allocation) => sum + Number(allocation.amount), 0)
-  return allocated > 0 && match.receivedAmount - allocated > 0.01 ? allocated : Number(match.receivedAmount)
-}
 
 async function getStats(tenantId: string) {
   const now = new Date()
@@ -24,7 +19,7 @@ async function getStats(tenantId: string) {
     totalStudents,
     activeStudents,
     latePayments,
-    recentValidatedPaymentMatches,
+    validatedPaymentSummary,
     totalTeachers,
     totalAttendances,
     presentAttendances,
@@ -38,22 +33,7 @@ async function getStats(tenantId: string) {
     prisma.payment.count({
       where: { tenantId, status: { in: [...PAYMENT_AWAITING_STATUSES] }, dueDate: { lt: now } },
     }),
-    prisma.paymentMatch.findMany({
-      where: {
-        tenantId,
-        status: "CONFIRMED",
-        OR: [
-          { confirmedAt: { gt: revenueStart, lte: now } },
-          { confirmedAt: null, paymentDate: { gt: revenueStart, lte: now } },
-        ],
-      },
-      select: {
-        receivedAmount: true,
-        allocations: { select: { amount: true } },
-      },
-      orderBy: { confirmedAt: "desc" },
-      take: 200,
-    }),
+    getValidatedPaymentSummary(tenantId, revenueStart, now),
     prisma.user.count({ where: { tenantId, role: "TEACHER", isActive: true } }),
     prisma.attendance.count({ where: { tenantId } }),
     prisma.attendance.count({ where: { tenantId, status: "PRESENT" } }),
@@ -74,8 +54,8 @@ async function getStats(tenantId: string) {
     totalStudents,
     activeStudents,
     latePayments,
-    monthRevenue: recentValidatedPaymentMatches.reduce((sum, match) => sum + validatedMatchAmount(match), 0),
-    validatedPaymentCount: recentValidatedPaymentMatches.length,
+    monthRevenue: validatedPaymentSummary.total,
+    validatedPaymentCount: validatedPaymentSummary.count,
     totalTeachers,
     attendanceRate: totalAttendances > 0 ? Math.round((presentAttendances / totalAttendances) * 100) : 0,
     recentPayments,

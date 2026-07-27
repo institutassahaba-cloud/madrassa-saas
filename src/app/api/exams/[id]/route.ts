@@ -32,7 +32,9 @@ export const DELETE = wrap(async (_req: Request, { params }: { params: Promise<{
     if (driveFileId) await deleteFromDrive(driveFileId)
   } else if (exam.fileUrl.startsWith("/uploads/")) {
     try {
-      await unlink(path.join(process.cwd(), "public", exam.fileUrl))
+      // Ancien stockage local : basename empêche toute traversée de répertoire
+      // et garde le traçage de build strictement limité à public/uploads.
+      await unlink(path.join(process.cwd(), "public", "uploads", path.basename(exam.fileUrl)))
     } catch {}
   }
 

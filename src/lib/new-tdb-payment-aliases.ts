@@ -1,4 +1,3 @@
-import path from "path"
 import { google } from "googleapis"
 import { prisma } from "@/lib/prisma"
 import { ensurePaymentAliasSchema, normalizePaymentAlias } from "@/lib/payment-alias-schema"
@@ -25,7 +24,7 @@ function getSheetsAuth() {
   }
 
   return new google.auth.GoogleAuth({
-    keyFile: path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "./google-drive-credentials.json"),
+    keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "./google-drive-credentials.json",
     scopes,
   })
 }

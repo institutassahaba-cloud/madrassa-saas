@@ -15,7 +15,6 @@
  *   node scripts/backfill-references-paiements.mjs --apply   # écrit
  */
 import fs from "fs"
-import path from "path"
 import { createClient } from "@libsql/client"
 
 function parseArgs(argv) {

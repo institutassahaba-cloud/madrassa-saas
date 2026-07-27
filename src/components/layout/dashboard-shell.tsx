@@ -33,6 +33,12 @@ export function DashboardShell({
 
   return (
     <div className="flex h-dvh overflow-hidden bg-gray-50">
+      <a
+        href="#dashboard-main"
+        className="fixed left-3 top-3 z-[100] -translate-y-20 rounded-md bg-gray-950 px-4 py-2 text-sm font-medium text-white shadow-lg transition-transform focus:translate-y-0"
+      >
+        Aller au contenu principal
+      </a>
       <div className="hidden md:flex">
         <Sidebar role={role} tenantName={tenantName} />
       </div>
@@ -70,7 +76,7 @@ export function DashboardShell({
           viewAsOptions={viewAsOptions}
           currentViewAsId={currentViewAsId}
         />
-        <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
+        <main id="dashboard-main" tabIndex={-1} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
           {children}
         </main>
       </div>

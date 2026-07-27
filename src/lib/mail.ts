@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import nodemailer from "nodemailer"
+import nodemailer from "nodemailer-safe"
 import type { Attachment } from "nodemailer/lib/mailer"
 import { whatsappLink } from "@/lib/phone"
 

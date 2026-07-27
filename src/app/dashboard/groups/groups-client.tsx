@@ -35,6 +35,7 @@ const EMPTY = {
 }
 
 export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teachers: Teacher[]; role: string }) {
+  const [groupRows, setGroupRows] = useState(groups)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editGroup, setEditGroup] = useState<Group | null>(null)
   const [form, setForm] = useState(EMPTY)
@@ -76,7 +77,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
     try {
       const method = editGroup ? "PUT" : "POST"
       const url = editGroup ? `/api/groups/${editGroup.id}` : "/api/groups"
-      await fetch(url, {
+      const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -85,8 +86,17 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
           schedule: { days: form.days, startTime: form.startTime, endTime: form.endTime },
         }),
       })
+      if (!response.ok) throw new Error("Impossible d'enregistrer ce groupe.")
+      const saved = await response.json()
+      const nextGroup: Group = {
+        ...saved,
+        teacher: teachers.find((teacher) => teacher.id === saved.teacherId) ?? null,
+        _count: editGroup?._count ?? { students: 0 },
+      }
+      setGroupRows((current) => editGroup
+        ? current.map((group) => group.id === nextGroup.id ? nextGroup : group)
+        : [...current, nextGroup].sort((a, b) => a.name.localeCompare(b.name, "fr")))
       setDialogOpen(false)
-      window.location.reload()
     } finally {
       setLoading(false)
     }
@@ -97,7 +107,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Groupes / Classes</h2>
-          <p className="text-sm text-gray-500">{groups.length} groupes</p>
+          <p className="text-sm text-gray-500">{groupRows.length} groupes</p>
         </div>
         {role !== "TEACHER" && (
           <Button className="w-full sm:w-auto" onClick={openCreate}>
@@ -108,7 +118,7 @@ export function GroupsClient({ groups, teachers, role }: { groups: Group[]; teac
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {groups.map((group) => {
+        {groupRows.map((group) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const schedule = group.schedule as any
           return (

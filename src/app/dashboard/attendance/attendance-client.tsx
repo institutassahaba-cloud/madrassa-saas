@@ -2,12 +2,11 @@
 import { useState } from "react"
 import { Check, X, Clock, CheckCircle, Loader2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
-import { cn, formatDate } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 
 type Status = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"
 
@@ -33,7 +32,7 @@ const STATUS_CONFIG = {
   EXCUSED: { label: "Excusé", icon: CheckCircle, color: "bg-gray-400 text-white hover:bg-gray-500" },
 }
 
-export function AttendanceClient({ groups, userId }: { groups: Group[]; userId: string }) {
+export function AttendanceClient({ groups }: { groups: Group[] }) {
   const [selectedGroup, setSelectedGroup] = useState(groups[0]?.id ?? "")
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [statuses, setStatuses] = useState<Record<string, Status>>({})
