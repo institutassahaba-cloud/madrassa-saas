@@ -170,13 +170,6 @@ function applyLessonUpdate(sessions: LessonSession[], lessonId: string, data: Pa
   })
 }
 
-function studentHasLegacyBoundary(sessions: LessonSession[], studentId: string) {
-  return sessions.some((session) =>
-    session.student.id === studentId &&
-    session.lessons.some((lesson) => lesson.legacyPayrollBoundary)
-  )
-}
-
 function paymentKey(session: LessonSession): string {
   return `${session.student.id}:${session.number}`
 }
@@ -197,73 +190,6 @@ function latestSessionsOnly(sessions: LessonSession[]): LessonSession[] {
 
 function latestSessionsWithoutPaymentDate(sessions: LessonSession[], paidBySession: Record<string, string>): LessonSession[] {
   return latestSessionsOnly(sessions).filter((session) => !paidBySession[paymentKey(session)])
-}
-
-type LegacyBoundaryTodo = {
-  key: string
-  studentName: string
-  teacherName: string
-  subject: string
-  legacyId: string
-  status: string
-  sessionNumber: number
-  lessonNumber: number | null
-}
-
-function legacyBoundaryTodos(sessions: LessonSession[], students: Student[]): LegacyBoundaryTodo[] {
-  const studentById = new Map(students.map((student) => [student.id, student]))
-  const latestByTracking = new Map<string, LessonSession>()
-  const trackingWithBoundary = new Set<string>()
-
-  for (const session of sessions) {
-    const student = studentById.get(session.student.id)
-    const legacyId = student?.legacyId || session.student.legacyId
-    if (!legacyId) continue
-
-    const key = trackingKey(session)
-    if (session.lessons.some((lesson) => lesson.legacyPayrollBoundary)) {
-      trackingWithBoundary.add(key)
-    }
-    const current = latestByTracking.get(key)
-    if (!current || session.number > current.number) latestByTracking.set(key, session)
-  }
-
-  return Array.from(latestByTracking.values())
-    .filter((session) => !trackingWithBoundary.has(trackingKey(session)))
-    .map((session) => {
-      const student = studentById.get(session.student.id)
-      const lastLesson = [...session.lessons].sort((a, b) => b.number - a.number)[0]
-      return {
-        key: trackingKey(session),
-        studentName: studentSortKey(student ?? {
-          id: session.student.id,
-          firstName: session.student.firstName,
-          lastName: session.student.lastName,
-          displayName: null,
-          legacyId: session.student.legacyId ?? null,
-          subject: session.subject,
-          phone: null,
-          parentPhone: null,
-          groupId: null,
-          lessonsPerWeek: null,
-          duration: null,
-          monthlyFee: 0,
-          status: session.student.status ?? "ACTIVE",
-          group: null,
-        }),
-        teacherName: session.teacher.name,
-        subject: session.subject || NO_SUBJECT,
-        legacyId: student?.legacyId || session.student.legacyId || "",
-        status: student?.status || session.student.status || "ACTIVE",
-        sessionNumber: session.number,
-        lessonNumber: lastLesson?.number ?? null,
-      }
-    })
-    .sort((a, b) =>
-      collator.compare(a.teacherName, b.teacherName) ||
-      collator.compare(a.studentName, b.studentName) ||
-      compareSubjects(a.subject, b.subject)
-    )
 }
 
 function formatForfait(lessonsPerWeek: number | null, duration: string | null): string | null {
@@ -432,13 +358,11 @@ function MeetingLinkControl({
 // ─── LessonRow ────────────────────────────────────────────────────────────────
 
 function LessonRow({
-  lesson, sessionDuration, siblingLessons, canSetLegacyBoundary, studentHasLegacyBoundary, onUpdate, onDelete,
+  lesson, sessionDuration, siblingLessons, onUpdate, onDelete,
 }: {
   lesson: Lesson
   sessionDuration: string | null
   siblingLessons: Lesson[]
-  canSetLegacyBoundary: boolean
-  studentHasLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (id: string, data: any) => void
   onDelete: (id: string) => void
@@ -483,8 +407,6 @@ function LessonRow({
   }
 
   const futureLessons = siblingLessons.filter(l => l.number > lesson.number)
-  const showLegacyBoundaryControl = canSetLegacyBoundary && (!studentHasLegacyBoundary || lesson.legacyPayrollBoundary)
-
   return (
     <div className={`flex items-start gap-3 rounded-lg border p-3 ${statusBg(lesson.status)}`}>
       <button
@@ -509,7 +431,6 @@ function LessonRow({
           )}
           {lesson.status === "PRESENT" && <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Présente</span>}
           {lesson.status === "ABSENT" && <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">Absente</span>}
-          {lesson.legacyPayrollBoundary && <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>}
           <button
             onClick={() => { if (confirm(`Supprimer le Cours ${lesson.number} ?`)) onDelete(lesson.id) }}
             className="ml-auto text-gray-300 hover:text-red-500"
@@ -518,17 +439,6 @@ function LessonRow({
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        {showLegacyBoundaryControl && (
-          <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
-            <input
-              type="checkbox"
-              checked={lesson.legacyPayrollBoundary}
-              onChange={(e) => onUpdate(lesson.id, { legacyPayrollBoundary: e.target.checked })}
-              className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            Dernier cours comptabilisé sur l&apos;ancien système
-          </label>
-        )}
         {lesson.makeupMinutes != null && lesson.makeupMinutes > 0 && !editing && (
           <div className="mt-1 rounded bg-amber-50 border border-amber-200 px-2 py-1 text-xs text-amber-700">
             {formatMins(lesson.makeupMinutes)} à rattraper
@@ -748,7 +658,7 @@ function SessionNumberEditor({
 
 function SessionCard({
   session, paidAt, hasUndatedPayment, nextPaidAt, nextHasPaymentRequest, canSetLegacyBoundary, canMarkPaymentDate,
-  studentHasLegacyBoundary, onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
+  onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
 }: {
   session: LessonSession
   paidAt?: string | null
@@ -757,7 +667,6 @@ function SessionCard({
   nextHasPaymentRequest?: boolean
   canSetLegacyBoundary: boolean
   canMarkPaymentDate: boolean
-  studentHasLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -879,8 +788,6 @@ function SessionCard({
             lesson={lesson}
             sessionDuration={session.duration}
             siblingLessons={session.lessons}
-            canSetLegacyBoundary={canSetLegacyBoundary}
-            studentHasLegacyBoundary={studentHasLegacyBoundary}
             onUpdate={onUpdateLesson}
             onDelete={onDeleteLesson}
           />
@@ -1019,18 +926,15 @@ function shortName(student: Student) {
 
 // Ligne « Cours N » fusionnée : contenu partagé + un rond de présence par élève.
 function MergedLessonRow({
-  lessonNumber, cells, sessionDuration, canSetLegacyBoundary, studentsWithLegacyBoundary, onToggleStatus, onEnsureStatus, onSaveShared, onToggleLegacy, onDelete,
+  lessonNumber, cells, sessionDuration, onToggleStatus, onEnsureStatus, onSaveShared, onDelete,
 }: {
   lessonNumber: number
   cells: { student: Student; lesson: Lesson | undefined }[]
   sessionDuration: string | null
-  canSetLegacyBoundary: boolean
-  studentsWithLegacyBoundary: Set<string>
   onToggleStatus: (lessonId: string, current: string) => void
   onEnsureStatus: (studentId: string) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSaveShared: (data: any) => void
-  onToggleLegacy: (checked: boolean, lessonIds: string[]) => void
   onDelete: () => void
 }) {
   const expectedMin = (() => {
@@ -1051,11 +955,6 @@ function MergedLessonRow({
   const actualMin = ref?.duration ?? expectedMin
   const diff = expectedMin != null && actualMin != null ? expectedMin - actualMin : 0
   const isShort = diff > 0
-  const anyLegacy = cells.some((c) => c.lesson?.legacyPayrollBoundary)
-  const legacyToggleLessons = cells
-    .filter((c) => c.lesson && (!studentsWithLegacyBoundary.has(c.student.id) || c.lesson.legacyPayrollBoundary))
-    .map((c) => c.lesson!.id)
-  const showLegacyBoundaryControl = canSetLegacyBoundary && legacyToggleLessons.length > 0
 
   function saveShared() {
     const dur = durationMin ? parseInt(durationMin) : null
@@ -1097,9 +996,6 @@ function MergedLessonRow({
                 {formatMins(actualMin)}{isShort && ` (−${diff} min)`}
               </span>
             )}
-            {anyLegacy && (
-              <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>
-            )}
             <button
               onClick={() => { if (confirm(`Supprimer le Cours ${lessonNumber} pour toute la classe ?`)) onDelete() }}
               className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
@@ -1109,17 +1005,6 @@ function MergedLessonRow({
             </button>
           </div>
 
-          {showLegacyBoundaryControl && (
-            <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
-              <input
-                type="checkbox"
-                checked={anyLegacy}
-                onChange={(e) => onToggleLegacy(e.target.checked, legacyToggleLessons)}
-                className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              Dernier cours comptabilisé sur l&apos;ancien système
-            </label>
-          )}
 
           {editing ? (
             <div className="mt-2 space-y-2">
@@ -1264,11 +1149,6 @@ function MergedGroupCahier({
   const subjectLabel = allSessions.find((s) => s.number === selNum)?.subject ?? null
   const allComplete = sessList.length > 0 && sessList.every((s) => s.isComplete)
   const lessonNumbers = Array.from(new Set(sessList.flatMap((s) => s.lessons.map((l) => l.number)))).sort((a, b) => a - b)
-  const studentsWithLegacyBoundary = new Set(
-    allSessions
-      .filter((session) => session.lessons.some((lesson) => lesson.legacyPayrollBoundary))
-      .map((session) => session.student.id)
-  )
 
   async function ensureAndPresent(studentId: string, lessonNumber: number) {
     if (!template) return
@@ -1403,12 +1283,9 @@ function MergedGroupCahier({
                 lessonNumber={num}
                 cells={cells}
                 sessionDuration={sessionDuration}
-                canSetLegacyBoundary={canSetLegacyBoundary}
-                studentsWithLegacyBoundary={studentsWithLegacyBoundary}
                 onToggleStatus={(lessonId, current) => onUpdateLesson(lessonId, { status: STATUS_CYCLE[current] ?? "PENDING" })}
                 onEnsureStatus={(studentId) => ensureAndPresent(studentId, num)}
                 onSaveShared={(data) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, data))}
-                onToggleLegacy={(checked, lessonIds) => lessonIds.forEach((lessonId) => onUpdateLesson(lessonId, { legacyPayrollBoundary: checked }))}
                 onDelete={() => cells.forEach((c) => c.lesson && onDeleteLesson(c.lesson.id))}
               />
             )
@@ -1509,7 +1386,6 @@ function StudentCahier({
   const [creationError, setCreationError] = useState<string | null>(null)
 
   const sortedSessions = [...sessions].sort((a, b) => b.number - a.number)
-  const hasLegacyBoundary = studentHasLegacyBoundary(sessions, student.id)
   const selected =
     sortedSessions.find((s) => s.id === selectedId) ??
     sortedSessions.find((s) => !s.isComplete) ??
@@ -1597,7 +1473,6 @@ function StudentCahier({
               nextHasPaymentRequest={undatedPaymentBySession[`${student.id}:${selected.number + 1}`]}
               canSetLegacyBoundary={canSetLegacyBoundary}
               canMarkPaymentDate={canMarkPaymentDate}
-              studentHasLegacyBoundary={hasLegacyBoundary}
               onUpdateLesson={onUpdateLesson}
               onAddLesson={onAddLesson}
               onCloseSession={onCloseSession}
@@ -2621,7 +2496,6 @@ export function TeachersClient({
   const [paidBySession, setPaidBySession] = useState(initialPaidBySession)
   const [undatedPaymentBySession, setUndatedPaymentBySession] = useState(initialUndatedPaymentBySession)
   const [showSessionsWithoutPaymentDate, setShowSessionsWithoutPaymentDate] = useState(false)
-  const [showLegacyTodos, setShowLegacyTodos] = useState(false)
   const [search, setSearch] = useState("")
   const [sortMode, setSortMode] = useState<"name" | "subject">("name")
 
@@ -2629,7 +2503,6 @@ export function TeachersClient({
     (sum, t) => sum + t.teacherGroups.reduce((s, g) => s + g.students.filter(st => st.status === "ACTIVE").length, 0), 0
   )
   const sessionsWithoutPaymentDate = latestSessionsWithoutPaymentDate(sessions, paidBySession).length
-  const legacyTodos = legacyBoundaryTodos(sessions, students)
 
   async function reload() {
     const res = await fetch("/api/teachers")
@@ -2824,54 +2697,6 @@ export function TeachersClient({
           <p className="text-2xl font-bold text-gray-900">{totalStudents}</p>
         </div>
       </div>
-
-      {["DIRECTOR", "SECRETARY"].includes(currentRole) && (
-        <div className={`mb-4 rounded-xl border px-4 py-3 shadow-sm ${legacyTodos.length > 0 ? "border-indigo-200 bg-indigo-50" : "border-emerald-200 bg-emerald-50"}`}>
-          <button
-            type="button"
-            onClick={() => setShowLegacyTodos((open) => !open)}
-            className="flex w-full items-start justify-between gap-3 text-left"
-          >
-            <span>
-              <span className={`block text-sm font-semibold ${legacyTodos.length > 0 ? "text-indigo-900" : "text-emerald-900"}`}>
-                Ancien système : {legacyTodos.length} case{legacyTodos.length > 1 ? "s" : ""} à cocher
-              </span>
-              <span className={`mt-0.5 block text-xs ${legacyTodos.length > 0 ? "text-indigo-700" : "text-emerald-700"}`}>
-                Élèves migrés qui n&apos;ont pas encore de dernier cours comptabilisé pour la paie.
-              </span>
-            </span>
-            {showLegacyTodos ? <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" /> : <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />}
-          </button>
-
-          {showLegacyTodos && (
-            legacyTodos.length === 0 ? (
-              <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs font-medium text-emerald-700">
-                Toutes les limites ancien système sont renseignées pour les élèves migrés.
-              </p>
-            ) : (
-              <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-indigo-100 bg-white">
-                {legacyTodos.map((item) => (
-                  <div key={item.key} className="flex flex-col gap-1 border-b border-indigo-50 px-3 py-2 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-gray-900">{item.studentName}</p>
-                      <p className="text-xs text-gray-500">
-                        {item.teacherName} · {item.subject} · Session {item.sessionNumber}
-                        {item.lessonNumber ? ` · cocher le cours ${item.lessonNumber}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{item.legacyId}</span>
-                      {item.status !== "ACTIVE" && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">{item.status}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-        </div>
-      )}
 
       {/* Add member */}
       <div className="mb-4">
