@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
 import { ensureTeacherPayrollSchema } from "@/lib/teacher-payroll-schema"
 import { snapshotTeacherSalary } from "@/lib/salary-history"
+import { appendSecretaryPaymentDetails, readSecretaryPaymentDetails } from "@/lib/secretary-salary-details"
 
 export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
@@ -34,7 +35,11 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   const correctionNote = totalAmount !== undefined && totalAmount !== salary.totalAmount
     ? `Correction manuelle le ${new Date().toLocaleString("fr-FR")} : ${salary.totalAmount.toFixed(2)} € → ${totalAmount.toFixed(2)} €.`
     : null
-  const notes = correctionNote ? [salary.notes, correctionNote].filter(Boolean).join("\n") : salary.notes
+  const parsedSecretaryDetails = readSecretaryPaymentDetails(salary.notes)
+  const displayNotes = correctionNote ? [parsedSecretaryDetails.displayNotes, correctionNote].filter(Boolean).join("\n") : parsedSecretaryDetails.displayNotes
+  const notes = parsedSecretaryDetails.payments.length > 0 && displayNotes
+    ? appendSecretaryPaymentDetails(displayNotes, parsedSecretaryDetails.payments)
+    : displayNotes
 
   const updated = await prisma.$transaction(async (tx) => {
     await snapshotTeacherSalary(tx, salary.id, user.id)
@@ -67,4 +72,55 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     },
   })
   return NextResponse.json(result)
+})
+
+export const DELETE = wrap(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const user = session.user
+  if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
+  const { id } = await params
+  await ensureTeacherPayrollSchema()
+  const salary = await prisma.teacherSalary.findFirst({
+    where: { id, tenantId: user.tenantId },
+    include: { teacher: { select: { role: true } } },
+  })
+  if (!salary) return NextResponse.json({ error: "Fiche de paie introuvable." }, { status: 404 })
+
+  await prisma.$transaction(async (tx) => {
+    await tx.teacherSalary.delete({ where: { id: salary.id } })
+
+    if (salary.teacher.role === "SECRETARY") {
+      const settings = await tx.tenantSettings.findUnique({
+        where: { tenantId: user.tenantId },
+        select: { paymentPeriodStartAt: true },
+      })
+      await tx.secretaryCommission.deleteMany({
+        where: {
+          tenantId: user.tenantId,
+          secretaryId: salary.teacherId,
+          month: salary.month,
+          year: salary.year,
+        },
+      })
+      if (salary.periodEnd && settings?.paymentPeriodStartAt?.getTime() === salary.periodEnd.getTime()) {
+        const latestRemainingClosure = await tx.teacherSalary.findFirst({
+          where: {
+            tenantId: user.tenantId,
+            periodEnd: { not: null },
+            teacher: { role: "SECRETARY" },
+          },
+          select: { periodEnd: true },
+          orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }],
+        })
+        await tx.tenantSettings.update({
+          where: { tenantId: user.tenantId },
+          data: { paymentPeriodStartAt: latestRemainingClosure?.periodEnd ?? null },
+        })
+      }
+    }
+  })
+
+  return NextResponse.json({ deleted: true, id: salary.id })
 })

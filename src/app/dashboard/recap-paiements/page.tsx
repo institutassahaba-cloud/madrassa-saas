@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { getEffectiveUser } from "@/lib/view-as"
 import { ensureTeacherPayrollSchema } from "@/lib/teacher-payroll-schema"
 import { RecapPaiementsClient } from "./recap-paiements-client"
+import { readSecretaryPaymentDetails } from "@/lib/secretary-salary-details"
 
 export default async function RecapPaiementsPage() {
   const user = await getEffectiveUser()
@@ -26,7 +27,9 @@ export default async function RecapPaiementsPage() {
     }),
   ])
 
-  const data = salaries.map((s) => ({
+  const data = salaries.map((s) => {
+    const secretaryDetails = readSecretaryPaymentDetails(s.notes)
+    return ({
     id: s.id,
     teacherId: s.teacherId,
     teacherName: s.teacher.name || "—",
@@ -41,7 +44,8 @@ export default async function RecapPaiementsPage() {
     paidDate: s.paidDate ? new Date(s.paidDate).toISOString() : null,
     periodStart: s.periodStart ? new Date(s.periodStart).toISOString() : null,
     periodEnd: s.periodEnd ? new Date(s.periodEnd).toISOString() : null,
-    notes: s.notes,
+    notes: secretaryDetails.displayNotes,
+    secretaryPayments: secretaryDetails.payments,
     lines: s.lines.map((line) => ({
       id: line.id,
       label: line.label,
@@ -50,7 +54,8 @@ export default async function RecapPaiementsPage() {
       hourlyRate: Number(line.hourlyRate),
       totalAmount: Number(line.totalAmount),
     })),
-  }))
+    })
+  })
 
   return <RecapPaiementsClient salaries={data} teachers={teachers} isDirector={user.role === "DIRECTOR"} />
 }

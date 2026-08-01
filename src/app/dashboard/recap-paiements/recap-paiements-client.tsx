@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { useState, useMemo } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowRight, Banknote, ChevronDown, ChevronUp, CreditCard, Save, Pencil, X } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ArrowRight, Banknote, ChevronDown, ChevronUp, CreditCard, Save, Pencil, X, Trash2, Loader2 } from "lucide-react"
 
 const MONTHS = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
 
@@ -23,6 +24,7 @@ interface Salary {
   periodStart: string | null
   periodEnd: string | null
   notes: string | null
+  secretaryPayments: Array<{ id?: string; paymentDate: string | null; student: string; session: string | null; amount: number; method: string | null; validated: boolean; validationDate: string | null; reference?: string | null }>
   lines: Array<{ id: string; label: string; lessonsCount: number; hoursWorked: number; hourlyRate: number; totalAmount: number }>
 }
 
@@ -193,6 +195,7 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
                 onSavePaymentInfo={handleSavePaymentInfo}
                 isDirector={isDirector}
                 onSalaryUpdated={(updated) => setSalaries((current) => current.map((salary) => salary.id === updated.id ? { ...salary, ...updated } : salary))}
+                onSalaryDeleted={(salaryId) => setSalaries((current) => current.filter((salary) => salary.id !== salaryId))}
               />
             )
           })}
@@ -202,7 +205,7 @@ export function RecapPaiementsClient({ salaries: initialSalaries, teachers: init
   )
 }
 
-function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentInfo, isDirector, onSalaryUpdated }: {
+function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentInfo, isDirector, onSalaryUpdated, onSalaryDeleted }: {
   name: string
   role: string
   member: StaffMember | undefined
@@ -211,6 +214,7 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
   onSavePaymentInfo: (id: string, info: string) => void
   isDirector: boolean
   onSalaryUpdated: (salary: Salary) => void
+  onSalaryDeleted: (salaryId: string) => void
 }) {
   const [expanded, setExpanded] = useState(true)
   const roleLabel = role === "SECRETARY" ? "Secrétaire" : "Professeur"
@@ -256,7 +260,8 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
                 <th className="px-3 py-2 text-right text-xs font-medium">Cours</th>
                 <th className="px-3 py-2 text-right text-xs font-medium">Montant</th>
                 <th className="px-3 py-2 text-left text-xs font-medium">Détail</th>
-                <th className="px-4 py-2 text-right text-xs font-medium">Statut</th>
+                <th className="px-3 py-2 text-right text-xs font-medium">Statut</th>
+                {isDirector && <th className="px-4 py-2 text-right text-xs font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -270,13 +275,43 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
                   <td className="px-3 py-2 text-right text-gray-600">{s.hoursWorked != null ? `${s.hoursWorked}h` : "—"}</td>
                   <td className="px-3 py-2 text-right text-gray-600">{s.lessonsCount ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-semibold text-gray-900">
-                    {isDirector ? <SalaryAmountEditor salary={s} onUpdated={onSalaryUpdated} /> : formatCurrency(s.totalAmount)}
+                    {formatCurrency(s.totalAmount)}
                   </td>
                   <td className="max-w-[280px] px-3 py-2 text-left text-xs text-gray-500">
-                    {s.lines.length > 0 || s.notes ? (
+                    {s.lines.length > 0 || s.notes || s.secretaryPayments.length > 0 ? (
                       <details>
                         <summary className="cursor-pointer text-blue-600">Voir le détail</summary>
                         <div className="mt-2 space-y-2">
+                          {s.secretaryPayments.length > 0 && (
+                            <div className="max-h-[32rem] overflow-auto rounded-lg border border-gray-200 bg-white">
+                              <table className="w-full min-w-[880px] text-xs">
+                                <thead className="sticky top-0 bg-violet-50 text-violet-900">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-semibold">Date du paiement</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Élève</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Session</th>
+                                    <th className="px-3 py-2 text-right font-semibold">Montant</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Moyen</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Validation</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Date de validation</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {s.secretaryPayments.map((payment, index) => (
+                                    <tr key={payment.id ?? `${payment.student}-${index}`} className="border-t border-gray-100 odd:bg-white even:bg-gray-50/70">
+                                      <td className="whitespace-nowrap px-3 py-2 text-gray-600">{formatDetailDate(payment.paymentDate)}</td>
+                                      <td className="px-3 py-2 font-medium text-gray-900">{payment.student}</td>
+                                      <td className="px-3 py-2 text-gray-600">{payment.session ?? "Non renseignée"}</td>
+                                      <td className="whitespace-nowrap px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(payment.amount)}</td>
+                                      <td className="px-3 py-2 text-gray-600">{payment.method ?? "Non renseigné"}</td>
+                                      <td className="px-3 py-2"><span className={payment.validated ? "rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700" : "rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700"}>{payment.validated ? "Validé" : "Non validé"}</span></td>
+                                      <td className="whitespace-nowrap px-3 py-2 text-gray-600">{formatDetailDate(payment.validationDate, true)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                           {s.lines.map((line) => (
                             <div key={line.id} className="rounded border border-gray-100 bg-gray-50 p-2">
                               <p className="font-medium text-gray-700">{line.label}</p>
@@ -288,7 +323,7 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
                       </details>
                     ) : "—"}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-3 py-2 text-right">
                     {s.status === "PAID" ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                         Payé{s.paidDate ? ` le ${new Date(s.paidDate).toLocaleDateString("fr-FR")}` : ""}
@@ -299,6 +334,11 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">En attente</span>
                     )}
                   </td>
+                  {isDirector && (
+                    <td className="px-4 py-2 text-right">
+                      <SalaryActions salary={s} onUpdated={onSalaryUpdated} onDeleted={onSalaryDeleted} />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -310,40 +350,115 @@ function PersonSalaryCard({ name, role, member, salaries, total, onSavePaymentIn
   )
 }
 
-function SalaryAmountEditor({ salary, onUpdated }: { salary: Salary; onUpdated: (salary: Salary) => void }) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(String(salary.totalAmount))
-  const [saving, setSaving] = useState(false)
+function formatDetailDate(value: string | null, withTime = false) {
+  if (!value) return "—"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString("fr-FR", withTime ? { dateStyle: "short", timeStyle: "short" } : { dateStyle: "short" })
+}
 
-  async function save() {
-    const totalAmount = Number(value.replace(",", "."))
-    if (!Number.isFinite(totalAmount) || totalAmount < 0) return alert("Montant invalide.")
-    setSaving(true)
-    const res = await fetch(`/api/salaries/${salary.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ totalAmount }),
-    })
-    const data = await res.json().catch(() => ({}))
-    setSaving(false)
-    if (!res.ok) return alert(data.error || "Modification impossible.")
-    onUpdated({ ...salary, totalAmount: Number(data.totalAmount), notes: data.notes ?? salary.notes })
-    setEditing(false)
+function SalaryActions({ salary, onUpdated, onDeleted }: { salary: Salary; onUpdated: (salary: Salary) => void; onDeleted: (salaryId: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [amount, setAmount] = useState(String(salary.totalAmount))
+  const [status, setStatus] = useState(salary.status)
+  const [paidDate, setPaidDate] = useState(salary.paidDate ? salary.paidDate.slice(0, 10) : "")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function beginEdit() {
+    setAmount(String(salary.totalAmount))
+    setStatus(salary.status)
+    setPaidDate(salary.paidDate ? salary.paidDate.slice(0, 10) : "")
+    setError(null)
+    setOpen(true)
   }
 
-  if (!editing) {
-    return (
-      <button type="button" onClick={() => { setValue(String(salary.totalAmount)); setEditing(true) }} className="inline-flex items-center gap-1 hover:text-blue-600" title="Modifier cette fiche de paie">
-        {formatCurrency(salary.totalAmount)} <Pencil className="h-3 w-3" />
-      </button>
-    )
+  async function save() {
+    const totalAmount = Number(amount.replace(",", "."))
+    if (!Number.isFinite(totalAmount) || totalAmount < 0) return setError("Montant invalide.")
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/salaries/${salary.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          totalAmount,
+          status,
+          paidDate: status === "PAID" ? (paidDate ? new Date(`${paidDate}T12:00:00`).toISOString() : new Date().toISOString()) : null,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || "Modification impossible.")
+      onUpdated({ ...salary, totalAmount: Number(data.totalAmount), status: data.status, paidDate: data.paidDate, notes: data.notes ?? salary.notes })
+      setOpen(false)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Modification impossible.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm(`Supprimer définitivement la paie de ${salary.teacherName} pour ${MONTHS[salary.month]} ${salary.year} ?`)) return
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/salaries/${salary.id}`, { method: "DELETE" })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || "Suppression impossible.")
+      onDeleted(salary.id)
+    } catch (caught) {
+      window.alert(caught instanceof Error ? caught.message : "Suppression impossible.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <span className="inline-flex items-center justify-end gap-1">
-      <input className="w-20 rounded border border-gray-200 px-1.5 py-1 text-right text-sm" value={value} onChange={(event) => setValue(event.target.value)} inputMode="decimal" autoFocus />
-      <button type="button" onClick={save} disabled={saving} className="text-emerald-600"><Save className="h-3.5 w-3.5" /></button>
-      <button type="button" onClick={() => setEditing(false)} disabled={saving} className="text-gray-400"><X className="h-3.5 w-3.5" /></button>
-    </span>
+    <div className="inline-flex items-center justify-end gap-1">
+      <button type="button" onClick={beginEdit} disabled={saving} className="inline-flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-blue-200 hover:text-blue-600 disabled:opacity-50">
+        <Pencil className="h-3 w-3" /> Modifier
+      </button>
+      <button type="button" onClick={remove} disabled={saving} className="inline-flex items-center gap-1 rounded border border-red-100 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">
+        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />} Supprimer
+      </button>
+
+      <Dialog open={open} onOpenChange={(next) => { if (!saving) setOpen(next) }}>
+        <DialogContent className="max-w-md text-left">
+          <DialogHeader><DialogTitle>Modifier la paie de {salary.teacherName}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor={`salary-amount-${salary.id}`} className="text-sm font-medium text-gray-700">Montant</label>
+              <input id={`salary-amount-${salary.id}`} value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Statut</label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">En attente</SelectItem>
+                  <SelectItem value="PARTIAL">Partiel</SelectItem>
+                  <SelectItem value="CONFIRMED">Confirmé</SelectItem>
+                  <SelectItem value="PAID">Payé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {status === "PAID" && (
+              <div className="space-y-1.5">
+                <label htmlFor={`salary-date-${salary.id}`} className="text-sm font-medium text-gray-700">Date de paiement</label>
+                <input id={`salary-date-${salary.id}`} type="date" value={paidDate} onChange={(event) => setPaidDate(event.target.value)} className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+            )}
+            {error && <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setOpen(false)} disabled={saving} className="rounded-md border border-gray-200 px-3 py-2 text-sm">Annuler</button>
+              <button type="button" onClick={save} disabled={saving} className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50">
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />} Enregistrer
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

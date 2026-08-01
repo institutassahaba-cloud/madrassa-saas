@@ -2510,8 +2510,14 @@ function StudentCombobox({
 }
 
 function SecretaryPayBlock() {
+  type SecretaryPaymentLine = { id: string; student: string; amount: number; validationDate: string; reference: string | null }
+  type SecretaryPayResult = { secretaryId: string; secretaryName: string; collectedTotal: number; amount: number; paymentCount: number; periodStart: string; periodEnd: string; payments: SecretaryPaymentLine[] }
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<Array<{ secretaryId: string; secretaryName: string; collectedTotal: number; amount: number; paymentCount: number; periodStart: string; periodEnd: string }>>([])
+  const [results, setResults] = useState<SecretaryPayResult[]>([])
+  const [allPayments, setAllPayments] = useState<SecretaryPaymentLine[]>([])
+  const [startPaymentId, setStartPaymentId] = useState("")
+  const [endPaymentId, setEndPaymentId] = useState("")
+  const [excludedPaymentIds, setExcludedPaymentIds] = useState<string[]>([])
   const [confirmed, setConfirmed] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -2520,10 +2526,24 @@ function SecretaryPayBlock() {
     setConfirmed(false)
     setError(null)
     try {
-      const res = await fetch("/api/salaries/secretary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
+      const res = await fetch("/api/salaries/secretary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startPaymentId: startPaymentId || undefined,
+          endPaymentId: endPaymentId || undefined,
+          excludedPaymentIds,
+        }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Impossible de calculer la paie.")
-      setResults(Array.isArray(data) ? data : [])
+      const next = Array.isArray(data) ? data as SecretaryPayResult[] : []
+      setResults(next)
+      if (allPayments.length === 0 && next[0]) {
+        setAllPayments(next[0].payments)
+        setStartPaymentId(next[0].payments[0]?.id ?? "")
+        setEndPaymentId(next[0].payments.at(-1)?.id ?? "")
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Impossible de calculer la paie.")
     } finally {
@@ -2539,7 +2559,15 @@ function SecretaryPayBlock() {
       const res = await fetch("/api/salaries/secretary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirm: true, periodStart: results[0].periodStart }),
+        body: JSON.stringify({
+          confirm: true,
+          periodStart: results[0].periodStart,
+          startPaymentId: startPaymentId || undefined,
+          endPaymentId: endPaymentId || undefined,
+          excludedPaymentIds,
+          expectedPaymentIds: results[0].payments.map((payment) => payment.id),
+          expectedCollectedTotal: results[0].collectedTotal,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Impossible de clôturer la période.")
@@ -2567,6 +2595,49 @@ function SecretaryPayBlock() {
         </div>
 
         {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {allPayments.length > 0 && !confirmed && (
+          <div className="space-y-3 rounded-lg border border-violet-200 bg-white p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Premier paiement inclus</Label>
+                <Select value={startPaymentId} onValueChange={(value) => { setStartPaymentId(value); setResults([]) }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{allPayments.map((payment) => <SelectItem key={payment.id} value={payment.id}>{formatDate(payment.validationDate)} · {payment.student}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Dernier paiement inclus</Label>
+                <Select value={endPaymentId} onValueChange={(value) => { setEndPaymentId(value); setResults([]) }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{allPayments.map((payment) => <SelectItem key={payment.id} value={payment.id}>{formatDate(payment.validationDate)} · {payment.student}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-700">Paiements à exclure</p>
+              <div className="max-h-56 divide-y divide-gray-100 overflow-y-auto rounded-md border border-gray-200">
+                {allPayments.map((payment) => {
+                  const excluded = excludedPaymentIds.includes(payment.id)
+                  return (
+                    <label key={payment.id} className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-violet-50">
+                      <input
+                        type="checkbox"
+                        checked={excluded}
+                        onChange={() => {
+                          setExcludedPaymentIds((current) => excluded ? current.filter((id) => id !== payment.id) : [...current, payment.id])
+                          setResults([])
+                        }}
+                      />
+                      <span className="min-w-0 flex-1"><span className="block truncate font-medium">{payment.student}</span><span className="text-xs text-gray-400">Validé le {formatDate(payment.validationDate)}{payment.reference ? ` · réf. ${payment.reference}` : ""}</span></span>
+                      <span className="font-semibold">{formatCurrency(payment.amount)}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Après un changement, cliquez sur « Prévisualiser » pour recalculer le nombre et le montant exacts.</p>
+            </div>
+          </div>
+        )}
         {results.map((result) => (
           <div key={result.secretaryId} className="rounded-lg border border-violet-200 bg-white p-4 space-y-2">
               <p className="font-medium text-gray-900">{result.secretaryName}</p>
