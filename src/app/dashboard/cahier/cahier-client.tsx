@@ -181,21 +181,12 @@ function applyLessonUpdate(sessions: LessonSession[], lessonId: string, data: Pa
   })
 }
 
-function studentHasLegacyBoundary(sessions: LessonSession[], studentId: string) {
-  return sessions.some((session) =>
-    session.student.id === studentId &&
-    session.lessons.some((lesson) => lesson.legacyPayrollBoundary)
-  )
-}
-
 function LessonRow({
-  lesson, sessionDuration, siblingLessons, canSetLegacyBoundary, studentHasLegacyBoundary, onUpdate, onDelete,
+  lesson, sessionDuration, siblingLessons, onUpdate, onDelete,
 }: {
   lesson: Lesson
   sessionDuration: string | null
   siblingLessons: Lesson[]
-  canSetLegacyBoundary: boolean
-  studentHasLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (id: string, data: any) => void
   onDelete: (id: string) => void
@@ -241,8 +232,6 @@ function LessonRow({
 
   // Future lessons in same session for makeup target
   const futureLessons = siblingLessons.filter(l => l.number > lesson.number)
-  const showLegacyBoundaryControl = canSetLegacyBoundary && (!studentHasLegacyBoundary || lesson.legacyPayrollBoundary)
-
   return (
     <div className={`flex items-start gap-3 rounded-lg border p-3 ${statusBg(lesson.status)}`}>
       <button
@@ -272,9 +261,6 @@ function LessonRow({
           {lesson.status === "ABSENT" && (
             <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">Absente</span>
           )}
-          {lesson.legacyPayrollBoundary && (
-            <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>
-          )}
           <button
             onClick={() => { if (confirm(`Supprimer le Cours ${lesson.number} ?`)) onDelete(lesson.id) }}
             className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
@@ -284,17 +270,6 @@ function LessonRow({
           </button>
         </div>
 
-        {showLegacyBoundaryControl && (
-          <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
-            <input
-              type="checkbox"
-              checked={lesson.legacyPayrollBoundary}
-              onChange={(e) => onUpdate(lesson.id, { legacyPayrollBoundary: e.target.checked })}
-              className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            Dernier cours comptabilisé sur l&apos;ancien système
-          </label>
-        )}
 
         {/* Makeup reminder badge */}
         {lesson.makeupMinutes != null && lesson.makeupMinutes > 0 && !editing && (
@@ -385,7 +360,6 @@ function SessionCard({
   nextPaidAt,
   nextHasPaymentRequest,
   canSetLegacyBoundary,
-  studentHasLegacyBoundary,
   onUpdateLesson,
   onAddLesson,
   onCloseSession,
@@ -397,7 +371,6 @@ function SessionCard({
   nextPaidAt?: string | null
   nextHasPaymentRequest?: boolean
   canSetLegacyBoundary: boolean
-  studentHasLegacyBoundary: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -580,8 +553,6 @@ function SessionCard({
             lesson={lesson}
             sessionDuration={session.duration}
             siblingLessons={session.lessons}
-            canSetLegacyBoundary={canSetLegacyBoundary}
-            studentHasLegacyBoundary={studentHasLegacyBoundary}
             onUpdate={onUpdateLesson}
             onDelete={onDeleteLesson}
           />
@@ -726,7 +697,6 @@ function StudentCahier({
   const [creating, setCreating] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creationError, setCreationError] = useState<string | null>(null)
-  const hasLegacyBoundary = studentHasLegacyBoundary(sessions, student.id)
 
   // Sessions triées de la plus récente à la plus ancienne, navigation par onglets.
   const sortedSessions = [...sessions].sort((a, b) => b.number - a.number)
@@ -839,7 +809,6 @@ function StudentCahier({
               nextPaidAt={paidBySession[`${student.id}:${selected.number + 1}`]}
               nextHasPaymentRequest={undatedPaymentBySession[`${student.id}:${selected.number + 1}`]}
               canSetLegacyBoundary={canSetLegacyBoundary}
-              studentHasLegacyBoundary={hasLegacyBoundary}
               onUpdateLesson={onUpdateLesson}
               onAddLesson={onAddLesson}
               onCloseSession={onCloseSession}
@@ -1019,18 +988,15 @@ function shortName(student: Student) {
 
 // Une ligne « Cours N » dans le tableau de classe : contenu partagé + un rond de présence par élève.
 function MergedLessonRow({
-  lessonNumber, cells, sessionDuration, canSetLegacyBoundary, studentsWithLegacyBoundary, onToggleStatus, onEnsureStatus, onSaveShared, onToggleLegacy, onDelete,
+  lessonNumber, cells, sessionDuration, onToggleStatus, onEnsureStatus, onSaveShared, onDelete,
 }: {
   lessonNumber: number
   cells: { student: Student; lesson: Lesson | undefined }[]
   sessionDuration: string | null
-  canSetLegacyBoundary: boolean
-  studentsWithLegacyBoundary: Set<string>
   onToggleStatus: (lessonId: string, current: string) => void
   onEnsureStatus: (studentId: string) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSaveShared: (data: any) => void
-  onToggleLegacy: (checked: boolean, lessonIds: string[]) => void
   onDelete: () => void
 }) {
   const expectedMin = (() => {
@@ -1051,11 +1017,6 @@ function MergedLessonRow({
   const actualMin = ref?.duration ?? expectedMin
   const diff = expectedMin != null && actualMin != null ? expectedMin - actualMin : 0
   const isShort = diff > 0
-  const anyLegacy = cells.some((c) => c.lesson?.legacyPayrollBoundary)
-  const legacyToggleLessons = cells
-    .filter((c) => c.lesson && (!studentsWithLegacyBoundary.has(c.student.id) || c.lesson.legacyPayrollBoundary))
-    .map((c) => c.lesson!.id)
-  const showLegacyBoundaryControl = canSetLegacyBoundary && legacyToggleLessons.length > 0
 
   function saveShared() {
     const dur = durationMin ? parseInt(durationMin) : null
@@ -1098,9 +1059,6 @@ function MergedLessonRow({
                 {formatMins(actualMin)}{isShort && ` (−${diff} min)`}
               </span>
             )}
-            {anyLegacy && (
-              <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Ancien système</span>
-            )}
             <button
               onClick={() => { if (confirm(`Supprimer le Cours ${lessonNumber} pour toute la classe ?`)) onDelete() }}
               className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
@@ -1110,17 +1068,6 @@ function MergedLessonRow({
             </button>
           </div>
 
-          {showLegacyBoundaryControl && (
-            <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
-              <input
-                type="checkbox"
-                checked={anyLegacy}
-                onChange={(e) => onToggleLegacy(e.target.checked, legacyToggleLessons)}
-                className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              Dernier cours comptabilisé sur l&apos;ancien système
-            </label>
-          )}
 
           {editing ? (
             <div className="mt-2 space-y-2">
@@ -1150,7 +1097,7 @@ function MergedLessonRow({
 
 // Carte d'une session (numéro N) partagée par la classe.
 function MergedSessionCard({
-  sessionNumber, students, sessionByStudent, paidBySession, undatedPaymentBySession, sessionDuration, canSetLegacyBoundary, studentsWithLegacyBoundary,
+  sessionNumber, students, sessionByStudent, paidBySession, undatedPaymentBySession, sessionDuration, canSetLegacyBoundary,
   onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onEnsureLesson, onDeleteSession,
 }: {
   sessionNumber: number
@@ -1160,7 +1107,6 @@ function MergedSessionCard({
   undatedPaymentBySession: Record<string, boolean>
   sessionDuration: string | null
   canSetLegacyBoundary: boolean
-  studentsWithLegacyBoundary: Set<string>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -1267,12 +1213,9 @@ function MergedSessionCard({
               lessonNumber={num}
               cells={cells}
               sessionDuration={sessionDuration}
-              canSetLegacyBoundary={canSetLegacyBoundary}
-              studentsWithLegacyBoundary={studentsWithLegacyBoundary}
               onToggleStatus={(lessonId, current) => onUpdateLesson(lessonId, { status: STATUS_CYCLE[current] ?? "PENDING" })}
               onEnsureStatus={(studentId) => ensureAndPresent(studentId, num)}
               onSaveShared={(data) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, data))}
-              onToggleLegacy={(checked, lessonIds) => lessonIds.forEach((lessonId) => onUpdateLesson(lessonId, { legacyPayrollBoundary: checked }))}
               onDelete={() => cells.forEach((c) => c.lesson && onDeleteLesson(c.lesson.id))}
             />
           )
@@ -1364,11 +1307,6 @@ function GroupCahier({
   const [creatingSession, setCreatingSession] = useState(false)
 
   const allSessions = students.flatMap((st) => sessionsByStudent.get(st.id) ?? [])
-  const studentsWithLegacyBoundary = new Set(
-    allSessions
-      .filter((session) => session.lessons.some((lesson) => lesson.legacyPayrollBoundary))
-      .map((session) => session.student.id)
-  )
   const numbers = Array.from(new Set(allSessions.map((s) => s.number))).sort((a, b) => b - a)
   // Session par défaut : la première non terminée (numéro le plus bas), sinon la plus récente.
   const incompleteNums = allSessions.filter((s) => !s.isComplete).map((s) => s.number)
@@ -1457,7 +1395,6 @@ function GroupCahier({
                 undatedPaymentBySession={undatedPaymentBySession}
                 sessionDuration={sessionDuration}
                 canSetLegacyBoundary={canSetLegacyBoundary}
-                studentsWithLegacyBoundary={studentsWithLegacyBoundary}
                 onUpdateLesson={onUpdateLesson}
                 onAddLesson={onAddLesson}
                 onCloseSession={onCloseSession}
