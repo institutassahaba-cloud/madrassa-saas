@@ -62,6 +62,10 @@ export function validatedPaymentAmount(payment: { amount?: number | null; receiv
   return Number(payment.receivedAmount ?? payment.amount ?? 0)
 }
 
+export function validatedPaymentDate(payment: { confirmedAt?: Date | null; paidDate?: Date | null }) {
+  return payment.confirmedAt ?? payment.paidDate
+}
+
 export async function getValidatedPaymentsForPeriod(tenantId: string, periodStart: Date, periodEnd = new Date()) {
   return prisma.payment.findMany({
     where: {
@@ -83,8 +87,10 @@ export async function getValidatedPaymentsForPeriod(tenantId: string, periodStar
       confirmedAt: true,
       createdAt: true,
       student: { select: { firstName: true, lastName: true } },
+      lessonSession: { select: { number: true, subject: true } },
+      sessionNumber: true,
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ confirmedAt: "asc" }, { paidDate: "asc" }, { createdAt: "asc" }],
   })
 }
 

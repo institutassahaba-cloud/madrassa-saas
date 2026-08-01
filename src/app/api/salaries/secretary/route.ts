@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { getValidatedPaymentPeriodStart, getValidatedPaymentsForPeriod, validatedPaymentAmount } from "@/lib/payment-period"
+import { getValidatedPaymentPeriodStart, getValidatedPaymentsForPeriod, validatedPaymentAmount, validatedPaymentDate } from "@/lib/payment-period"
+import { selectSecretaryPayments } from "@/lib/secretary-payment-selection"
+import { appendSecretaryPaymentDetails } from "@/lib/secretary-salary-details"
 import { snapshotTeacherSalary } from "@/lib/salary-history"
 import { ensureTeacherPayrollSchema } from "@/lib/teacher-payroll-schema"
 import { wrap } from "@/lib/api"
@@ -33,7 +35,36 @@ export const POST = wrap(async (req: Request) => {
     return NextResponse.json({ error: "La période a changé depuis la prévisualisation. Recalculez avant de clôturer." }, { status: 409 })
   }
 
-  const payments = await getValidatedPaymentsForPeriod(tenantId, periodStart, now)
+  const eligiblePayments = await getValidatedPaymentsForPeriod(tenantId, periodStart, now)
+  const eligibleWithValidationDate = eligiblePayments.flatMap((payment) => {
+    const validationDate = validatedPaymentDate(payment)
+    return validationDate ? [{ ...payment, validationDate }] : []
+  })
+  let payments
+  try {
+    payments = selectSecretaryPayments(
+      eligibleWithValidationDate,
+      {
+        startPaymentId: body.startPaymentId,
+        endPaymentId: body.endPaymentId,
+        excludedPaymentIds: Array.isArray(body.excludedPaymentIds) ? body.excludedPaymentIds.filter((id: unknown): id is string => typeof id === "string") : [],
+      },
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ""
+    return NextResponse.json({
+      error: message === "PAYMENT_BOUNDARIES_REVERSED"
+        ? "Le dernier paiement doit être postérieur au premier."
+        : "Un paiement sélectionné n'est plus disponible. Recalculez la prévisualisation.",
+    }, { status: 409 })
+  }
+  const endBoundary = body.endPaymentId
+    ? eligibleWithValidationDate.find((payment) => payment.id === body.endPaymentId)?.validationDate
+    : now
+  if (!endBoundary) {
+    return NextResponse.json({ error: "Le dernier paiement n'est plus disponible. Recalculez la prévisualisation." }, { status: 409 })
+  }
+  const periodEnd = endBoundary
   const collectedTotal = +payments.reduce((sum, payment) => sum + validatedPaymentAmount(payment), 0).toFixed(2)
   const rate = 0.10
   const amount = +(collectedTotal * rate).toFixed(2)
@@ -45,12 +76,25 @@ export const POST = wrap(async (req: Request) => {
     const method = payment.method ? ` · ${payment.method}` : ""
     return `${date} · ${student} · ${validatedPaymentAmount(payment).toFixed(2)} €${method}${ref} · validé le ${closedAt.toLocaleString("fr-FR")}`
   })
-  const notes = [
+  const summaryNotes = [
     `Commission secrétaire 10% sur ${collectedTotal.toFixed(2)} € de paiements validés pendant la période.`,
-    `Période clôturée du ${periodStart.toLocaleString("fr-FR")} au ${now.toLocaleString("fr-FR")}.`,
+    `Période clôturée du ${periodStart.toLocaleString("fr-FR")} au ${periodEnd.toLocaleString("fr-FR")}.`,
     `${payments.length} paiement${payments.length > 1 ? "s" : ""} inclus.`,
     paymentLines.length > 0 ? `Détail :\n${paymentLines.join("\n")}` : "Aucun paiement inclus.",
   ].join("\n")
+  const notes = appendSecretaryPaymentDetails(summaryNotes, payments.map((payment) => ({
+    id: payment.id,
+    paymentDate: payment.paidDate?.toISOString() ?? null,
+    student: `${payment.student.firstName} ${payment.student.lastName}`.trim(),
+    session: payment.lessonSession
+      ? `${payment.lessonSession.subject} · session ${payment.lessonSession.number}`
+      : payment.sessionNumber != null ? `Session ${payment.sessionNumber}` : null,
+    amount: validatedPaymentAmount(payment),
+    method: payment.method,
+    validated: true,
+    validationDate: payment.validationDate.toISOString(),
+    reference: payment.reference,
+  })))
 
   const results = secretaries.map((sec) => ({
       secretaryId: sec.id,
@@ -60,12 +104,24 @@ export const POST = wrap(async (req: Request) => {
       amount,
       paymentCount: payments.length,
       periodStart: periodStart.toISOString(),
-      periodEnd: now.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      payments: payments.map((payment) => ({
+        id: payment.id,
+        student: `${payment.student.firstName} ${payment.student.lastName}`.trim(),
+        amount: validatedPaymentAmount(payment),
+        validationDate: payment.validationDate.toISOString(),
+        reference: payment.reference,
+      })),
   }))
 
   if (body.confirm) {
     if (payments.length === 0) {
       return NextResponse.json({ error: "Aucun paiement validé à clôturer sur cette période." }, { status: 400 })
+    }
+    const expectedIds: string[] = Array.isArray(body.expectedPaymentIds) ? body.expectedPaymentIds.filter((id: unknown): id is string => typeof id === "string") : []
+    const selectedIds = payments.map((payment) => payment.id)
+    if (expectedIds.length === 0 || expectedIds.length !== selectedIds.length || expectedIds.some((id, index) => id !== selectedIds[index]) || Number(body.expectedCollectedTotal) !== collectedTotal) {
+      return NextResponse.json({ error: "La sélection ou le montant a changé depuis la prévisualisation. Recalculez avant de clôturer." }, { status: 409 })
     }
 
     await prisma.$transaction(async (tx) => {
@@ -99,7 +155,7 @@ export const POST = wrap(async (req: Request) => {
           lessonsCount: payments.length,
           totalAmount: amount,
           periodStart,
-          periodEnd: now,
+          periodEnd,
           status: "PENDING",
           notes,
         }
@@ -118,8 +174,8 @@ export const POST = wrap(async (req: Request) => {
       // est dans la même transaction que les fiches pour éviter tout double compte.
       await tx.tenantSettings.upsert({
         where: { tenantId },
-        create: { tenantId, paymentPeriodStartAt: now },
-        update: { paymentPeriodStartAt: now },
+        create: { tenantId, paymentPeriodStartAt: periodEnd },
+        update: { paymentPeriodStartAt: periodEnd },
       })
     })
   }
