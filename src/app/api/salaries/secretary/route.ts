@@ -118,10 +118,8 @@ export const POST = wrap(async (req: Request) => {
     if (payments.length === 0) {
       return NextResponse.json({ error: "Aucun paiement validé à clôturer sur cette période." }, { status: 400 })
     }
-    const expectedIds: string[] = Array.isArray(body.expectedPaymentIds) ? body.expectedPaymentIds.filter((id: unknown): id is string => typeof id === "string") : []
-    const selectedIds = payments.map((payment) => payment.id)
-    if (expectedIds.length === 0 || expectedIds.length !== selectedIds.length || expectedIds.some((id, index) => id !== selectedIds[index]) || Number(body.expectedCollectedTotal) !== collectedTotal) {
-      return NextResponse.json({ error: "La sélection ou le montant a changé depuis la prévisualisation. Recalculez avant de clôturer." }, { status: 409 })
+    if (Number(body.expectedPaymentCount) !== payments.length || Number(body.expectedCollectedTotal) !== collectedTotal) {
+      return NextResponse.json({ error: "Les paiements validés ont changé. Actualisez la page avant de clôturer." }, { status: 409 })
     }
 
     await prisma.$transaction(async (tx) => {

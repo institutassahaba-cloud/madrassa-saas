@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { ensureTeacherPayrollSchema } from "@/lib/teacher-payroll-schema"
 import { GROUP_RATES } from "@/lib/group-rates"
+import { ensureTeacherTransferSchema, isLessonOwnedBy, sessionsOwnedOrTaughtBy } from "@/lib/teacher-transfer"
 
 export type PayrollLessonEvent = {
   key: string
@@ -73,6 +74,7 @@ type MutableRow = {
 
 export async function getTeacherPayrollData(tenantId: string, teacherId: string): Promise<TeacherPayrollData | null> {
   await ensureTeacherPayrollSchema()
+  await ensureTeacherTransferSchema()
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
@@ -82,14 +84,18 @@ export async function getTeacherPayrollData(tenantId: string, teacherId: string)
       where: { id: teacherId, tenantId, role: "TEACHER", isActive: true },
       select: { id: true, name: true, individualRate: true, binomeRate: true, groupRate: true },
     }),
+    // Après un changement de professeur, la session appartient au nouveau mais
+    // ses premiers cours restent à l'ancien : les deux fiches de paie doivent
+    // voir la session, chacune filtrée sur SES cours.
     prisma.lessonSession.findMany({
-      where: { tenantId, teacherId },
+      where: { tenantId, ...sessionsOwnedOrTaughtBy(teacherId) },
       select: {
         id: true,
         subject: true,
         number: true,
         frequency: true,
         duration: true,
+        teacherId: true,
         student: {
           select: {
             id: true,
@@ -104,7 +110,7 @@ export async function getTeacherPayrollData(tenantId: string, teacherId: string)
         },
         lessons: {
           where: { date: { not: null }, status: { in: ["PRESENT", "ABSENT"] } },
-          select: { id: true, number: true, date: true, status: true, duration: true, legacyPayrollBoundary: true },
+          select: { id: true, number: true, date: true, status: true, duration: true, legacyPayrollBoundary: true, teacherId: true },
           orderBy: { date: "asc" },
         },
       },
@@ -140,8 +146,13 @@ export async function getTeacherPayrollData(tenantId: string, teacherId: string)
   const activeStudentIds = new Set<string>()
 
   for (const session of sessions) {
+    // Seuls les cours dont ce professeur est le créditeur entrent dans sa paie :
+    // après un transfert, l'ancien garde ses cours, le nouveau prend la suite.
+    const ownedLessons = session.lessons.filter((lesson) => isLessonOwnedBy(lesson, session, teacherId))
+    const isCurrentTeacher = session.teacherId === teacherId
+    if (!isCurrentTeacher && ownedLessons.length === 0) continue
     const studentName = `${session.student.firstName} ${session.student.lastName}`.trim()
-    if (session.student.status === "ACTIVE") activeStudentIds.add(session.student.id)
+    if (isCurrentTeacher && session.student.status === "ACTIVE") activeStudentIds.add(session.student.id)
     const rowKey = session.student.groupId
       ? `group:${session.student.groupId}:${session.subject}`
       : `student:${session.student.id}:${session.subject}`
@@ -159,7 +170,7 @@ export async function getTeacherPayrollData(tenantId: string, teacherId: string)
     if (!row.forfait) row.forfait = formatForfait(session.frequency ?? session.student.lessonsPerWeek, session.duration ?? session.student.duration)
     rows.set(rowKey, row)
 
-    for (const lesson of session.lessons) {
+    for (const lesson of ownedLessons) {
       if (!lesson.date) continue
       const dateKey = lesson.date.toISOString().slice(0, 10)
       const eventKey = session.student.groupId ? `${rowKey}:${dateKey}` : lesson.id

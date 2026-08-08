@@ -2,11 +2,13 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
+import { ensureTeacherTransferSchema } from "@/lib/teacher-transfer"
 
 export const POST = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
+  await ensureTeacherTransferSchema()
   const { id: sessionId } = await params
 
   const existing = await prisma.lessonSession.findFirst({

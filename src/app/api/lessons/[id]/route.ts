@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth"
 import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
+import { ensureTeacherTransferSchema, lessonOwnerId } from "@/lib/teacher-transfer"
+
+const TRANSFERRED_LESSON_MESSAGE =
+  "Ce cours appartient au professeur précédent : après un changement de professeur, seuls les cours suivant le trait sont modifiables."
 
 export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth()
@@ -12,6 +16,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
 
   const body = await req.json()
   await ensureLessonLegacyPayrollBoundaryColumn()
+  await ensureTeacherTransferSchema()
   const updatesLegacyBoundary = body.legacyPayrollBoundary !== undefined
   if (updatesLegacyBoundary && !["DIRECTOR", "SECRETARY"].includes(user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -22,8 +27,12 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     include: { session: { select: { studentId: true, teacherId: true } } },
   })
   if (!lesson) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  if (user.role === "TEACHER" && lesson.session.teacherId !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  // Après un changement de professeur, chaque cours reste modifiable par son seul
+  // professeur créditeur : l'ancien ne peut plus marquer les cours du nouveau,
+  // et le nouveau ne peut pas retoucher ceux d'avant le trait.
+  if (user.role === "TEACHER" && lessonOwnerId(lesson, lesson.session) !== user.id) {
+    const message = lesson.session.teacherId === user.id ? TRANSFERRED_LESSON_MESSAGE : "Forbidden"
+    return NextResponse.json({ error: message }, { status: 403 })
   }
 
   const data = {
@@ -61,13 +70,15 @@ export const DELETE = wrap(async (_req: Request, { params }: { params: Promise<{
   const user = session.user
   const { id } = await params
 
+  await ensureTeacherTransferSchema()
   const lesson = await prisma.lesson.findFirst({
     where: { id, tenantId: user.tenantId },
     include: { session: { select: { teacherId: true } } },
   })
   if (!lesson) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  if (user.role === "TEACHER" && lesson.session.teacherId !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (user.role === "TEACHER" && lessonOwnerId(lesson, lesson.session) !== user.id) {
+    const message = lesson.session.teacherId === user.id ? TRANSFERRED_LESSON_MESSAGE : "Forbidden"
+    return NextResponse.json({ error: message }, { status: 403 })
   }
 
   await prisma.lesson.delete({ where: { id } })
