@@ -2,9 +2,16 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendComptaMail, sessionEndEmailHtml } from "@/lib/mail"
+import {
+  alertPaymentAmountMismatch,
+  alertPaymentRequestFailed,
+  missingForfaitFields,
+} from "@/lib/payment-request-alerts"
 import { PAYMENT_AWAITING_STATUSES } from "@/lib/payment-status"
+import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
+import { ensureTeacherTransferSchema } from "@/lib/teacher-transfer"
 
 const PAYPAL_LINK = process.env.PAYPAL_LINK ?? ""
 const PAYPAL_EMAIL = process.env.PAYPAL_EMAIL ?? process.env.PAYMENT_EMAIL ?? process.env.FACTURATION_EMAIL ?? "facturation.institutassahaba@gmail.com"
@@ -22,6 +29,9 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
   const { id } = await params
+  // La fiche élève est relue en entier plus bas (colonne customFee comprise).
+  await ensureStudentPaymentColumns()
+  await ensureTeacherTransferSchema()
 
   const body = await req.json()
 
@@ -114,6 +124,18 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
     // Le paiement demandé règle la session suivante : quand la session N se termine,
     // l'élève reçoit la demande pour la session N+1, qui est ouverte dans la foulée.
     const requestedSessionNumber = updated.number + 1
+    // Contexte partagé par toutes les alertes « demande non envoyée » : le professeur voit
+    // sa session se clôturer quoi qu'il arrive, seul le directeur/la secrétaire est prévenu.
+    const studentName = student ? (student.displayName || `${student.firstName} ${student.lastName}`) : "—"
+    const teacherName = teacher?.name || "—"
+    const alertContext = {
+      tenantId: existing.tenantId,
+      studentName,
+      teacherName,
+      subject: existing.subject,
+      requestedSessionNumber,
+    }
+    const contactEmail = student?.email || student?.parentEmail || null
     if (student) {
       const nextSession = await prisma.lessonSession.upsert({
         where: {
@@ -150,21 +172,28 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       })
       nextSessionForResponse = nextSession
       const amount = student.monthlyFee || 0
-      if (amount <= 0) return NextResponse.json({ ...updated, nextSession: nextSessionForResponse })
+      if (amount <= 0) {
+        const missing = missingForfaitFields(student)
+        await alertPaymentRequestFailed(alertContext, [
+          { code: "NO_AMOUNT" },
+          ...(missing.length > 0 ? [{ code: "NO_FORFAIT" as const, missing }] : []),
+        ])
+        return NextResponse.json({ ...updated, nextSession: nextSessionForResponse })
+      }
       const requestData = {
         amount,
         dueDate: closingAt,
         month: closingAt.getMonth() + 1,
         year: closingAt.getFullYear(),
-        status: student.email ? "EMAIL_SENT" : "EXPECTED",
+        status: contactEmail ? "EMAIL_SENT" : "EXPECTED",
         method: paymentMethodFromStudent(student.paymentType),
         source: "MANUAL",
         lessonSessionId: nextSession.id,
         sessionNumber: nextSession.number,
         expectedAmount: amount,
         expectedPayerName: student.payerName,
-        emailSentAt: student.email ? closingAt : null,
-        notes: student.email
+        emailSentAt: contactEmail ? closingAt : null,
+        notes: contactEmail
           ? `Demande de paiement envoyée pour la session ${nextSession.number}, après fin de la session ${updated.number}.`
           : `Demande de paiement créée pour la session ${nextSession.number}, sans email élève renseigné.`,
       }
@@ -192,27 +221,37 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
       }
     }
 
-    if (student?.email) {
-      const studentName = student.displayName || `${student.firstName} ${student.lastName}`
-      const teacherName = teacher?.name || "—"
-      const amount = String(student.monthlyFee || 0)
+    if (student && !contactEmail) {
+      await alertPaymentRequestFailed(alertContext, [{ code: "NO_EMAIL" }])
+    } else if (student && contactEmail) {
       const html = sessionEndEmailHtml({
         studentName,
         teacherName,
         subject: existing.subject,
         completedSessionNumber: updated.number,
         requestedSessionNumber,
-        amount,
+        amount: String(student.monthlyFee || 0),
         paypalLink: PAYPAL_LINK,
         paypalEmail: PAYPAL_EMAIL,
         whatsappLink: WHATSAPP_LINK,
         comptaEmail: COMPTA_EMAIL,
       })
-      sendComptaMail({
-        to: student.email,
+      const sent = await sendComptaMail({
+        to: contactEmail,
         subject: `Demande de paiement — Session ${requestedSessionNumber} — ${existing.subject}`,
         html,
-      }).catch((err) => console.error("[mail] Erreur envoi demande de paiement:", err))
+      }).catch((err) => {
+        console.error("[mail] Erreur envoi demande de paiement:", err)
+        return { ok: false as const, reason: err instanceof Error ? err.message : "erreur SMTP" }
+      })
+      if (!sent.ok) {
+        const detail = "reason" in sent && sent.reason === "no_compta_config"
+          ? "adresse de comptabilité non configurée"
+          : "reason" in sent && sent.reason ? String(sent.reason) : "erreur SMTP"
+        await alertPaymentRequestFailed(alertContext, [{ code: "SEND_FAILED", detail }])
+      } else {
+        await alertPaymentAmountMismatch(alertContext, student)
+      }
     }
   }
 

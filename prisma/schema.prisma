@@ -44,6 +44,7 @@ model Tenant {
   teacherContracts     TeacherContract[]
   books                Book[]
   examFiles            ExamFile[]
+  teacherTransfers     SessionTeacherTransfer[]
 }
 
 model TenantSettings {
@@ -97,15 +98,18 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  accounts        Account[]
-  sessions        Session[]
-  teacherGroups   Group[]           @relation("TeacherGroups")
-  attendances     Attendance[]      @relation("TeacherAttendances")
-  assessments     Assessment[]      @relation("TeacherAssessments")
-  salaries        TeacherSalary[]
-  teacherSessions LessonSession[]   @relation("TeacherSessions")
-  timeSlots       TimeSlot[]
-  contracts       TeacherContract[]
+  accounts         Account[]
+  sessions         Session[]
+  teacherGroups    Group[]                  @relation("TeacherGroups")
+  attendances      Attendance[]             @relation("TeacherAttendances")
+  assessments      Assessment[]             @relation("TeacherAssessments")
+  salaries         TeacherSalary[]
+  teacherSessions  LessonSession[]          @relation("TeacherSessions")
+  teacherLessons   Lesson[]                 @relation("LessonTeacher")
+  transfersGiven   SessionTeacherTransfer[] @relation("TransferFromTeacher")
+  transfersTaken   SessionTeacherTransfer[] @relation("TransferToTeacher")
+  timeSlots        TimeSlot[]
+  contracts        TeacherContract[]
 
   @@unique([tenantId, email])
 }
@@ -167,6 +171,9 @@ model Student {
   level                     String?
   subject                   String?
   monthlyFee                Float     @default(0)
+  // Tarif saisi à la main (fratrie sur une fiche, remise, montant négocié). Quand il est
+  // vrai, `monthlyFee` n'est jamais recalculé à partir du forfait.
+  customFee                 Boolean   @default(false)
   // ── Facturation (col M des Sheets) ──
   payerName                 String? // nom du payeur attendu (parent/virement)
   paymentType               String? // "PAYPAL" | "WISE"
@@ -286,12 +293,40 @@ model LessonSession {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  lessons  Lesson[]
-  payments Payment[]
+  lessons   Lesson[]
+  payments  Payment[]
+  transfers SessionTeacherTransfer[]
 
   @@unique([studentId, subject, number])
   @@index([tenantId, teacherId, isComplete])
   @@index([tenantId, studentId])
+}
+
+// Changement de professeur en cours de session. La session n'est JAMAIS dupliquée :
+// `LessonSession.teacherId` passe au nouveau professeur et les cours déjà donnés
+// (numéro ≤ boundaryLessonNumber) sont épinglés à l'ancien via `Lesson.teacherId`.
+// Un cours appartient donc toujours à un seul professeur → aucun double comptage
+// possible en paie. Les noms sont figés pour rester lisibles une fois archivé.
+model SessionTeacherTransfer {
+  id                   String        @id @default(cuid())
+  tenantId             String
+  tenant               Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessionId            String
+  session              LessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  fromTeacherId        String
+  fromTeacher          User          @relation("TransferFromTeacher", fields: [fromTeacherId], references: [id])
+  fromTeacherName      String
+  toTeacherId          String
+  toTeacher            User          @relation("TransferToTeacher", fields: [toTeacherId], references: [id])
+  toTeacherName        String
+  boundaryLessonNumber Int // dernier cours assuré par l'ancien professeur
+  reason               String?
+  transferredAt        DateTime      @default(now())
+  createdById          String?
+  createdAt            DateTime      @default(now())
+
+  @@index([tenantId, sessionId])
+  @@index([tenantId, fromTeacherId])
 }
 
 model Lesson {
@@ -308,6 +343,10 @@ model Lesson {
   makeupMinutes         Int? // minutes à rattraper sur un autre cours
   makeupOnLessonId      String? // id du cours sur lequel rattraper
   legacyPayrollBoundary Boolean       @default(false) // dernier cours déjà comptabilisé dans l'ancien système
+  // Professeur créditeur de CE cours. null = le professeur courant de la session.
+  // Renseigné uniquement sur les cours d'avant un changement de professeur.
+  teacherId             String?
+  teacher               User?         @relation("LessonTeacher", fields: [teacherId], references: [id])
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
@@ -315,6 +354,7 @@ model Lesson {
 
   @@index([tenantId, sessionId, date])
   @@index([tenantId, status, date])
+  @@index([tenantId, teacherId])
 }
 
 // ─── GROUPS ──────────────────────────────────────────────────────────────────

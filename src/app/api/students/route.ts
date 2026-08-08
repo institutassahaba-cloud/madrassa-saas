@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { parseDurationHours, resolveMonthlyFee } from "@/lib/forfait"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
@@ -9,6 +10,7 @@ import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
 import { canonicalSubject, ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
+import { ensureTeacherTransferSchema } from "@/lib/teacher-transfer"
 import { paymentProviderReference } from "@/lib/payment-reference"
 import { z } from "zod"
 
@@ -88,6 +90,7 @@ const studentSchema = z.object({
   level: z.string().optional(),
   subject: z.string().optional(),
   monthlyFee: z.string().or(z.number()).transform(Number),
+  customFee: z.boolean().optional(),
   hourlyRate: z.string().or(z.number()).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
   lessonsPerWeek: z.string().or(z.number()).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
   duration: z.string().optional(),
@@ -114,7 +117,8 @@ const studentSchema = z.object({
 
 function addDurationToTime(time: string, duration: string | null | undefined): string {
   const [h, m] = time.split(":").map(Number)
-  const hours = parseFloat((duration || "1").replace(",", "."))
+  // Sans parseDurationHours, une durée "30 min" décalait la fin du créneau de 30 HEURES.
+  const hours = parseDurationHours(duration) ?? 1
   if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(hours)) return time
   const total = h * 60 + m + Math.round(hours * 60)
   const normalized = ((total % 1440) + 1440) % 1440
@@ -209,6 +213,7 @@ export const POST = wrap(async (req: Request) => {
   if (user.role === "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
+  await ensureTeacherTransferSchema()
 
   const body = await req.json()
   const parsed = studentSchema.safeParse(body)
@@ -216,6 +221,15 @@ export const POST = wrap(async (req: Request) => {
 
   const data = parsed.data
   const subject = canonicalSubject(data.subject)
+  // Le tarif est redérivé du forfait côté serveur (sauf tarif personnalisé) : le montant
+  // envoyé par le formulaire ne fait plus autorité.
+  const resolvedMonthlyFee = resolveMonthlyFee({
+    customFee: data.customFee === true,
+    current: data.monthlyFee,
+    hourlyRate: data.hourlyRate ?? null,
+    duration: data.duration || null,
+    lessonsPerWeek: data.lessonsPerWeek ?? null,
+  })
   const student = await prisma.student.create({
     data: {
       tenantId: user.tenantId,
@@ -230,7 +244,8 @@ export const POST = wrap(async (req: Request) => {
       groupId: data.groupId || null,
       level: data.level || null,
       subject,
-      monthlyFee: data.monthlyFee,
+      monthlyFee: resolvedMonthlyFee,
+      customFee: data.customFee === true,
       paymentGraceAllowed: user.role === "DIRECTOR" ? data.paymentGraceAllowed === true : false,
       hourlyRate: data.hourlyRate ?? null,
       lessonsPerWeek: data.lessonsPerWeek ?? null,
@@ -312,7 +327,7 @@ export const POST = wrap(async (req: Request) => {
         const paymentMonth = paidDate.getMonth() + 1
         const paymentYear = paidDate.getFullYear()
         const now = new Date()
-        const expectedInitialAmount = data.monthlyFee + 10
+        const expectedInitialAmount = resolvedMonthlyFee + 10
         const initialAmount = match ? match.receivedAmount : expectedInitialAmount
         const billingStudent = await prisma.student.findUnique({
           where: { id: student.id },
@@ -365,15 +380,29 @@ export const POST = wrap(async (req: Request) => {
     console.error("[contacts] student create sync failed:", error)
   })
 
+  // L'arrivée d'un élève change la taille de la classe, donc le tarif horaire de tous ses
+  // camarades — et par conséquent leur forfait mensuel, qui restait auparavant figé.
   if (data.groupId) {
-    const activeCount = await prisma.student.count({
+    const classmates = await prisma.student.findMany({
       where: { groupId: data.groupId, tenantId: user.tenantId, status: "ACTIVE" },
+      select: { id: true, monthlyFee: true, customFee: true, duration: true, lessonsPerWeek: true },
     })
-    const newRate = rateForSize(activeCount)
-    await prisma.student.updateMany({
-      where: { groupId: data.groupId, tenantId: user.tenantId, status: "ACTIVE" },
-      data: { hourlyRate: newRate },
-    })
+    const newRate = rateForSize(classmates.length)
+    for (const classmate of classmates) {
+      await prisma.student.update({
+        where: { id: classmate.id },
+        data: {
+          hourlyRate: newRate,
+          monthlyFee: resolveMonthlyFee({
+            customFee: classmate.customFee,
+            current: classmate.monthlyFee,
+            hourlyRate: newRate,
+            duration: classmate.duration,
+            lessonsPerWeek: classmate.lessonsPerWeek,
+          }),
+        },
+      })
+    }
   }
 
   return NextResponse.json(student, { status: 201 })
