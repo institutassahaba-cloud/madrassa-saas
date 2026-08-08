@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Bell, Check, Clock, History, Inbox, Loader2, Mail, Send, ShieldAlert, Users } from "lucide-react"
+import { AlertTriangle, Bell, Check, Clock, History, Inbox, Loader2, Mail, Send, ShieldAlert, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,6 +68,16 @@ const typeStyles: Record<string, { label: string; icon: typeof Bell; badge: "def
     label: "Message",
     icon: Mail,
     badge: "info",
+  },
+  PAYMENT_REQUEST_FAILED: {
+    label: "Demande non envoyée",
+    icon: AlertTriangle,
+    badge: "warning",
+  },
+  PAYMENT_REQUEST_AMOUNT_WARNING: {
+    label: "Montant à vérifier",
+    icon: ShieldAlert,
+    badge: "warning",
   },
 }
 

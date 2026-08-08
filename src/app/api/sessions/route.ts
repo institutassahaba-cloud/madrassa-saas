@@ -4,12 +4,15 @@ import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
 import { canonicalSubject, ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
+import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { ensureTeacherTransferSchema } from "@/lib/teacher-transfer"
 
 export const GET = wrap(async (req: Request) => {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
   await ensureCanonicalSubjects(user.tenantId)
+  await ensureTeacherTransferSchema()
 
   const { searchParams } = new URL(req.url)
   const studentId = searchParams.get("studentId")
@@ -36,6 +39,7 @@ export const POST = wrap(async (req: Request) => {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = session.user
 
+  await ensureTeacherTransferSchema()
   const body = await req.json()
   const { studentId, teacherId, subject, number, frequency, duration, lessonCount } = body
   const sessionSubject = canonicalSubject(subject)
@@ -52,6 +56,8 @@ export const POST = wrap(async (req: Request) => {
     }
   }
 
+  // La fiche est lue en entier (colonne customFee comprise).
+  await ensureStudentPaymentColumns()
   const student = await prisma.student.findFirst({
     where: { id: studentId, tenantId: user.tenantId },
     include: { group: { select: { teacherId: true } } },

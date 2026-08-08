@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { parseDurationHours, resolveMonthlyFee } from "@/lib/forfait"
 import { rateForSize } from "@/lib/group-rates"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
 import { ensureStudentContactColumns } from "@/lib/student-contact-schema"
@@ -9,12 +10,14 @@ import { encodeScheduleLabel } from "@/lib/schedule-meta"
 import { wrap } from "@/lib/api"
 import { syncStudentGoogleContact } from "@/lib/google-contacts"
 import { canonicalSubject, ensureCanonicalSubjects } from "@/lib/subject-canonicalization"
+import { ensureTeacherTransferSchema } from "@/lib/teacher-transfer"
 
 const DEFAULT_SLOT_COLOR = "#10b981"
 
 function addDurationToTime(time: string, duration: string | null | undefined): string {
   const [h, m] = time.split(":").map(Number)
-  const hours = parseFloat((duration || "1").replace(",", "."))
+  // Sans parseDurationHours, une durée "30 min" décalait la fin du créneau de 30 HEURES.
+  const hours = parseDurationHours(duration) ?? 1
   if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(hours)) return time
   const total = h * 60 + m + Math.round(hours * 60)
   const normalized = ((total % 1440) + 1440) % 1440
@@ -81,14 +84,33 @@ async function createStudentScheduleSlots({
   })
 }
 
+/**
+ * Le tarif horaire dépend de la taille de la classe (solo / binôme / groupe). Quand elle
+ * change, le forfait mensuel doit suivre : il était jusqu'ici laissé à son ancienne
+ * valeur, si bien qu'un élève passé de binôme à solo restait facturé à l'ancien tarif.
+ * Les tarifs personnalisés (fratrie, remise) sont préservés.
+ */
 async function recalcGroupRate(groupId: string, tenantId: string) {
-  const count = await prisma.student.count({
+  const students = await prisma.student.findMany({
     where: { groupId, tenantId, status: "ACTIVE" },
+    select: { id: true, monthlyFee: true, customFee: true, duration: true, lessonsPerWeek: true },
   })
-  if (count > 0) {
-    await prisma.student.updateMany({
-      where: { groupId, tenantId, status: "ACTIVE" },
-      data: { hourlyRate: rateForSize(count) },
+  if (students.length === 0) return
+
+  const hourlyRate = rateForSize(students.length)
+  for (const student of students) {
+    await prisma.student.update({
+      where: { id: student.id },
+      data: {
+        hourlyRate,
+        monthlyFee: resolveMonthlyFee({
+          customFee: student.customFee,
+          current: student.monthlyFee,
+          hourlyRate,
+          duration: student.duration,
+          lessonsPerWeek: student.lessonsPerWeek,
+        }),
+      },
     })
   }
 }
@@ -101,6 +123,7 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
   await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
   await ensureCanonicalSubjects(user.tenantId)
+  await ensureTeacherTransferSchema()
 
   const { id } = await params
   const body = await req.json()
@@ -126,7 +149,16 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
       groupId: newGroupId,
       level: body.level || null,
       subject,
-      monthlyFee: Number(body.monthlyFee),
+      // Le tarif n'est plus repris du client : il est redérivé du forfait côté serveur,
+      // sauf tarif personnalisé où la saisie du directeur fait foi.
+      customFee: body.customFee === true,
+      monthlyFee: resolveMonthlyFee({
+        customFee: body.customFee === true,
+        current: Number(body.monthlyFee),
+        hourlyRate: body.hourlyRate === "" || body.hourlyRate == null ? null : Number(body.hourlyRate),
+        duration: body.duration || null,
+        lessonsPerWeek: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
+      }),
       paymentGraceAllowed: user.role === "DIRECTOR" ? body.paymentGraceAllowed === true : undefined,
       hourlyRate: body.hourlyRate === "" || body.hourlyRate == null ? null : Number(body.hourlyRate),
       lessonsPerWeek: body.lessonsPerWeek === "" || body.lessonsPerWeek == null ? null : Number(body.lessonsPerWeek),
@@ -191,7 +223,21 @@ export const PUT = wrap(async (req: Request, { params }: { params: Promise<{ id:
     if (oldGroupId) await recalcGroupRate(oldGroupId, user.tenantId)
     if (newGroupId) await recalcGroupRate(newGroupId, user.tenantId)
     if (!newGroupId) {
-      await prisma.student.update({ where: { id }, data: { hourlyRate: rateForSize(1) } })
+      // Sorti de toute classe : retour au tarif solo, forfait mensuel recalculé avec.
+      const soloRate = rateForSize(1)
+      await prisma.student.update({
+        where: { id },
+        data: {
+          hourlyRate: soloRate,
+          monthlyFee: resolveMonthlyFee({
+            customFee: updated.customFee,
+            current: updated.monthlyFee,
+            hourlyRate: soloRate,
+            duration: updated.duration,
+            lessonsPerWeek: updated.lessonsPerWeek,
+          }),
+        },
+      })
     }
   }
 
@@ -210,6 +256,7 @@ export const PATCH = wrap(async (req: Request, { params }: { params: Promise<{ i
   await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
   await ensureCanonicalSubjects(user.tenantId)
+  await ensureTeacherTransferSchema()
 
   const { id } = await params
   const body = await req.json()
@@ -251,6 +298,7 @@ export const DELETE = wrap(async (req: Request, { params }: { params: Promise<{ 
   if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const { id } = await params
+  await ensureStudentPaymentColumns()
   await ensureStudentContactColumns()
   const student = await prisma.student.findFirst({ where: { id, tenantId: user.tenantId } })
   if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 })

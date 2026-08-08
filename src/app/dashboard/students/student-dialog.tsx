@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { computeExpectedFee, parseDurationHours } from "@/lib/forfait"
 import { whatsappLink } from "@/lib/phone"
 
 interface StudentDialogProps {
@@ -38,6 +39,8 @@ const EMPTY_IDENTITY = {
 
 const EMPTY_SHARED = {
   subject: "", monthlyFee: "",
+  // Tarif saisi à la main : le serveur cesse alors de le recalculer depuis le forfait.
+  customFee: false,
   paymentGraceAllowed: false,
   hourlyRate: "", lessonsPerWeek: "", duration: "", startSession: "",
   groupId: "", notes: "", status: "ACTIVE", recontactDate: "",
@@ -55,18 +58,19 @@ const DEFAULT_WELCOME_INTRO =
 
 // Tarif mensuel = tarif horaire × durée d'un cours (h) × cours par semaine × 4 semaines.
 // Ex : 7 €/h, cours d'1h, 2 cours/sem -> 7 x 1 x 2 x 4 = 56 €.
+// La durée passe par parseDurationHours : les fiches importées des Sheets contiennent
+// "30 min" ou "45 min", qu'un parseFloat lisait comme 30 ou 45 HEURES de cours.
 function computeMonthlyFee(hourlyRate: string, duration: string, lessonsPerWeek: string): number {
-  const rate = Number(hourlyRate)
-  const hours = parseFloat((duration || "").replace(",", "."))
-  const perWeek = Number(lessonsPerWeek)
-  if (!Number.isFinite(rate) || !Number.isFinite(hours) || !Number.isFinite(perWeek)) return 0
-  if (rate <= 0 || hours <= 0 || perWeek <= 0) return 0
-  return Math.round(rate * hours * perWeek * 4 * 100) / 100
+  return computeExpectedFee({
+    hourlyRate: Number(hourlyRate),
+    duration,
+    lessonsPerWeek: Number(lessonsPerWeek),
+  }) ?? 0
 }
 
 function durationToMinutes(duration: string | null | undefined) {
-  const hours = parseFloat((duration || "").replace(",", "."))
-  if (!Number.isFinite(hours) || hours <= 0) return ""
+  const hours = parseDurationHours(duration)
+  if (hours == null) return ""
   return String(Math.round(hours * 60))
 }
 
@@ -223,6 +227,7 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
       setShared({
         subject: student.subject ?? "",
         monthlyFee: String(student.monthlyFee ?? ""),
+        customFee: Boolean(student.customFee),
         paymentGraceAllowed: Boolean(student.paymentGraceAllowed),
         hourlyRate: student.hourlyRate != null ? String(student.hourlyRate) : "",
         lessonsPerWeek: student.lessonsPerWeek != null ? String(student.lessonsPerWeek) : "",
@@ -506,8 +511,11 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
     e.preventDefault()
     setLoading(true)
     setError("")
-    // Tarif mensuel calculé automatiquement (tarif h × durée × cours/sem × 4).
-    const primaryMonthlyFee = computeMonthlyFee(shared.hourlyRate, shared.duration, shared.lessonsPerWeek)
+    // Tarif mensuel calculé automatiquement (tarif h × durée × cours/sem × 4), sauf
+    // tarif personnalisé où la saisie du directeur est envoyée telle quelle.
+    const primaryMonthlyFee = shared.customFee
+      ? Number(shared.monthlyFee) || 0
+      : computeMonthlyFee(shared.hourlyRate, shared.duration, shared.lessonsPerWeek)
     try {
       if (student) {
         // Edit mode: single student
@@ -885,14 +893,46 @@ export function StudentDialog({ open, onClose, student, groups, teachers, paymen
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Tarif mensuel (€)</Label>
-                <div className="flex h-10 items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {computedMonthlyFee > 0 ? `${computedMonthlyFee.toFixed(2).replace(/\.00$/, "")} €` : "—"}
+                {shared.customFee ? (
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={shared.monthlyFee}
+                    onChange={(e) => setSharedField("monthlyFee", e.target.value)}
+                    placeholder="ex: 42"
+                  />
+                ) : (
+                  <div className="flex h-10 items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {computedMonthlyFee > 0 ? `${computedMonthlyFee.toFixed(2).replace(/\.00$/, "")} €` : "—"}
+                    </span>
+                    <span className="text-xs text-gray-400">calculé auto</span>
+                  </div>
+                )}
+                <label className="flex items-start gap-2 text-xs text-gray-600">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-3.5 w-3.5 rounded border-gray-300"
+                    checked={shared.customFee}
+                    onChange={(e) => {
+                      const custom = e.target.checked
+                      setSharedField("customFee", custom)
+                      // En cochant, on part du tarif calculé plutôt que d'un champ vide.
+                      if (custom && !shared.monthlyFee) {
+                        setSharedField("monthlyFee", computedMonthlyFee > 0 ? String(computedMonthlyFee) : "")
+                      }
+                    }}
+                  />
+                  <span>
+                    Tarif personnalisé
+                    <span className="text-gray-400"> — fratrie sur une fiche, remise, montant négocié</span>
                   </span>
-                  <span className="text-xs text-gray-400">calculé auto</span>
-                </div>
+                </label>
                 <p className="text-xs text-gray-400">
-                  Tarif horaire × durée × cours/semaine × 4. Renseignez le forfait du professeur ci-dessous.
+                  {shared.customFee
+                    ? "Ce montant ne sera jamais recalculé automatiquement, même si la classe change de taille."
+                    : "Tarif horaire × durée × cours/semaine × 4. Renseignez le forfait du professeur ci-dessous."}
                 </p>
               </div>
               <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
