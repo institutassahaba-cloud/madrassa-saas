@@ -730,10 +730,16 @@ function SessionCard({
     return null
   }
 
-  const done = session.lessons.filter((l) => l.status !== "PENDING").length
-  const total = session.lessons.length
-  const present = session.lessons.filter((l) => l.status === "PRESENT").length
-  const totalMakeup = session.lessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
+  // Le tableau de l'ancien professeur s'arrête au trait : les cours donnés
+  // ensuite par le nouveau professeur n'apparaissent que chez lui.
+  const visibleLessons = viewingFormerCopy && viewerTeacherId
+    ? session.lessons.filter((lesson) => lessonOwner(lesson, session.teacher.id) === viewerTeacherId)
+    : session.lessons
+
+  const done = visibleLessons.filter((l) => l.status !== "PENDING").length
+  const total = visibleLessons.length
+  const present = visibleLessons.filter((l) => l.status === "PRESENT").length
+  const totalMakeup = visibleLessons.reduce((sum, l) => sum + (l.makeupMinutes ?? 0), 0)
   const nextSessionNumber = session.number + 1
   const canRequestNextPayment = !nextPaidAt && !nextHasPaymentRequest
   const canEnterMissingPaymentDate = canMarkPaymentDate && !paidAt
@@ -842,16 +848,18 @@ function SessionCard({
         {transfersBeforeFirstLesson(transfers).map((transfer) => (
           <TransferDivider key={transfer.id} transfer={transfer} viewerTeacherId={viewerTeacherId} />
         ))}
-        {session.lessons.map((lesson) => {
+        {visibleLessons.map((lesson) => {
           const lock = lessonLock(lesson)
-          const transfer = transferAfterLesson(transfers, lesson.number)
+          // Dans la copie de l'ancien professeur, le trait se tire une seule fois
+          // en bas du tableau (voir plus bas) : rien ne le suit.
+          const transfer = viewingFormerCopy ? undefined : transferAfterLesson(transfers, lesson.number)
           return (
             <div key={lesson.id} className="space-y-3">
               <LessonRow
                 key={`${lesson.id}:${lesson.date ?? ""}:${lesson.content ?? ""}:${lesson.duration ?? ""}:${lesson.makeupOnLessonId ?? ""}`}
                 lesson={lesson}
                 sessionDuration={session.duration}
-                siblingLessons={session.lessons}
+                siblingLessons={visibleLessons}
                 readOnly={Boolean(lock)}
                 readOnlyReason={lock ?? undefined}
                 onUpdate={onUpdateLesson}
@@ -861,6 +869,9 @@ function SessionCard({
             </div>
           )
         })}
+        {viewingFormerCopy && formerTransfer && (
+          <TransferDivider transfer={formerTransfer} viewerTeacherId={viewerTeacherId} />
+        )}
         {!session.isComplete && !viewingFormerCopy && (
           <Button variant="outline" size="sm" className="w-full border-dashed text-xs" onClick={() => onAddLesson(session.id)}>
             <Plus className="h-3 w-3" /> Ajouter un cours
@@ -1260,10 +1271,13 @@ function MergedGroupCahier({
   const viewingFormerCopy = Boolean(formerTransfer) && template != null && template.teacher.id !== cardTeacherId
   // Un cours de la classe appartient au professeur épinglé sur les cours des
   // élèves ; sans épinglage, au professeur courant de la session.
+  const classLessonOwner = (num: number) => {
+    const pinned = sessList.flatMap((s) => s.lessons.filter((l) => l.number === num)).find((l) => l.teacherId)
+    return pinned?.teacherId ?? template?.teacher.id ?? null
+  }
   function classLessonLock(num: number): string | null {
     if (!cardTeacherId || !template) return null
-    const pinned = sessList.flatMap((s) => s.lessons.filter((l) => l.number === num)).find((l) => l.teacherId)
-    const owner = pinned?.teacherId ?? template.teacher.id
+    const owner = classLessonOwner(num)
     if (owner !== cardTeacherId) {
       const ownerName = owner === template.teacher.id
         ? template.teacher.name
@@ -1275,6 +1289,11 @@ function MergedGroupCahier({
     }
     return null
   }
+  // Le tableau de l'ancien professeur s'arrête au trait : on ne garde que les
+  // cours qu'il a lui-même assurés. Ceux du nouveau ne s'écrivent que chez lui.
+  const visibleLessonNumbers = viewingFormerCopy && cardTeacherId
+    ? lessonNumbers.filter((num) => classLessonOwner(num) === cardTeacherId)
+    : lessonNumbers
 
   async function ensureAndPresent(studentId: string, lessonNumber: number) {
     if (!template) return
@@ -1407,13 +1426,14 @@ function MergedGroupCahier({
           {transfersBeforeFirstLesson(classTransfers).map((transfer) => (
             <TransferDivider key={transfer.id} transfer={transfer} viewerTeacherId={cardTeacherId} scope="class" />
           ))}
-          {lessonNumbers.map((num) => {
+          {visibleLessonNumbers.map((num) => {
             const cells = students.map((student) => ({
               student,
               lesson: sessionByStudent.get(student.id)?.lessons.find((l) => l.number === num),
             }))
             const lock = classLessonLock(num)
-            const transfer = transferAfterLesson(classTransfers, num)
+            // Copie de l'ancien professeur : le trait est tiré une seule fois, en bas.
+            const transfer = viewingFormerCopy ? undefined : transferAfterLesson(classTransfers, num)
             return (
               <div key={num} className="space-y-3">
                 <MergedLessonRow
@@ -1432,6 +1452,9 @@ function MergedGroupCahier({
               </div>
             )
           })}
+          {viewingFormerCopy && formerTransfer && (
+            <TransferDivider transfer={formerTransfer} viewerTeacherId={cardTeacherId} scope="class" />
+          )}
 
           {!allComplete && !viewingFormerCopy && (
             <Button
