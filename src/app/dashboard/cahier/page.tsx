@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { ensureStudentPaymentColumns } from "@/lib/student-payment-schema"
+import { ensureTeacherTransferSchema, getSessionTransfers, sessionsOwnedOrTaughtBy } from "@/lib/teacher-transfer"
 import { getEffectiveUser } from "@/lib/view-as"
 import { CahierClient } from "./cahier-client"
 
@@ -11,6 +12,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
   if (!user) redirect("/login")
   await ensureLessonLegacyPayrollBoundaryColumn()
   await ensureStudentPaymentColumns()
+  await ensureTeacherTransferSchema()
 
   const [students, lessonSessions, payments] = await Promise.all([
     prisma.student.findMany({
@@ -22,6 +24,9 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
               OR: [
                 { group: { teacherId: user.id } },
                 { lessonSessions: { some: { teacherId: user.id } } },
+                // Élève transféré : le professeur garde l'accès à son cahier tant
+                // que ses cours d'avant le trait ne sont pas payés/archivés.
+                { lessonSessions: { some: { lessons: { some: { teacherId: user.id } } } } },
               ],
             }
           : {}),
@@ -46,7 +51,7 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
     prisma.lessonSession.findMany({
       where: {
         tenantId: user.tenantId,
-        ...(user.role === "TEACHER" ? { teacherId: user.id } : {}),
+        ...(user.role === "TEACHER" ? sessionsOwnedOrTaughtBy(user.id) : {}),
       },
       include: {
         student: { select: { id: true, firstName: true, lastName: true } },
@@ -85,10 +90,19 @@ export default async function CahierPage({ searchParams }: { searchParams: Promi
     })
     for (const l of batch) (lessonsBySession[l.sessionId] ||= []).push(l)
   }
-  const lessonSessionsWithLessons = lessonSessions.map((s) => ({
-    ...s,
-    lessons: lessonsBySession[s.id] ?? [],
-  }))
+  const transfersBySession = await getSessionTransfers(user.tenantId, sessionIds)
+  const lessonSessionsWithLessons = lessonSessions
+    .map((s) => ({
+      ...s,
+      lessons: lessonsBySession[s.id] ?? [],
+      transfers: transfersBySession.get(s.id) ?? [],
+    }))
+    // Une fois ses cours payés, la copie de l'ancien professeur est archivée :
+    // elle sort de son cahier et ne reste consultable que côté direction.
+    .filter((s) => {
+      if (user.role !== "TEACHER" || s.teacherId === user.id) return true
+      return !s.transfers.some((transfer) => transfer.fromTeacherId === user.id && transfer.archived)
+    })
 
   // Emploi du temps (jours + heures) regroupé par groupe, pour l'afficher à côté de l'élève.
   const slots = await prisma.timeSlot.findMany({

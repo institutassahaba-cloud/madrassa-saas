@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { prisma } from "@/lib/prisma"
 import { wrap } from "@/lib/api"
+import { ensureTeacherTransferSchema, isLessonOwnedBy, sessionsOwnedOrTaughtBy } from "@/lib/teacher-transfer"
 
 function parseDurationToMinutes(d: string | null): number {
   if (!d) return 60
@@ -17,6 +18,7 @@ export const POST = wrap(async (req: Request) => {
   const user = session.user
   if (user.role !== "DIRECTOR") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   await ensureLessonLegacyPayrollBoundaryColumn()
+  await ensureTeacherTransferSchema()
 
   const body = await req.json()
   const bonuses: Record<string, number> = body.bonuses || {}
@@ -57,8 +59,10 @@ export const POST = wrap(async (req: Request) => {
     const periodStart = lastSalary?.periodEnd ?? new Date(2000, 0, 1)
     const periodEnd = now
 
+    // Sessions du professeur, y compris celles reprises par un autre après un
+    // changement de professeur : leurs premiers cours lui restent dus.
     const lessonSessions = await prisma.lessonSession.findMany({
-      where: { tenantId, teacherId: teacher.id },
+      where: { tenantId, ...sessionsOwnedOrTaughtBy(teacher.id) },
       select: {
         id: true,
         studentId: true,
@@ -77,7 +81,7 @@ export const POST = wrap(async (req: Request) => {
               },
             ],
           },
-          select: { id: true, date: true, duration: true, status: true, number: true, legacyPayrollBoundary: true },
+          select: { id: true, date: true, duration: true, status: true, number: true, legacyPayrollBoundary: true, teacherId: true },
         },
       },
     })
@@ -87,6 +91,7 @@ export const POST = wrap(async (req: Request) => {
       const key = `${ls.studentId}:${ls.teacherId}:${ls.subject}`
       for (const lesson of ls.lessons) {
         if (!lesson.legacyPayrollBoundary) continue
+        if (!isLessonOwnedBy(lesson, ls, teacher.id)) continue
         const current = legacyBoundaries[key]
         if (
           !current ||
@@ -122,6 +127,8 @@ export const POST = wrap(async (req: Request) => {
 
       for (const lesson of ls.lessons) {
         if (lesson.legacyPayrollBoundary) continue
+        // Un cours n'est payé qu'à son professeur créditeur : jamais deux fois.
+        if (!isLessonOwnedBy(lesson, ls, teacher.id)) continue
         if (!lesson.date || !["PRESENT", "ABSENT"].includes(lesson.status)) continue
         if (lesson.date <= periodStart || lesson.date > periodEnd) continue
         if (

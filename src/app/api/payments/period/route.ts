@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { ensurePaymentScanSettingsColumns } from "@/lib/payment-scan-settings-schema"
-import { getValidatedPaymentPeriodFloor, getValidatedPaymentPeriodStart } from "@/lib/payment-period"
+import { getValidatedPaymentPeriodFloor, getValidatedPaymentPeriodStart, getValidatedPaymentSummary } from "@/lib/payment-period"
 import { validateRequestedPaymentPeriodStart } from "@/lib/payment-period-rules"
 import { wrap } from "@/lib/api"
 
@@ -58,8 +58,14 @@ export const POST = wrap(async (req: Request) => {
     }, { status: 409 })
   }
 
+  // Source unique de vérité : le récapitulatif et la clôture doivent interroger
+  // exactement toute la base, et non le sous-ensemble de paiements chargé dans
+  // le navigateur pour l'historique.
+  const summary = await getValidatedPaymentSummary(session.user.tenantId, effectiveStartAt, now)
+
   return NextResponse.json({
     paymentPeriodStartAt: effectiveStartAt,
     isManual: settings.paymentPeriodStartAt?.getTime() === effectiveStartAt.getTime(),
+    summary,
   })
 })

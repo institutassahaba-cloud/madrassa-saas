@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { ensureLessonLegacyPayrollBoundaryColumn } from "@/lib/lesson-schema"
 import { ensureUserMeetingLinkColumn } from "@/lib/user-schema"
+import { ensureTeacherTransferSchema, getSessionTransfers } from "@/lib/teacher-transfer"
 import { getEffectiveUser } from "@/lib/view-as"
 import { TeachersClient } from "./teachers-client"
 
@@ -11,6 +12,7 @@ export default async function TeachersPage() {
   if (!["DIRECTOR", "SECRETARY"].includes(user.role)) redirect("/dashboard")
   await ensureUserMeetingLinkColumn()
   await ensureLessonLegacyPayrollBoundaryColumn()
+  await ensureTeacherTransferSchema()
 
   const [teachers, students, lessonSessions, payments] = await Promise.all([
     prisma.user.findMany({
@@ -91,9 +93,13 @@ export default async function TeachersPage() {
     })
     for (const l of batch) (lessonsBySession[l.sessionId] ||= []).push(l)
   }
+  // Changements de professeur : chaque session transférée porte l'historique
+  // (ancien prof, borne, date, copie archivée après paie).
+  const transfersBySession = await getSessionTransfers(user.tenantId)
   const lessonSessionsWithLessons = lessonSessions.map((s) => ({
     ...s,
     lessons: lessonsBySession[s.id] ?? [],
+    transfers: transfersBySession.get(s.id) ?? [],
   }))
 
   // Emploi du temps par groupe

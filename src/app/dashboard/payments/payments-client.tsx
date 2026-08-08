@@ -280,6 +280,7 @@ export function PaymentsClient({
   const [historyMonthKey, setHistoryMonthKey] = useState("LATEST")
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false)
   const [periodLoading, setPeriodLoading] = useState(false)
+  const [periodPaymentId, setPeriodPaymentId] = useState("")
   const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null)
   const [paymentDeleteLoading, setPaymentDeleteLoading] = useState<string | null>(null)
   const [localPaymentMatches, setLocalPaymentMatches] = useState(paymentMatches)
@@ -309,9 +310,13 @@ export function PaymentsClient({
   }, [periodControl])
   const currentPeriodStartTime = new Date(localPeriodControl.currentStart).getTime()
   const autoPaymentMatches = useMemo(() => localPaymentMatches
-    .filter((match) => match.status === "AUTO_CONFIRMED")
+    .filter((match) => {
+      if (match.status !== "AUTO_CONFIRMED") return false
+      const time = new Date(match.confirmedAt ?? match.paymentDate ?? match.createdAt).getTime()
+      return time > currentPeriodStartTime
+    })
     .sort((a, b) => new Date(b.confirmedAt ?? b.createdAt).getTime() - new Date(a.confirmedAt ?? a.createdAt).getTime())
-    .slice(0, 30), [localPaymentMatches])
+    .slice(0, 30), [currentPeriodStartTime, localPaymentMatches])
   const confirmedPaymentMatches = useMemo(() => localPaymentMatches
     .filter((match) => {
       if (match.status !== "CONFIRMED") return false
@@ -832,22 +837,12 @@ export function PaymentsClient({
     }
   }
 
-  function applyPeriodStart(startAt: string, isManual: boolean) {
+  function applyPeriodStart(startAt: string, isManual: boolean, summary: { count: number; total: number }) {
     const startTime = new Date(startAt).getTime()
-    const included = localPayments.filter((payment) => {
-      const validationTime = paymentValidationDateValue(payment)
-      return validationTime != null
-        && validationTime > startTime
-        && validationTime <= nowTime
-        && paymentHasValidatedSession(payment)
-        && (PAYMENT_PAID_STATUSES as readonly string[]).includes(payment.status)
-    })
     setLocalPeriodControl({ currentStart: startAt, isManual })
     setPeriodDate(dateInputValue(startTime + 1))
-    setLocalValidatedSummary({
-      count: included.length,
-      total: +included.reduce((sum, payment) => sum + paymentReceivedAmount(payment), 0).toFixed(2),
-    })
+    setLocalValidatedSummary(summary)
+    setPeriodPaymentId("")
     setPeriodDialogOpen(false)
     setPeriodLoading(false)
   }
@@ -862,7 +857,7 @@ export function PaymentsClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Impossible de fixer la période.")
-      applyPeriodStart(data.paymentPeriodStartAt, Boolean(data.isManual))
+      applyPeriodStart(data.paymentPeriodStartAt, Boolean(data.isManual), data.summary)
     } catch (error) {
       alert(error instanceof Error ? error.message : "Impossible de fixer la période.")
       setPeriodLoading(false)
@@ -899,6 +894,15 @@ export function PaymentsClient({
     if (confirmed) await savePeriodStart(new Date(when))
   }
 
+  async function setPeriodStartFromSelectedPayment() {
+    const payment = validatedPaymentsForPicker.find((item) => item.id === periodPaymentId)
+    if (!payment) {
+      alert("Choisissez un paiement validé.")
+      return
+    }
+    await setPeriodStartFromPayment(payment)
+  }
+
   async function resetPeriodStart() {
     const confirmed = window.confirm("Revenir au calcul automatique de la période (remise à zéro le 25 de chaque mois) ?")
     if (!confirmed) return
@@ -927,9 +931,11 @@ export function PaymentsClient({
       return paymentHasValidatedSession(payment)
         && (PAYMENT_PAID_STATUSES as readonly string[]).includes(payment.status)
         && validationTime != null
+        && validationTime > currentPeriodStartTime
         && validationTime <= nowTime
     })
     .sort((a, b) => (paymentValidationDateValue(b) ?? 0) - (paymentValidationDateValue(a) ?? 0))
+    .slice(0, 100)
 
   return (
     <div className="space-y-4">
@@ -1061,7 +1067,18 @@ export function PaymentsClient({
       )}
 
       {/* Calcul paie secrétaire (directeur) */}
-      {isDirector && <SecretaryPayBlock />}
+      {isDirector && (
+        <SecretaryPayBlock
+          validatedSummary={localValidatedSummary}
+          periodStart={localPeriodControl.currentStart}
+          onPeriodClosed={(periodEnd) => {
+            setLocalPeriodControl({ currentStart: periodEnd, isManual: true })
+            setLocalValidatedSummary({ count: 0, total: 0 })
+            setSelectedConfirmedMatchIds(new Set())
+            router.refresh()
+          }}
+        />
+      )}
 
       {isDirector && (
         <Card className={scanControl.lastError ? "border-red-300 bg-red-50" : scanControl.enabled ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"}>
@@ -1955,31 +1972,34 @@ export function PaymentsClient({
             </div>
             <p className="text-xs text-gray-500">Exemple : choisissez le 26 juillet pour compter tous les paiements validés à partir du 26.</p>
           </form>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Ou choisir le premier paiement à compter</p>
-          <div className="max-h-[55vh] overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100">
+          <div className="space-y-2 rounded-md border border-gray-200 bg-white p-3">
+            <Label>Nouvelle période ajustée à partir de ce paiement</Label>
             {validatedPaymentsForPicker.length === 0 ? (
-              <p className="p-4 text-sm text-gray-500">Aucun paiement validé à afficher.</p>
+              <p className="text-sm text-gray-500">Aucun paiement validé à afficher.</p>
             ) : (
-              validatedPaymentsForPicker.map((payment) => {
-                const when = paymentValidationDateValue(payment)
-                const isCurrentStart = when != null && Math.abs(when - 1 - new Date(localPeriodControl.currentStart).getTime()) < 1000
-                return (
-                  <button
-                    key={payment.id}
-                    type="button"
-                    onClick={() => setPeriodStartFromPayment(payment)}
-                    disabled={periodLoading}
-                    className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-emerald-50 disabled:opacity-50 ${isCurrentStart ? "bg-emerald-50" : ""}`}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-gray-900">{paymentStudentLabel(payment)}</span>
-                      <span className="block text-xs text-gray-400">{when != null ? formatDate(new Date(when).toISOString()) : "—"}{isCurrentStart ? " · début actuel" : ""}</span>
-                    </span>
-                    <span className="shrink-0 font-semibold text-gray-900">{formatCurrency(paymentReceivedAmount(payment))}</span>
-                  </button>
-                )
-              })
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Select value={periodPaymentId} onValueChange={setPeriodPaymentId} disabled={periodLoading}>
+                  <SelectTrigger className="min-w-0 flex-1">
+                    <SelectValue placeholder="Choisir parmi les derniers paiements validés" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {validatedPaymentsForPicker.map((payment) => {
+                      const when = paymentValidationDateValue(payment)
+                      return (
+                        <SelectItem key={payment.id} value={payment.id}>
+                          {when != null ? formatDate(new Date(when).toISOString()) : "Date inconnue"} · {paymentStudentLabel(payment)} · {formatCurrency(paymentReceivedAmount(payment))}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+                <Button type="button" onClick={setPeriodStartFromSelectedPayment} disabled={periodLoading || !periodPaymentId} className="shrink-0">
+                  {periodLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Ajuster la période
+                </Button>
+              </div>
             )}
+            <p className="text-xs text-gray-500">Le paiement sélectionné devient le premier paiement compté. Les paiements validés avant lui restent uniquement dans l&apos;historique.</p>
           </div>
           {localPeriodControl.isManual && (
             <Button variant="outline" onClick={resetPeriodStart} disabled={periodLoading} className="w-full">
@@ -2509,19 +2529,20 @@ function StudentCombobox({
   )
 }
 
-function SecretaryPayBlock() {
-  type SecretaryPaymentLine = { id: string; student: string; amount: number; validationDate: string; reference: string | null }
-  type SecretaryPayResult = { secretaryId: string; secretaryName: string; collectedTotal: number; amount: number; paymentCount: number; periodStart: string; periodEnd: string; payments: SecretaryPaymentLine[] }
+function SecretaryPayBlock({
+  validatedSummary,
+  periodStart,
+  onPeriodClosed,
+}: {
+  validatedSummary: { count: number; total: number }
+  periodStart: string
+  onPeriodClosed: (periodEnd: string) => void
+}) {
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<SecretaryPayResult[]>([])
-  const [allPayments, setAllPayments] = useState<SecretaryPaymentLine[]>([])
-  const [startPaymentId, setStartPaymentId] = useState("")
-  const [endPaymentId, setEndPaymentId] = useState("")
-  const [excludedPaymentIds, setExcludedPaymentIds] = useState<string[]>([])
   const [confirmed, setConfirmed] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function calculate() {
+  async function confirm() {
     setLoading(true)
     setConfirmed(false)
     setError(null)
@@ -2530,49 +2551,18 @@ function SecretaryPayBlock() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          startPaymentId: startPaymentId || undefined,
-          endPaymentId: endPaymentId || undefined,
-          excludedPaymentIds,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Impossible de calculer la paie.")
-      const next = Array.isArray(data) ? data as SecretaryPayResult[] : []
-      setResults(next)
-      if (allPayments.length === 0 && next[0]) {
-        setAllPayments(next[0].payments)
-        setStartPaymentId(next[0].payments[0]?.id ?? "")
-        setEndPaymentId(next[0].payments.at(-1)?.id ?? "")
-      }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Impossible de calculer la paie.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function confirm() {
-    if (results.length === 0) return
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch("/api/salaries/secretary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
           confirm: true,
-          periodStart: results[0].periodStart,
-          startPaymentId: startPaymentId || undefined,
-          endPaymentId: endPaymentId || undefined,
-          excludedPaymentIds,
-          expectedPaymentIds: results[0].payments.map((payment) => payment.id),
-          expectedCollectedTotal: results[0].collectedTotal,
+          periodStart,
+          expectedPaymentCount: validatedSummary.count,
+          expectedCollectedTotal: validatedSummary.total,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Impossible de clôturer la période.")
-      setResults(Array.isArray(data) ? data : results)
+      const closedPeriodEnd = Array.isArray(data) && typeof data[0]?.periodEnd === "string" ? data[0].periodEnd : null
+      if (!closedPeriodEnd) throw new Error("La clôture a réussi, mais sa nouvelle période est introuvable. Actualisez la page.")
       setConfirmed(true)
+      onPeriodClosed(closedPeriodEnd)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Impossible de clôturer la période.")
     } finally {
@@ -2588,83 +2578,39 @@ function SecretaryPayBlock() {
             <Calculator className="h-5 w-5 text-violet-600" />
             <span className="font-semibold text-violet-900">Clôturer la paie de la secrétaire</span>
           </div>
-          <Button variant="outline" size="sm" onClick={calculate} disabled={loading} className="border-violet-300 text-violet-700 hover:bg-violet-100">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Calculator className="h-4 w-4 mr-1" />}
-            Prévisualiser (10%)
-          </Button>
         </div>
 
         {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        {allPayments.length > 0 && !confirmed && (
-          <div className="space-y-3 rounded-lg border border-violet-200 bg-white p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Premier paiement inclus</Label>
-                <Select value={startPaymentId} onValueChange={(value) => { setStartPaymentId(value); setResults([]) }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{allPayments.map((payment) => <SelectItem key={payment.id} value={payment.id}>{formatDate(payment.validationDate)} · {payment.student}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Dernier paiement inclus</Label>
-                <Select value={endPaymentId} onValueChange={(value) => { setEndPaymentId(value); setResults([]) }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{allPayments.map((payment) => <SelectItem key={payment.id} value={payment.id}>{formatDate(payment.validationDate)} · {payment.student}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-sm font-medium text-gray-700">Paiements à exclure</p>
-              <div className="max-h-56 divide-y divide-gray-100 overflow-y-auto rounded-md border border-gray-200">
-                {allPayments.map((payment) => {
-                  const excluded = excludedPaymentIds.includes(payment.id)
-                  return (
-                    <label key={payment.id} className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-violet-50">
-                      <input
-                        type="checkbox"
-                        checked={excluded}
-                        onChange={() => {
-                          setExcludedPaymentIds((current) => excluded ? current.filter((id) => id !== payment.id) : [...current, payment.id])
-                          setResults([])
-                        }}
-                      />
-                      <span className="min-w-0 flex-1"><span className="block truncate font-medium">{payment.student}</span><span className="text-xs text-gray-400">Validé le {formatDate(payment.validationDate)}{payment.reference ? ` · réf. ${payment.reference}` : ""}</span></span>
-                      <span className="font-semibold">{formatCurrency(payment.amount)}</span>
-                    </label>
-                  )
-                })}
-              </div>
-              <p className="mt-2 text-xs text-gray-500">Après un changement, cliquez sur « Prévisualiser » pour recalculer le nombre et le montant exacts.</p>
-            </div>
+        {!confirmed && (
+          <div className="rounded-lg border border-violet-200 bg-white px-4 py-3 text-sm text-violet-900">
+            Tous les paiements validés de la période en cours seront inclus dans cette clôture.
           </div>
         )}
-        {results.map((result) => (
-          <div key={result.secretaryId} className="rounded-lg border border-violet-200 bg-white p-4 space-y-2">
-              <p className="font-medium text-gray-900">{result.secretaryName}</p>
+        <div className="rounded-lg border border-violet-200 bg-white p-4 space-y-2">
+              <p className="font-medium text-gray-900">Secrétaire</p>
               <p className="text-xs text-gray-400">
-                Période : {new Date(result.periodStart).toLocaleDateString("fr-FR")} → {new Date(result.periodEnd).toLocaleDateString("fr-FR")}
+                Période en cours depuis le {formatDate(new Date(new Date(periodStart).getTime() + 1))}
               </p>
               <p className="text-xs text-gray-400">
-                {result.paymentCount} paiement{result.paymentCount > 1 ? "s" : ""} inclus dans cette clôture.
+                {validatedSummary.count} paiement{validatedSummary.count > 1 ? "s" : ""} inclus dans cette clôture.
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Paiements validés sur la période en cours</span>
-                <span className="font-medium">{formatCurrency(result.collectedTotal)}</span>
+                <span className="font-medium">{formatCurrency(validatedSummary.total)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Commission 10%</span>
-                <span className="text-lg font-bold text-violet-700">{formatCurrency(result.amount)}</span>
+                <span className="text-lg font-bold text-violet-700">{formatCurrency(validatedSummary.total * 0.10)}</span>
               </div>
-          </div>
-        ))}
-        {results.length > 0 && (!confirmed ? (
-          <Button size="sm" onClick={confirm} disabled={loading || results[0].paymentCount === 0} className="bg-violet-600 hover:bg-violet-700 text-white">
+        </div>
+        {!confirmed ? (
+          <Button size="sm" onClick={confirm} disabled={loading || validatedSummary.count === 0} className="bg-violet-600 hover:bg-violet-700 text-white">
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             Confirmer et clôturer cette période
           </Button>
         ) : (
           <p aria-live="polite" className="text-sm text-emerald-600 font-medium">✓ Période clôturée et nouvelle période démarrée</p>
-        ))}
+        )}
       </CardContent>
     </Card>
   )

@@ -12,6 +12,15 @@ import { whatsappLink } from "@/lib/phone"
 import { gmailComposeLink } from "@/lib/contact-links"
 import { rateForSize } from "@/lib/group-rates"
 import { studentLabelWithTeacherEmoji } from "@/lib/student-display"
+import { ChangeTeacherControl, FormerTeacherBanner, TransferDivider } from "@/components/dashboard/session-transfer"
+import {
+  isFormerTeacher,
+  lessonOwner,
+  transferAfterLesson,
+  transferFrom,
+  transfersBeforeFirstLesson,
+  type SessionTransferView,
+} from "@/lib/teacher-transfer-view"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -28,6 +37,7 @@ interface Lesson {
   makeupMinutes: number | null
   makeupOnLessonId: string | null
   legacyPayrollBoundary: boolean
+  teacherId?: string | null
 }
 
 interface LessonSession {
@@ -42,6 +52,7 @@ interface LessonSession {
   student: { id: string; firstName: string; lastName: string; legacyId?: string | null; status?: string | null }
   teacher: { id: string; name: string }
   lessons: Lesson[]
+  transfers?: SessionTransferView[]
 }
 
 interface Student {
@@ -358,11 +369,14 @@ function MeetingLinkControl({
 // ─── LessonRow ────────────────────────────────────────────────────────────────
 
 function LessonRow({
-  lesson, sessionDuration, siblingLessons, onUpdate, onDelete,
+  lesson, sessionDuration, siblingLessons, readOnly = false, readOnlyReason, onUpdate, onDelete,
 }: {
   lesson: Lesson
   sessionDuration: string | null
   siblingLessons: Lesson[]
+  /** Cours d'un autre professeur (changement de professeur) : consultable, pas modifiable. */
+  readOnly?: boolean
+  readOnlyReason?: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (id: string, data: any) => void
   onDelete: (id: string) => void
@@ -407,12 +421,14 @@ function LessonRow({
   }
 
   const futureLessons = siblingLessons.filter(l => l.number > lesson.number)
+  const lockedTitle = readOnlyReason ?? "Cours d'un autre professeur : non modifiable ici."
   return (
-    <div className={`flex items-start gap-3 rounded-lg border p-3 ${statusBg(lesson.status)}`}>
+    <div className={`flex items-start gap-3 rounded-lg border p-3 ${statusBg(lesson.status)} ${readOnly ? "opacity-70" : ""}`}>
       <button
-        onClick={cycleStatus}
-        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-white shadow-sm hover:shadow transition-shadow"
-        title="Changer le statut"
+        onClick={readOnly ? undefined : cycleStatus}
+        disabled={readOnly}
+        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm"
+        title={readOnly ? lockedTitle : "Changer le statut"}
       >
         {statusIcon(lesson.status)}
       </button>
@@ -431,13 +447,17 @@ function LessonRow({
           )}
           {lesson.status === "PRESENT" && <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Présente</span>}
           {lesson.status === "ABSENT" && <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">Absente</span>}
-          <button
-            onClick={() => { if (confirm(`Supprimer le Cours ${lesson.number} ?`)) onDelete(lesson.id) }}
-            className="ml-auto text-gray-300 hover:text-red-500"
-            title="Supprimer ce cours"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          {readOnly ? (
+            <span className="ml-auto text-[11px] text-gray-400" title={lockedTitle}>Verrouillé</span>
+          ) : (
+            <button
+              onClick={() => { if (confirm(`Supprimer le Cours ${lesson.number} ?`)) onDelete(lesson.id) }}
+              className="ml-auto text-gray-300 hover:text-red-500"
+              title="Supprimer ce cours"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         {lesson.makeupMinutes != null && lesson.makeupMinutes > 0 && !editing && (
           <div className="mt-1 rounded bg-amber-50 border border-amber-200 px-2 py-1 text-xs text-amber-700">
@@ -474,6 +494,10 @@ function LessonRow({
               <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditing(false)}>Annuler</Button>
             </div>
           </div>
+        ) : readOnly ? (
+          <p className="mt-0.5 text-xs text-gray-500">
+            {lesson.content ? <span className="italic">{lesson.content}</span> : <span className="text-gray-300">Aucun contenu</span>}
+          </p>
         ) : (
           <button onClick={() => setEditing(true)} className="mt-0.5 block w-full text-left text-xs text-gray-600 hover:text-gray-900">
             {lesson.content ? <span className="italic">{lesson.content}</span> : <span className="text-gray-300">Cliquer pour ajouter le contenu…</span>}
@@ -658,6 +682,7 @@ function SessionNumberEditor({
 
 function SessionCard({
   session, paidAt, hasUndatedPayment, nextPaidAt, nextHasPaymentRequest, canSetLegacyBoundary, canMarkPaymentDate,
+  cardTeacherId, teachers,
   onUpdateLesson, onAddLesson, onCloseSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
 }: {
   session: LessonSession
@@ -667,6 +692,9 @@ function SessionCard({
   nextHasPaymentRequest?: boolean
   canSetLegacyBoundary: boolean
   canMarkPaymentDate: boolean
+  /** Professeur dont on consulte la fiche ; null = vue direction, tout est modifiable. */
+  cardTeacherId?: string | null
+  teachers?: { id: string; name: string }[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -680,6 +708,27 @@ function SessionCard({
   const [editingNotes, setEditingNotes] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
   const [resettingPayment, setResettingPayment] = useState(false)
+
+  // ── Changement de professeur ──
+  const transfers = session.transfers ?? []
+  const viewerTeacherId = cardTeacherId ?? null
+  const formerTransfer = viewerTeacherId ? transferFrom(transfers, viewerTeacherId) : undefined
+  // Copie de l'ancien professeur : la session appartient désormais à un autre.
+  const viewingFormerCopy = Boolean(formerTransfer) && session.teacher.id !== viewerTeacherId
+  function lessonLock(lesson: Lesson): string | null {
+    if (!viewerTeacherId) return null
+    const owner = lessonOwner(lesson, session.teacher.id)
+    if (owner !== viewerTeacherId) {
+      const ownerName = owner === session.teacher.id
+        ? session.teacher.name
+        : transfers.find((transfer) => transfer.fromTeacherId === owner)?.fromTeacherName ?? "un autre professeur"
+      return `Cours de ${ownerName} : modifiable uniquement depuis sa fiche.`
+    }
+    if (formerTransfer?.archived && owner === formerTransfer.fromTeacherId) {
+      return "Cours payés puis archivés après le changement de professeur : lecture seule."
+    }
+    return null
+  }
 
   const done = session.lessons.filter((l) => l.status !== "PENDING").length
   const total = session.lessons.length
@@ -736,7 +785,11 @@ function SessionCard({
   }
 
   return (
-    <div className={`rounded-xl border ${session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-blue-200 bg-white shadow-sm"}`}>
+    <div className={`rounded-xl border ${
+      viewingFormerCopy
+        ? "border-purple-200 bg-purple-50/40"
+        : session.isComplete ? "border-gray-200 bg-gray-50 opacity-70" : "border-blue-200 bg-white shadow-sm"
+    }`}>
       <div className="flex w-full items-center gap-3 p-4 text-left">
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${session.isComplete ? "bg-gray-200 text-gray-500" : "bg-blue-100 text-blue-700"}`}>
           {session.number}
@@ -744,6 +797,9 @@ function SessionCard({
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-gray-900">Session {session.number}</span>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600" title="Professeur en charge de la session">
+              {session.teacher.name}
+            </span>
             {session.isComplete && <span className="flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600"><CheckCircle2 className="h-3 w-3" /> Terminée</span>}
             {paidAt && canMarkPaymentDate && (
               <PaidDateBadgeEditor key={paidAt} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
@@ -782,17 +838,30 @@ function SessionCard({
       </div>
 
       <div className="border-t border-gray-100 p-4 space-y-3">
-        {session.lessons.map((lesson) => (
-          <LessonRow
-            key={`${lesson.id}:${lesson.date ?? ""}:${lesson.content ?? ""}:${lesson.duration ?? ""}:${lesson.makeupOnLessonId ?? ""}`}
-            lesson={lesson}
-            sessionDuration={session.duration}
-            siblingLessons={session.lessons}
-            onUpdate={onUpdateLesson}
-            onDelete={onDeleteLesson}
-          />
+        {formerTransfer && <FormerTeacherBanner transfer={formerTransfer} />}
+        {transfersBeforeFirstLesson(transfers).map((transfer) => (
+          <TransferDivider key={transfer.id} transfer={transfer} viewerTeacherId={viewerTeacherId} />
         ))}
-        {!session.isComplete && (
+        {session.lessons.map((lesson) => {
+          const lock = lessonLock(lesson)
+          const transfer = transferAfterLesson(transfers, lesson.number)
+          return (
+            <div key={lesson.id} className="space-y-3">
+              <LessonRow
+                key={`${lesson.id}:${lesson.date ?? ""}:${lesson.content ?? ""}:${lesson.duration ?? ""}:${lesson.makeupOnLessonId ?? ""}`}
+                lesson={lesson}
+                sessionDuration={session.duration}
+                siblingLessons={session.lessons}
+                readOnly={Boolean(lock)}
+                readOnlyReason={lock ?? undefined}
+                onUpdate={onUpdateLesson}
+                onDelete={onDeleteLesson}
+              />
+              {transfer && <TransferDivider transfer={transfer} viewerTeacherId={viewerTeacherId} />}
+            </div>
+          )
+        })}
+        {!session.isComplete && !viewingFormerCopy && (
           <Button variant="outline" size="sm" className="w-full border-dashed text-xs" onClick={() => onAddLesson(session.id)}>
             <Plus className="h-3 w-3" /> Ajouter un cours
           </Button>
@@ -809,13 +878,15 @@ function SessionCard({
                 <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditingNotes(false)}>Annuler</Button>
               </div>
             </div>
+          ) : viewingFormerCopy ? (
+            <p className="w-full text-left text-xs italic text-gray-400">{notes || "Aucune appréciation"}</p>
           ) : (
             <button onClick={() => setEditingNotes(true)} className="text-xs text-gray-400 hover:text-gray-600 italic text-left w-full">
               {notes || "Ajouter une appréciation de session…"}
             </button>
           )}
         </div>
-        {canSetLegacyBoundary && (
+        {canSetLegacyBoundary && !viewingFormerCopy && (
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
               <span>N° de session :</span>
@@ -840,8 +911,21 @@ function SessionCard({
             </button>
           </div>
         )}
+        {canSetLegacyBoundary && !viewingFormerCopy && teachers && teachers.length > 1 && (
+          <div className="pt-1">
+            <ChangeTeacherControl
+              sessionId={session.id}
+              currentTeacherId={session.teacher.id}
+              currentTeacherName={session.teacher.name}
+              teachers={teachers}
+              classStudentNames={[`${session.student.firstName} ${session.student.lastName}`.trim()]}
+              lessons={session.lessons}
+            />
+          </div>
+        )}
       </div>
 
+      {!viewingFormerCopy && (
       <div className="space-y-2 border-t border-gray-100 p-4">
         {canEnterMissingPaymentDate && (
           <PaymentDateEditor key={paidAt ?? "unpaid"} paidAt={paidAt} onSave={(date) => onMarkPaymentDate(session, date)} />
@@ -881,6 +965,7 @@ function SessionCard({
           <p className="text-[11px] text-gray-400">Validez le dernier cours de la session (présent/absent) pour activer l&apos;envoi.</p>
         )}
       </div>
+      )}
     </div>
   )
 }
@@ -926,11 +1011,14 @@ function shortName(student: Student) {
 
 // Ligne « Cours N » fusionnée : contenu partagé + un rond de présence par élève.
 function MergedLessonRow({
-  lessonNumber, cells, sessionDuration, onToggleStatus, onEnsureStatus, onSaveShared, onDelete,
+  lessonNumber, cells, sessionDuration, readOnly = false, readOnlyReason, onToggleStatus, onEnsureStatus, onSaveShared, onDelete,
 }: {
   lessonNumber: number
   cells: { student: Student; lesson: Lesson | undefined }[]
   sessionDuration: string | null
+  /** Cours d'un autre professeur (changement de professeur) : consultable, pas modifiable. */
+  readOnly?: boolean
+  readOnlyReason?: string
   onToggleStatus: (lessonId: string, current: string) => void
   onEnsureStatus: (studentId: string) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -963,16 +1051,18 @@ function MergedLessonRow({
     setEditing(false)
   }
 
+  const lockedTitle = readOnlyReason ?? "Cours d'un autre professeur : non modifiable ici."
   return (
-    <div className={`rounded-lg border p-3 ${ref ? statusBg(ref.status) : "bg-gray-50 border-gray-200"}`}>
+    <div className={`rounded-lg border p-3 ${ref ? statusBg(ref.status) : "bg-gray-50 border-gray-200"} ${readOnly ? "opacity-70" : ""}`}>
       <div className="flex items-start gap-3">
         <div className="flex shrink-0 gap-2">
           {cells.map(({ student, lesson }) => (
             <div key={student.id} className="flex flex-col items-center gap-1">
               <button
-                onClick={() => lesson ? onToggleStatus(lesson.id, lesson.status) : onEnsureStatus(student.id)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow sm:h-7 sm:w-7"
-                title={lesson ? `${shortName(student)} — changer le statut` : `${shortName(student)} — ajouter ce cours et marquer présent`}
+                onClick={readOnly ? undefined : () => lesson ? onToggleStatus(lesson.id, lesson.status) : onEnsureStatus(student.id)}
+                disabled={readOnly}
+                className="flex h-9 w-9 items-center justify-center rounded-full border bg-white shadow-sm transition-shadow hover:shadow disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm sm:h-7 sm:w-7"
+                title={readOnly ? lockedTitle : lesson ? `${shortName(student)} — changer le statut` : `${shortName(student)} — ajouter ce cours et marquer présent`}
               >
                 {lesson ? statusIcon(lesson.status) : <Plus className="h-3.5 w-3.5 text-gray-300" />}
               </button>
@@ -996,13 +1086,17 @@ function MergedLessonRow({
                 {formatMins(actualMin)}{isShort && ` (−${diff} min)`}
               </span>
             )}
-            <button
-              onClick={() => { if (confirm(`Supprimer le Cours ${lessonNumber} pour toute la classe ?`)) onDelete() }}
-              className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
-              title="Supprimer ce cours"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            {readOnly ? (
+              <span className="ml-auto text-[11px] text-gray-400" title={lockedTitle}>Verrouillé</span>
+            ) : (
+              <button
+                onClick={() => { if (confirm(`Supprimer le Cours ${lessonNumber} pour toute la classe ?`)) onDelete() }}
+                className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
+                title="Supprimer ce cours"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
 
@@ -1021,6 +1115,10 @@ function MergedLessonRow({
                 <Button size="sm" variant="outline" className="h-8 text-xs sm:h-6 sm:px-2" onClick={() => setEditing(false)}>Annuler</Button>
               </div>
             </div>
+          ) : readOnly ? (
+            <p className="mt-1 min-h-8 text-xs text-gray-500">
+              {content ? <span className="italic">{content}</span> : <span className="text-gray-300">Aucun contenu</span>}
+            </p>
           ) : (
             <button onClick={() => setEditing(true)} className="mt-1 block min-h-8 w-full rounded-md text-left text-xs text-gray-600 hover:text-gray-900">
               {content ? <span className="italic">{content}</span> : <span className="text-gray-300">Cliquer pour ajouter le contenu…</span>}
@@ -1108,6 +1206,7 @@ function StudentPaymentRow({
 // Tableau de sessions fusionné pour une classe (binôme/groupe).
 function MergedGroupCahier({
   students, sessions, paidBySession, undatedPaymentBySession, canSetLegacyBoundary, canMarkPaymentDate,
+  cardTeacherId, teachers,
   onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onEnsureLesson, onRenumberSession,
 }: {
   students: Student[]
@@ -1116,6 +1215,9 @@ function MergedGroupCahier({
   undatedPaymentBySession: Record<string, boolean>
   canSetLegacyBoundary: boolean
   canMarkPaymentDate: boolean
+  /** Professeur dont on consulte la fiche ; null = vue direction. */
+  cardTeacherId?: string | null
+  teachers?: { id: string; name: string }[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -1149,6 +1251,30 @@ function MergedGroupCahier({
   const subjectLabel = allSessions.find((s) => s.number === selNum)?.subject ?? null
   const allComplete = sessList.length > 0 && sessList.every((s) => s.isComplete)
   const lessonNumbers = Array.from(new Set(sessList.flatMap((s) => s.lessons.map((l) => l.number)))).sort((a, b) => a - b)
+
+  // ── Changement de professeur : la classe entière a suivi ──
+  // Toutes les sessions de la classe portent le même transfert : on lit celui du
+  // premier élève pour tirer le trait et verrouiller les cours de l'autre prof.
+  const classTransfers = template?.transfers ?? []
+  const formerTransfer = cardTeacherId ? transferFrom(classTransfers, cardTeacherId) : undefined
+  const viewingFormerCopy = Boolean(formerTransfer) && template != null && template.teacher.id !== cardTeacherId
+  // Un cours de la classe appartient au professeur épinglé sur les cours des
+  // élèves ; sans épinglage, au professeur courant de la session.
+  function classLessonLock(num: number): string | null {
+    if (!cardTeacherId || !template) return null
+    const pinned = sessList.flatMap((s) => s.lessons.filter((l) => l.number === num)).find((l) => l.teacherId)
+    const owner = pinned?.teacherId ?? template.teacher.id
+    if (owner !== cardTeacherId) {
+      const ownerName = owner === template.teacher.id
+        ? template.teacher.name
+        : classTransfers.find((transfer) => transfer.fromTeacherId === owner)?.fromTeacherName ?? "un autre professeur"
+      return `Cours de ${ownerName} : modifiable uniquement depuis sa fiche.`
+    }
+    if (formerTransfer?.archived && owner === formerTransfer.fromTeacherId) {
+      return "Cours payés puis archivés après le changement de professeur : lecture seule."
+    }
+    return null
+  }
 
   async function ensureAndPresent(studentId: string, lessonNumber: number) {
     if (!template) return
@@ -1255,9 +1381,14 @@ function MergedGroupCahier({
             {selNum}
           </div>
           <span className="font-semibold text-gray-900">Session {selNum}</span>
-          {canSetLegacyBoundary && <SessionNumberEditor currentNumber={selNum} onSave={renumberClassSession} />}
+          {template && (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600" title="Professeur en charge de la classe">
+              {template.teacher.name}
+            </span>
+          )}
+          {canSetLegacyBoundary && !viewingFormerCopy && <SessionNumberEditor currentNumber={selNum} onSave={renumberClassSession} />}
           {allComplete && <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">Terminée</span>}
-          {canSetLegacyBoundary && (
+          {canSetLegacyBoundary && !viewingFormerCopy && (
             <button
               type="button"
               onClick={deleteClassSession}
@@ -1272,26 +1403,37 @@ function MergedGroupCahier({
         </div>
 
         <div className="space-y-3 p-4">
+          {formerTransfer && <FormerTeacherBanner transfer={formerTransfer} scope={students.length > 1 ? "class" : "student"} />}
+          {transfersBeforeFirstLesson(classTransfers).map((transfer) => (
+            <TransferDivider key={transfer.id} transfer={transfer} viewerTeacherId={cardTeacherId} scope="class" />
+          ))}
           {lessonNumbers.map((num) => {
             const cells = students.map((student) => ({
               student,
               lesson: sessionByStudent.get(student.id)?.lessons.find((l) => l.number === num),
             }))
+            const lock = classLessonLock(num)
+            const transfer = transferAfterLesson(classTransfers, num)
             return (
-              <MergedLessonRow
-                key={`${num}:${cells.map((cell) => `${cell.lesson?.id ?? cell.student.id}:${cell.lesson?.date ?? ""}:${cell.lesson?.content ?? ""}:${cell.lesson?.duration ?? ""}`).join("|")}`}
-                lessonNumber={num}
-                cells={cells}
-                sessionDuration={sessionDuration}
-                onToggleStatus={(lessonId, current) => onUpdateLesson(lessonId, { status: STATUS_CYCLE[current] ?? "PENDING" })}
-                onEnsureStatus={(studentId) => ensureAndPresent(studentId, num)}
-                onSaveShared={(data) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, data))}
-                onDelete={() => cells.forEach((c) => c.lesson && onDeleteLesson(c.lesson.id))}
-              />
+              <div key={num} className="space-y-3">
+                <MergedLessonRow
+                  key={`${num}:${cells.map((cell) => `${cell.lesson?.id ?? cell.student.id}:${cell.lesson?.date ?? ""}:${cell.lesson?.content ?? ""}:${cell.lesson?.duration ?? ""}`).join("|")}`}
+                  lessonNumber={num}
+                  cells={cells}
+                  sessionDuration={sessionDuration}
+                  readOnly={Boolean(lock)}
+                  readOnlyReason={lock ?? undefined}
+                  onToggleStatus={(lessonId, current) => onUpdateLesson(lessonId, { status: STATUS_CYCLE[current] ?? "PENDING" })}
+                  onEnsureStatus={(studentId) => ensureAndPresent(studentId, num)}
+                  onSaveShared={(data) => cells.forEach((c) => c.lesson && onUpdateLesson(c.lesson.id, data))}
+                  onDelete={() => cells.forEach((c) => c.lesson && onDeleteLesson(c.lesson.id))}
+                />
+                {transfer && <TransferDivider transfer={transfer} viewerTeacherId={cardTeacherId} scope="class" />}
+              </div>
             )
           })}
 
-          {!allComplete && (
+          {!allComplete && !viewingFormerCopy && (
             <Button
               variant="ghost"
               className="w-full border border-dashed border-gray-200 text-gray-500 hover:text-gray-700"
@@ -1300,23 +1442,40 @@ function MergedGroupCahier({
               <Plus className="h-4 w-4" /> Ajouter un cours à la classe
             </Button>
           )}
+          {canSetLegacyBoundary && !viewingFormerCopy && template && teachers && teachers.length > 1 && (
+            <ChangeTeacherControl
+              sessionId={template.id}
+              currentTeacherId={template.teacher.id}
+              currentTeacherName={template.teacher.name}
+              teachers={teachers}
+              classStudentNames={students.map(shortName)}
+              lessons={lessonNumbers.map((num) => ({
+                number: num,
+                // Un cours compte comme assuré dès qu'un élève de la classe est marqué.
+                status: sessList.some((s) => s.lessons.some((l) => l.number === num && l.status !== "PENDING")) ? "PRESENT" : "PENDING",
+              }))}
+            />
+          )}
 
-          <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
-            <p className="text-xs font-semibold text-gray-500">Paiement par élève</p>
-            {students.map((student) => (
-              <StudentPaymentRow
-                key={student.id}
-                student={student}
-                session={sessionByStudent.get(student.id)}
-                paidAt={paidBySession[`${student.id}:${selNum}`]}
-                hasUndated={Boolean(undatedPaymentBySession[`${student.id}:${selNum}`])}
-                canMarkPaymentDate={canMarkPaymentDate}
-                onMarkPaymentDate={onMarkPaymentDate}
-              />
-            ))}
-          </div>
+          {/* Le suivi des paiements élèves reste sur la fiche du professeur en charge. */}
+          {!viewingFormerCopy && (
+            <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+              <p className="text-xs font-semibold text-gray-500">Paiement par élève</p>
+              {students.map((student) => (
+                <StudentPaymentRow
+                  key={student.id}
+                  student={student}
+                  session={sessionByStudent.get(student.id)}
+                  paidAt={paidBySession[`${student.id}:${selNum}`]}
+                  hasUndated={Boolean(undatedPaymentBySession[`${student.id}:${selNum}`])}
+                  canMarkPaymentDate={canMarkPaymentDate}
+                  onMarkPaymentDate={onMarkPaymentDate}
+                />
+              ))}
+            </div>
+          )}
 
-          {sessList.length > 0 && (
+          {sessList.length > 0 && !viewingFormerCopy && (
             <Button
               className={`w-full text-white disabled:cursor-not-allowed disabled:opacity-50 ${canSendNextPaymentRequestForClass ? "bg-blue-600 hover:bg-blue-700" : "cursor-not-allowed bg-blue-400 hover:bg-blue-400"}`}
               disabled={sessionsNeedingNextPaymentRequest.length === 0}
@@ -1333,12 +1492,13 @@ function MergedGroupCahier({
               <Bell className="h-4 w-4" /> {anyIncomplete ? `Terminer et demander Session ${nextSessionNumber}` : `Demander paiement Session ${nextSessionNumber}`}
             </Button>
           )}
-          {sessList.length > 0 && !lastLessonValidated && (
+          {sessList.length > 0 && !lastLessonValidated && !viewingFormerCopy && (
             <p className="text-center text-[11px] text-gray-400">Validez le dernier cours de la session (présent/absent) pour activer l&apos;envoi.</p>
           )}
         </div>
       </div>
 
+      {!viewingFormerCopy && (
       <Button
         variant="outline"
         className="w-full border-dashed"
@@ -1347,6 +1507,7 @@ function MergedGroupCahier({
       >
         <Plus className="h-4 w-4" /> {creatingSession ? "Création…" : "Nouvelle session pour la classe"}
       </Button>
+      )}
     </div>
   )
 }
@@ -1355,7 +1516,7 @@ function MergedGroupCahier({
 
 function StudentCahier({
   student, sessions, paidBySession, undatedPaymentBySession, schedule, teachers, currentUserId,
-  canSetLegacyBoundary, canMarkPaymentDate, canArchive = false,
+  canSetLegacyBoundary, canMarkPaymentDate, canArchive = false, cardTeacherId,
   onUpdateLesson, onAddLesson, onCloseSession, onNewSession, onDeleteLesson, onMarkPaymentDate, onRenumberSession,
 }: {
   student: Student
@@ -1368,6 +1529,8 @@ function StudentCahier({
   canSetLegacyBoundary: boolean
   canMarkPaymentDate: boolean
   canArchive?: boolean
+  /** Fiche professeur d'où l'élève est consulté ; null = vue direction. */
+  cardTeacherId?: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLesson: (lessonId: string, data: any) => void
   onAddLesson: (sessionId: string) => void
@@ -1396,6 +1559,14 @@ function StudentCahier({
   const name = shortName(student)
   const forfait = formatForfait(student.lessonsPerWeek, student.duration)
   const planning = schedule && schedule.length > 0
+  // Élève parti chez un autre professeur : la fiche vue depuis l'ancien
+  // professeur n'est qu'une copie de suivi (lecture seule, puis archivée).
+  const transferredAway = Boolean(
+    cardTeacherId && sessions.length > 0 && sessions.every((session) => isFormerTeacher(session, cardTeacherId)),
+  )
+  const transferInfo = cardTeacherId
+    ? sessions.map((session) => transferFrom(session.transfers, cardTeacherId)).find(Boolean)
+    : undefined
 
   async function handleArchive() {
     if (!confirm(`Marquer ${name} comme arrêté ? L'élève quitte les listes actives et rejoint « Anciens élèves » (fiche conservée).`)) return
@@ -1420,7 +1591,17 @@ function StudentCahier({
           {initialFromName(name)}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 text-sm">{name}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-medium text-gray-900 text-sm">{name}</p>
+            {transferredAway && transferInfo && (
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                transferInfo.archived ? "bg-gray-200 text-gray-600" : "bg-purple-100 text-purple-700"
+              }`}>
+                {transferInfo.archived ? "Archivé — transféré à " : "Transféré à "}
+                {transferInfo.toTeacherName}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400">
             {student.group?.name ?? "Aucun groupe"}
             {student.subject && ` · ${student.subject}`}
@@ -1504,6 +1685,8 @@ function StudentCahier({
               nextHasPaymentRequest={undatedPaymentBySession[`${student.id}:${selected.number + 1}`]}
               canSetLegacyBoundary={canSetLegacyBoundary}
               canMarkPaymentDate={canMarkPaymentDate}
+              cardTeacherId={cardTeacherId}
+              teachers={teachers}
               onUpdateLesson={onUpdateLesson}
               onAddLesson={onAddLesson}
               onCloseSession={onCloseSession}
@@ -1635,7 +1818,7 @@ function StudentCahier({
                 }}>Annuler</Button>
               </div>
             </div>
-          ) : (
+          ) : transferredAway ? null : (
             <Button variant="outline" className="w-full border-dashed" onClick={() => {
               setCreationError(null)
               setChoosingSessionModel(true)
@@ -2068,6 +2251,8 @@ function GroupCard({
               undatedPaymentBySession={undatedPaymentBySession}
               canSetLegacyBoundary={canSetLegacyBoundary}
               canMarkPaymentDate={canMarkPaymentDate}
+              cardTeacherId={currentTeacherId}
+              teachers={teachers}
               onUpdateLesson={onUpdateLesson}
               onAddLesson={onAddLesson}
               onCloseSession={onCloseSession}
@@ -2103,6 +2288,7 @@ function GroupCard({
                 schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                 teachers={teachers}
                 currentUserId={currentUserId}
+                cardTeacherId={currentTeacherId}
                 canSetLegacyBoundary={canSetLegacyBoundary}
                 canMarkPaymentDate={canMarkPaymentDate}
                 onUpdateLesson={onUpdateLesson}
@@ -2179,9 +2365,43 @@ function TeacherCard({
     ).filter(matchesQuery)
   )
 
-  const activeStudents = visibleTeacherStudents.filter(s => s.status === "ACTIVE")
-  const pausedStudents = visibleTeacherStudents.filter(s => s.status === "PAUSED")
-  const stoppedStudents = visibleTeacherStudents.filter(s => s.status === "STOPPED")
+  // Élèves partis chez un autre professeur : ils gardent une copie de suivi ici
+  // (cours d'avant le trait), puis elle est archivée une fois la paie faite.
+  const transferredStudents = visibleTeacherStudents.filter((student) => {
+    const studentSessions = visibleSessions.filter((session) => session.student.id === student.id)
+    return studentSessions.length > 0 && studentSessions.every((session) => isFormerTeacher(session, teacher.id))
+  })
+  const transferredIds = new Set(transferredStudents.map((student) => student.id))
+  // Un changement de professeur emporte toute la classe : la copie archivée garde
+  // donc son tableau fusionné (binôme/groupe), pas des cahiers séparés. Les élèves
+  // seuls dans leur groupe restent en cahier individuel.
+  const transferredClasses: { groupId: string; name: string; students: Student[] }[] = []
+  const transferredSingles: Student[] = []
+  {
+    const byGroup = new Map<string, Student[]>()
+    for (const student of transferredStudents) {
+      if (!student.groupId) { transferredSingles.push(student); continue }
+      const bucket = byGroup.get(student.groupId)
+      if (bucket) bucket.push(student)
+      else byGroup.set(student.groupId, [student])
+    }
+    for (const [groupId, members] of byGroup) {
+      if (members.length >= 2) {
+        transferredClasses.push({
+          groupId,
+          name: members[0].group?.name ?? "Classe",
+          students: sortStudentsByName(members),
+        })
+      } else {
+        transferredSingles.push(...members)
+      }
+    }
+    transferredClasses.sort((a, b) => collator.compare(a.name, b.name))
+  }
+  const remainingStudents = visibleTeacherStudents.filter((student) => !transferredIds.has(student.id))
+  const activeStudents = remainingStudents.filter(s => s.status === "ACTIVE")
+  const pausedStudents = remainingStudents.filter(s => s.status === "PAUSED")
+  const stoppedStudents = remainingStudents.filter(s => s.status === "STOPPED")
   const visibleGroupEntries = teacher.teacherGroups
     .map((group) => ({
       group,
@@ -2406,6 +2626,7 @@ function TeacherCard({
                       schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                       teachers={teachers}
                       currentUserId={currentUserId}
+                      cardTeacherId={teacher.id}
                       canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                       canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
                       canArchive={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
@@ -2496,6 +2717,7 @@ function TeacherCard({
                     schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                     teachers={teachers}
                     currentUserId={currentUserId}
+                    cardTeacherId={teacher.id}
                     canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                     canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
                     onUpdateLesson={onUpdateLesson}
@@ -2507,6 +2729,69 @@ function TeacherCard({
                     onRenumberSession={onRenumberSession}
                   />
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* Élèves transférés à un autre professeur */}
+          {transferredStudents.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <div className="h-px flex-1 bg-purple-200" />
+                <span className="text-xs font-medium text-purple-600">Élèves transférés ({transferredStudents.length})</span>
+                <div className="h-px flex-1 bg-purple-200" />
+              </div>
+              {/* Les classes gardent leur tableau fusionné, en lecture seule. */}
+              {transferredClasses.map(({ groupId, name, students: classStudents }) => (
+                <div key={groupId} className="space-y-2 rounded-xl border border-purple-100 bg-purple-50/30 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Users className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm font-semibold text-gray-800">{name}</span>
+                    <span className="text-xs text-gray-500">
+                      {classStudents.length === 2 ? "Binôme" : `Groupe (${classStudents.length})`} · {classStudents.map(shortName).join(", ")}
+                    </span>
+                  </div>
+                  <MergedGroupCahier
+                    students={classStudents}
+                    sessions={visibleSessions}
+                    paidBySession={paidBySession}
+                    undatedPaymentBySession={undatedPaymentBySession}
+                    canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                    canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
+                    cardTeacherId={teacher.id}
+                    teachers={teachers}
+                    onUpdateLesson={onUpdateLesson}
+                    onAddLesson={onAddLesson}
+                    onCloseSession={onCloseSession}
+                    onNewSession={onNewSession}
+                    onDeleteLesson={onDeleteLesson}
+                    onMarkPaymentDate={onMarkPaymentDate}
+                    onEnsureLesson={onEnsureLesson}
+                    onRenumberSession={onRenumberSession}
+                  />
+                </div>
+              ))}
+              {transferredSingles.map((student) => (
+                <StudentCahier
+                  key={student.id}
+                  student={student}
+                  sessions={getStudentSessions(student.id)}
+                  paidBySession={paidBySession}
+                  undatedPaymentBySession={undatedPaymentBySession}
+                  schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
+                  teachers={teachers}
+                  currentUserId={currentUserId}
+                  cardTeacherId={teacher.id}
+                  canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
+                  canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
+                  onUpdateLesson={onUpdateLesson}
+                  onAddLesson={onAddLesson}
+                  onCloseSession={onCloseSession}
+                  onNewSession={onNewSession}
+                  onDeleteLesson={onDeleteLesson}
+                  onMarkPaymentDate={onMarkPaymentDate}
+                  onRenumberSession={onRenumberSession}
+                />
               ))}
             </div>
           )}
@@ -2529,6 +2814,7 @@ function TeacherCard({
                     schedule={student.groupId ? scheduleByGroup[student.groupId] : undefined}
                     teachers={teachers}
                     currentUserId={currentUserId}
+                    cardTeacherId={teacher.id}
                     canSetLegacyBoundary={currentRole === "DIRECTOR" || currentRole === "SECRETARY"}
                     canMarkPaymentDate={["DIRECTOR", "SECRETARY"].includes(currentRole)}
                     onUpdateLesson={onUpdateLesson}
@@ -2597,12 +2883,18 @@ export function TeachersClient({
   function getTeacherStudents(teacherId: string) {
     return students.filter((student) =>
       student.group?.teacherId === teacherId ||
-      sessions.some((session) => session.teacher.id === teacherId && session.student.id === student.id)
+      sessions.some((session) => session.student.id === student.id && teachesOrTaught(session, teacherId))
     )
   }
 
+  // Un professeur garde la session dont il a assuré les premiers cours, même
+  // après un changement de professeur : c'est sa copie de suivi (lecture seule).
+  function teachesOrTaught(session: LessonSession, teacherId: string) {
+    return session.teacher.id === teacherId || isFormerTeacher(session, teacherId)
+  }
+
   function getTeacherSessions(teacherId: string) {
-    return sessions.filter(s => s.teacher.id === teacherId)
+    return sessions.filter((session) => teachesOrTaught(session, teacherId))
   }
 
   // Aucune matière n'est stockée sur le professeur : on la déduit de ses sessions,
